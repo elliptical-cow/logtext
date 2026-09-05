@@ -9,3 +9,5 @@ target/
 
 .DS_Store
 *.log
+
+docs/example_workspace.zip
