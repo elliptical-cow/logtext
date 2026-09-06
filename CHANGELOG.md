@@ -35,6 +35,11 @@ Changes since `v0.6.7`.
 - Refreshed the performance baseline with current release-build measurements
   for sparse, realistic, stress, and single-large-page workspaces.
 
+### Fixed
+
+- Rendered level-one through level-three Markdown headings in the right pane
+  now scale with the application font size.
+
 ## 0.6.7
 
 Changes since `v0.6.5`.

@@ -2573,15 +2573,15 @@ textarea {
 }
 
 .markdown-view h1 {
-  font-size: 24px;
+  font-size: 1.714em;
 }
 
 .markdown-view h2 {
-  font-size: 18px;
+  font-size: 1.286em;
 }
 
 .markdown-view h3 {
-  font-size: 15px;
+  font-size: 1.071em;
 }
 
 .markdown-view code,
