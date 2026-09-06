@@ -4,11 +4,10 @@
   <img src="assets/branding/logtext-wordmark.png" alt="Logtext — Write logs. Build context." width="720" />
 </p>
 
-Logtext is a local Markdown-first knowledge workspace for notes and tasks using
-backlinks as semantic tags.
+Goal: Logtext allows frictionless capturing of daily logs in local Markdown files - context emerges then through grouped tags.
 
 The app is inspired by OrgMode and Logseq, but Markdown files remain the source
-of truth. Logtext scans a local workspace folder, renders wiki links and
+of truth. Logtext scans a local workspace folder, renders links and
 backlinks, and adds project-oriented task workflows on top of plain `.md`
 files.
 
@@ -22,12 +21,12 @@ workflow.
 
 ## Product Vision
 
-Logtext is built for personal knowledge management in project and task management contexts. It follows a simple approach:
+Logtext is built for personal knowledge management with project and task management in mind. It follows a simple approach:
 
 > Capture first. Structure later. Files forever.
 
-The app is meant to be a place to quickly write down project thoughts,
-meeting notes, decisions, risks, follow-ups, and open questions without deciding
+The app is meant to be a place to quickly write down 
+meeting notes, decisions, project thoughts, risks, follow-ups, and open questions without deciding
 up front where each fragment belongs.
 
 The default workflow is:
@@ -79,7 +78,7 @@ Create database -> define schema -> create document -> fill fields
 Open a workspace with `File > Open Workspace Folder...`. Logtext scans all
 Markdown files below that folder recursively.
 
-On startup Logtext reads `~/.manicule` from the user home directory. If that file
+On startup Logtext reads `~/.logtext` from the user home directory. If that file
 contains a `lastWorkspace` entry, the workspace is opened automatically. When a
 workspace is opened, the path is stored there again for the next start.
 
@@ -90,8 +89,6 @@ right pane keeps its previous context page from the last session.
 Each workspace can also contain a `.config` file. Logtext creates it if needed
 and stores workspace-specific settings there, for example task colors, expanded
 folders.
-
-Use `View > Toggle Dark Mode` to choose the interface theme from light or dark.
 
 ### Three-Pane Layout
 
@@ -390,8 +387,6 @@ Official releases are created only by pushing a semantic version tag such as
 `v0.7.0` on a tested `main` commit. `.github/workflows/release.yml` verifies the
 tag and source versions, rebuilds all platforms, and publishes the Windows,
 macOS, and Linux assets after every build succeeds.
-
-The current app version is `0.7.0`.
 
 ## License
 
