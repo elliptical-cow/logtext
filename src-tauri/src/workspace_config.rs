@@ -7,10 +7,13 @@ use serde::{Deserialize, Serialize};
 pub const DEFAULT_TASK_STATES: [&str; 4] = ["TODO", "INPROGRESS", "WAITING", "DONE"];
 pub const DEFAULT_PAGE_SORT: &str = "name-desc";
 pub const DEFAULT_THEME_MODE: &str = "light";
+pub const DEFAULT_JOURNAL_FOLDER: &str = "journal";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceConfig {
+    #[serde(default = "default_journal_folder")]
+    pub journal_folder: String,
     pub task_states: Vec<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub task_state_colors: HashMap<String, String>,
@@ -105,6 +108,7 @@ impl Default for WorkspaceConfig {
             .map(|state| state.to_string())
             .collect();
         Self {
+            journal_folder: default_journal_folder(),
             task_state_colors: default_task_state_colors(&task_states),
             task_states,
             task_done_sound_enabled: default_task_done_sound_enabled(),
@@ -154,6 +158,7 @@ pub fn load_or_create_workspace_config(root: &Path) -> Result<WorkspaceConfig, S
     let default_page_sort = normalize_page_sort(config.default_page_sort, DEFAULT_PAGE_SORT);
 
     Ok(WorkspaceConfig {
+        journal_folder: normalize_journal_folder(config.journal_folder)?,
         task_states,
         task_state_colors,
         task_done_sound_enabled: config.task_done_sound_enabled,
@@ -323,6 +328,23 @@ pub fn normalize_theme_mode(theme_mode: String) -> String {
     }
 }
 
+pub fn normalize_journal_folder(journal_folder: String) -> Result<String, String> {
+    let normalized = journal_folder.trim().trim_matches('/').replace('\\', "/");
+    if normalized.is_empty() {
+        return Ok(default_journal_folder());
+    }
+    if normalized.split('/').any(|segment| {
+        segment.is_empty() || segment == "." || segment == ".." || segment.trim() != segment
+    }) {
+        return Err(
+            "Invalid journalFolder. Use a workspace-relative folder path without dot segments."
+                .to_string(),
+        );
+    }
+
+    Ok(normalized)
+}
+
 fn default_quick_access_height() -> u32 {
     220
 }
@@ -483,6 +505,10 @@ fn default_theme_mode() -> String {
     DEFAULT_THEME_MODE.to_string()
 }
 
+fn default_journal_folder() -> String {
+    DEFAULT_JOURNAL_FOLDER.to_string()
+}
+
 fn default_folder_page_sort() -> HashMap<String, String> {
     HashMap::from([("journal".to_string(), "name-desc".to_string())])
 }
@@ -505,6 +531,7 @@ mod tests {
             config.task_states,
             vec!["TODO", "INPROGRESS", "WAITING", "DONE"]
         );
+        assert_eq!(config.journal_folder, "journal");
         assert_eq!(
             config.task_state_colors.get("TODO"),
             Some(&"red".to_string())
@@ -550,6 +577,7 @@ mod tests {
         let config = load_or_create_workspace_config(&root).unwrap();
 
         assert_eq!(config.task_states, vec!["TODO", "BLOCKED", "DONE"]);
+        assert_eq!(config.journal_folder, "journal");
         assert_eq!(
             config.task_state_colors.get("TODO"),
             Some(&"red".to_string())
@@ -571,6 +599,38 @@ mod tests {
             Some(&"name-desc".to_string())
         );
         assert!(config.folder_colors.is_empty());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn loads_and_normalizes_custom_journal_folder() {
+        let root = temp_workspace();
+        fs::write(
+            root.join(".config"),
+            r#"{"taskStates":["TODO","DONE"],"journalFolder":" daily\\logs/ "}"#,
+        )
+        .unwrap();
+
+        let config = load_or_create_workspace_config(&root).unwrap();
+
+        assert_eq!(config.journal_folder, "daily/logs");
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_journal_folder_with_parent_segments() {
+        let root = temp_workspace();
+        fs::write(
+            root.join(".config"),
+            r#"{"taskStates":["TODO","DONE"],"journalFolder":"../daily"}"#,
+        )
+        .unwrap();
+
+        let error = load_or_create_workspace_config(&root).unwrap_err();
+
+        assert!(error.contains("Invalid journalFolder"));
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -814,6 +874,7 @@ mod tests {
     fn saves_expanded_folders() {
         let root = temp_workspace();
         let config = WorkspaceConfig {
+            journal_folder: default_journal_folder(),
             task_states: vec!["TODO".to_string(), "DONE".to_string()],
             task_state_colors: default_task_state_colors(&["TODO".to_string(), "DONE".to_string()]),
             task_done_sound_enabled: true,
@@ -845,6 +906,7 @@ mod tests {
     fn saves_task_overview_config() {
         let root = temp_workspace();
         let config = WorkspaceConfig {
+            journal_folder: default_journal_folder(),
             task_states: vec!["TODO".to_string(), "DONE".to_string()],
             task_state_colors: default_task_state_colors(&["TODO".to_string(), "DONE".to_string()]),
             task_done_sound_enabled: false,

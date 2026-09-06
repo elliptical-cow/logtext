@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy, tick } from "svelte";
   import CodeMirrorEditor from "./CodeMirrorEditor.svelte";
   import ErrorDialog from "./ErrorDialog.svelte";
   import LinkedReferences from "./LinkedReferences.svelte";
@@ -9,6 +10,7 @@
   import { appUndoStore } from "../stores/appUndo";
   import { linkOperations, type LinkTargetPane } from "../stores/linkOperations";
   import { workspaceStore } from "../stores/workspace";
+  import { createJournalScrollNavigation } from "../journalScrollNavigation";
   import type { BacklinkView, PageView } from "../types";
 
   let editor: { saveCurrentDocument: () => void } | null = null;
@@ -18,6 +20,11 @@
   let pageViewRequestKey = "";
   let pageViewRequestSequence = 0;
   let missingLinkPath: string | null = null;
+  let editorScroll: HTMLDivElement;
+  const journalScrollNavigation = createJournalScrollNavigation({
+    openPage: (path) => editorSessionStore.open(path),
+    afterOpen: tick,
+  });
 
   $: nextPageViewRequestKey =
     $editorSessionStore.path && $editorSessionStore.contentHash
@@ -118,6 +125,22 @@
     });
   }
 
+  function handleJournalWheel(event: WheelEvent) {
+    void journalScrollNavigation.handleWheel(event, editorScroll, {
+      currentPath: $editorSessionStore.path,
+      pagePaths: $workspaceStore.pages.map((page) => page.path),
+      journalFolder: $workspaceStore.journalFolder,
+      sortDescending: (
+        $workspaceStore.folderPageSort[$workspaceStore.journalFolder] ??
+        $workspaceStore.defaultPageSort
+      ).endsWith("-desc"),
+    });
+  }
+
+  onDestroy(() => {
+    journalScrollNavigation.destroy();
+  });
+
 </script>
 
 <section class="editor-pane" aria-label="Editor">
@@ -175,7 +198,7 @@
     primaryActionLabel={$editorSessionStore.conflict ? "Overwrite disk" : null}
     onPrimaryAction={$editorSessionStore.conflict ? () => editorSessionStore.overwriteDisk() : null}
   />
-  <div class="editor-scroll">
+  <div class="editor-scroll" bind:this={editorScroll} on:wheel={handleJournalWheel}>
     <CodeMirrorEditor
       bind:this={editor}
       value={$editorSessionStore.content}

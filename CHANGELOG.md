@@ -17,6 +17,10 @@ Changes since `v0.6.7`.
   notes, performance baselines, branding assets, and a ready-to-open example
   workspace.
 - Added version consistency tests for the package, Cargo, and Tauri metadata.
+- Added continuous journal browsing: the editor changes date files at its
+  scroll boundaries, while the right pane displays several date files as one
+  progressively loaded feed. Both follow the folder's ascending or descending
+  page order and require no focus clicks between transitions.
 
 ### Changed
 
@@ -34,11 +38,22 @@ Changes since `v0.6.7`.
   marker positioning.
 - Refreshed the performance baseline with current release-build measurements
   for sparse, realistic, stress, and single-large-page workspaces.
+- Made the journal folder configurable through `journalFolder` in the workspace
+  `.config`; the default remains `journal`.
 
 ### Fixed
 
 - Rendered level-one through level-three Markdown headings in the right pane
   now scale with the application font size.
+- App-managed page creation, moving, and renaming now reject non-date filenames
+  directly inside the configured journal folder.
+- App-managed folder and page operations now prevent subfolders below the
+  configured journal folder.
+- Saved editor changes now refresh the matching loaded journal entry in the
+  continuous right-pane feed, including entries other than its anchor page.
+- Right-pane navigation now keeps the loaded path and rendered page consistent
+  while another page is loading, so reopening a journal reliably rebuilds its
+  continuous feed.
 
 ## 0.6.7
 

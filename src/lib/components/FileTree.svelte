@@ -612,12 +612,12 @@
   }
 
   async function openJournal(day: JournalDay) {
-    const path = journalPathForDay(day);
+    const path = journalPathForDay(day, new Date(), $workspaceStore.journalFolder);
     await openJournalPath(path);
   }
 
   async function openJournalDate(date: string) {
-    const path = journalPathForDateInput(date);
+    const path = journalPathForDateInput(date, $workspaceStore.journalFolder);
     if (!path) {
       return;
     }

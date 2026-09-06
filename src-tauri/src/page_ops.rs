@@ -31,6 +31,7 @@ pub(crate) fn create_page_in_workspace(
     let markdown_path =
         markdown_path_from_page_target(&path).ok_or_else(|| invalid_page_path(&path))?;
     let markdown_path = lowercase_markdown_file_name(&markdown_path);
+    ensure_valid_journal_page_target(workspace, &markdown_path)?;
     let key =
         page_key_from_relative_path(&markdown_path).ok_or_else(|| invalid_page_path(&path))?;
 
@@ -92,6 +93,7 @@ pub(crate) fn create_folder_in_workspace(
     path: String,
 ) -> AppResult<CreateFolderResultDto> {
     let folder_path = folder_path_from_target(&path).ok_or_else(|| invalid_folder_path(&path))?;
+    ensure_valid_journal_folder_target(workspace, &folder_path)?;
     let absolute_path = resolve_workspace_relative_path(&workspace.root, &folder_path)
         .ok_or_else(|| invalid_folder_path(&path))?;
 
@@ -244,6 +246,8 @@ pub(crate) fn move_page_in_workspace(
         });
     }
 
+    ensure_valid_journal_page_target(workspace, &target_path)?;
+
     let source_key = page_key_from_relative_path(&resolved_path)
         .ok_or_else(|| invalid_page_path(&resolved_path))?;
     ensure_page_target_available(&workspace.pages, &target_path, Some(&resolved_path))?;
@@ -366,6 +370,8 @@ pub(crate) fn rename_page_in_workspace(
         });
     }
 
+    ensure_valid_journal_page_target(workspace, &target_path)?;
+
     let source_key = page_key_from_relative_path(&resolved_path)
         .ok_or_else(|| invalid_page_path(&resolved_path))?;
     ensure_page_target_available(&workspace.pages, &target_path, Some(&resolved_path))?;
@@ -444,6 +450,8 @@ fn move_folder_to_path(
             updated_link_count: 0,
         });
     }
+
+    ensure_valid_journal_folder_target(workspace, &new_folder)?;
 
     let old_folder_prefix = format!("{old_folder}/");
     let pages_to_rename: Vec<Page> = workspace
@@ -639,6 +647,73 @@ fn ensure_page_target_available(
     Ok(())
 }
 
+fn ensure_valid_journal_page_target(
+    workspace: &WorkspaceState,
+    target_path: &str,
+) -> AppResult<()> {
+    let Some((folder, file_name)) = target_path.rsplit_once('/') else {
+        return Ok(());
+    };
+    if folder.starts_with(&format!("{}/", workspace.config.journal_folder)) {
+        return Err(journal_subfolder_error(&workspace.config.journal_folder));
+    }
+    if folder != workspace.config.journal_folder || is_valid_journal_file_name(file_name) {
+        return Ok(());
+    }
+
+    Err(AppError::invalid_path(format!(
+        "Pages directly inside '{}' must use a valid calendar date in the form YYYY-MM-DD.md.",
+        workspace.config.journal_folder
+    )))
+}
+
+fn ensure_valid_journal_folder_target(
+    workspace: &WorkspaceState,
+    folder_path: &str,
+) -> AppResult<()> {
+    if folder_path.starts_with(&format!("{}/", workspace.config.journal_folder)) {
+        return Err(journal_subfolder_error(&workspace.config.journal_folder));
+    }
+    Ok(())
+}
+
+fn journal_subfolder_error(journal_folder: &str) -> AppError {
+    AppError::invalid_path(format!(
+        "The journal folder '{journal_folder}' cannot contain subfolders. Choose another location."
+    ))
+}
+
+fn is_valid_journal_file_name(file_name: &str) -> bool {
+    let Some(date) = file_name.strip_suffix(".md") else {
+        return false;
+    };
+    let bytes = date.as_bytes();
+    if bytes.len() != 10 || bytes[4] != b'-' || bytes[7] != b'-' {
+        return false;
+    }
+    let Ok(year) = date[0..4].parse::<u32>() else {
+        return false;
+    };
+    let Ok(month) = date[5..7].parse::<u32>() else {
+        return false;
+    };
+    let Ok(day) = date[8..10].parse::<u32>() else {
+        return false;
+    };
+    if year == 0 || !(1..=12).contains(&month) {
+        return false;
+    }
+
+    let leap_year = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days_in_month = match month {
+        2 if leap_year => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
+    (1..=days_in_month).contains(&day)
+}
+
 fn renamed_page_path(current_path: &str, new_name: &str) -> AppResult<String> {
     let new_file_name = normalized_leaf_markdown_file_name(new_name)?;
     let current_folder = current_path.rsplit_once('/').map(|(folder, _)| folder);
@@ -765,6 +840,126 @@ mod tests {
     use crate::workspace_config::WorkspaceConfig;
 
     static TEMP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    #[test]
+    fn accepts_only_real_calendar_date_names_in_the_journal_folder() {
+        assert!(is_valid_journal_file_name("2024-02-29.md"));
+        assert!(!is_valid_journal_file_name("2026-02-29.md"));
+        assert!(!is_valid_journal_file_name("2026-2-09.md"));
+        assert!(!is_valid_journal_file_name("notes.md"));
+    }
+
+    #[test]
+    fn journal_page_operations_reject_invalid_target_names() {
+        let root = temp_workspace();
+        fs::write(root.join("notes.md"), "# Notes").unwrap();
+        fs::create_dir_all(root.join("journal")).unwrap();
+        fs::write(root.join("journal/2026-08-09.md"), "# 2026-08-09").unwrap();
+        let mut workspace = WorkspaceState {
+            root: root.clone(),
+            config: WorkspaceConfig::default(),
+            folders: vec!["journal".to_string()],
+            pages: PageIndex::default(),
+            backlinks: BacklinkIndex::default(),
+            contents: ContentSnapshot::default(),
+        };
+        reindex_workspace(&mut workspace).unwrap();
+
+        let create_error = create_page_in_workspace(&mut workspace, "journal/notes".to_string())
+            .expect_err("invalid journal page creation should fail");
+        let move_error = move_page_in_workspace(
+            &mut workspace,
+            "notes.md".to_string(),
+            "journal".to_string(),
+        )
+        .expect_err("moving an invalid filename into the journal should fail");
+        let rename_error = rename_page_in_workspace(
+            &mut workspace,
+            "journal/2026-08-09.md".to_string(),
+            "notes".to_string(),
+        )
+        .expect_err("renaming a journal page to an invalid filename should fail");
+        let nested_page_error =
+            create_page_in_workspace(&mut workspace, "journal/archive/2026-08-08".to_string())
+                .expect_err("journal subfolders should not be created for pages");
+        let nested_folder_error =
+            create_folder_in_workspace(&mut workspace, "journal/archive".to_string())
+                .expect_err("journal subfolders should not be created");
+
+        assert_eq!(
+            create_error.code,
+            crate::app_error::AppErrorCode::InvalidPath
+        );
+        assert_eq!(move_error.code, crate::app_error::AppErrorCode::InvalidPath);
+        assert_eq!(
+            rename_error.code,
+            crate::app_error::AppErrorCode::InvalidPath
+        );
+        assert_eq!(
+            nested_page_error.code,
+            crate::app_error::AppErrorCode::InvalidPath
+        );
+        assert_eq!(
+            nested_folder_error.code,
+            crate::app_error::AppErrorCode::InvalidPath
+        );
+        assert!(!root.join("journal/notes.md").exists());
+        assert!(!root.join("journal/archive").exists());
+        assert!(root.join("notes.md").is_file());
+        assert!(root.join("journal/2026-08-09.md").is_file());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn journal_filename_rule_uses_the_configured_folder() {
+        let root = temp_workspace();
+        let mut config = WorkspaceConfig::default();
+        config.journal_folder = "daily/logs".to_string();
+        let mut workspace = WorkspaceState {
+            root: root.clone(),
+            config,
+            folders: Vec::new(),
+            pages: PageIndex::default(),
+            backlinks: BacklinkIndex::default(),
+            contents: ContentSnapshot::default(),
+        };
+
+        create_page_in_workspace(&mut workspace, "journal/notes".to_string()).unwrap();
+        let error = create_page_in_workspace(&mut workspace, "daily/logs/notes".to_string())
+            .expect_err("the configured journal folder should enforce date filenames");
+        create_page_in_workspace(&mut workspace, "daily/logs/2026-08-09".to_string()).unwrap();
+
+        assert_eq!(error.code, crate::app_error::AppErrorCode::InvalidPath);
+        assert!(root.join("journal/notes.md").is_file());
+        assert!(root.join("daily/logs/2026-08-09.md").is_file());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn moving_a_folder_into_the_journal_is_rejected() {
+        let root = temp_workspace();
+        fs::create_dir_all(root.join("archive")).unwrap();
+        let mut workspace = WorkspaceState {
+            root: root.clone(),
+            config: WorkspaceConfig::default(),
+            folders: vec!["archive".to_string()],
+            pages: PageIndex::default(),
+            backlinks: BacklinkIndex::default(),
+            contents: ContentSnapshot::default(),
+        };
+
+        let error =
+            move_folder_in_workspace(&mut workspace, "archive".to_string(), "journal".to_string())
+                .expect_err("moving a subfolder into the journal should fail");
+
+        assert_eq!(error.code, crate::app_error::AppErrorCode::InvalidPath);
+        assert!(root.join("archive").is_dir());
+        assert!(!root.join("journal/archive").exists());
+
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[cfg(unix)]
     #[test]

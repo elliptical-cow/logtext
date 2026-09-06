@@ -300,8 +300,8 @@ Workspace-level config:
 - Managed by `src-tauri/src/workspace_config.rs`
 - Stores derived UI and workspace preferences such as task states, task colors,
   folder colors, expanded folders, favorites, recent pages, task overview
-  filters, backlink view options, sort configuration, pane session state, and
-  navigation layout values
+  filters, backlink view options, sort configuration, the journal folder, pane
+  session state, and navigation layout values
 
 The workspace config is normalized when loaded. Invalid or unknown values are
 discarded or replaced with defaults where practical.
@@ -321,6 +321,18 @@ per-pane minimum widths, and persists them in `localStorage` under
 workspace config, debounced before saving. On workspace change the shell ensures
 today's journal page exists and opens it in the middle pane.
 
+`src/lib/journals.ts` defines valid date-page paths, their configured order, and
+chronological neighbors. The editor uses those rules to navigate to an existing
+adjacent journal page after an additional wheel event at a boundary. The right
+pane keeps a progressively loaded window of rendered journal pages in one
+scroll container and preserves the viewport when pages are prepended.
+`rightPaneStore` keeps the loaded `path` and `pageView` consistent and exposes a
+separate `pendingPath` during navigation, preventing consumers from rendering a
+new page mode with stale content from the previous page.
+App-managed page operations enforce valid calendar filenames in the configured
+journal folder and prevent journal subfolders. External files remain preserved
+and are excluded from the journal sequence.
+
 Primary components:
 
 - `FileTree.svelte`: left navigation pane
@@ -329,6 +341,7 @@ Primary components:
 - `QuickAccess.svelte`: favorites, recent pages, and search entry points
 - `EditorPane.svelte`: middle editor pane
 - `RightPane.svelte`: right rendered context pane
+- `JournalFeed.svelte`: progressively loaded multi-file journal preview
 - `TaskOverview.svelte`: task overview surface
 - `TaskListPanel.svelte`: task list rendering inside the overview
 - `LinkedReferences.svelte`: backlink rendering

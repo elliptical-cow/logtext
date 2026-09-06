@@ -19,6 +19,7 @@ pub struct PageSummaryDto {
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceStateDto {
     pub root: String,
+    pub journal_folder: String,
     pub pages: Vec<PageSummaryDto>,
     pub folders: Vec<String>,
     pub diagnostics: Vec<Diagnostic>,

@@ -1,5 +1,6 @@
 <script lang="ts">
   import ErrorDialog from "./ErrorDialog.svelte";
+  import JournalFeed from "./JournalFeed.svelte";
   import MarkdownView from "./MarkdownView.svelte";
   import LinkedReferences from "./LinkedReferences.svelte";
   import { linkOperations, type LinkTargetPane } from "../stores/linkOperations";
@@ -7,15 +8,30 @@
   import { rightPaneStore } from "../stores/rightPane";
   import { workspaceStore } from "../stores/workspace";
   import type { BacklinkView } from "../types";
+  import { isJournalPagePath } from "../journals";
 
   let lastPagePath: string | null = null;
   let missingLinkPath: string | null = null;
   let mutationError: string | null = null;
+  let activeJournalPath: string | null = null;
+
+  $: journalFeedActive = Boolean(
+    $rightPaneStore.path &&
+      isJournalPagePath($rightPaneStore.path, $workspaceStore.journalFolder),
+  );
+  $: displayedRightPanePath = journalFeedActive
+    ? activeJournalPath ?? $rightPaneStore.path
+    : $rightPaneStore.path;
+  $: journalSortDescending = (
+    $workspaceStore.folderPageSort[$workspaceStore.journalFolder] ??
+    $workspaceStore.defaultPageSort
+  ).endsWith("-desc");
 
   $: if ($rightPaneStore.path !== lastPagePath) {
     lastPagePath = $rightPaneStore.path;
     missingLinkPath = null;
     mutationError = null;
+    activeJournalPath = $rightPaneStore.path;
   }
 
   function openWikiTarget(target: string, targetPane: LinkTargetPane) {
@@ -27,15 +43,13 @@
   }
 
   function openCurrentInEditor() {
-    if ($rightPaneStore.path) {
-      void linkOperations.open($rightPaneStore.path, "editor");
+    if (displayedRightPanePath) {
+      void linkOperations.open(displayedRightPanePath, "editor");
     }
   }
 
-  function openCurrentLineInEditor(line: number) {
-    if ($rightPaneStore.path) {
-      void linkOperations.open($rightPaneStore.path, "editor", { line });
-    }
+  function openCurrentLineInEditor(path: string, line: number) {
+    void linkOperations.open(path, "editor", { line });
   }
 
   function openBacklinkLineInEditor(backlink: BacklinkView, line: number) {
@@ -74,6 +88,7 @@
   async function toggleCheckboxForPath(path: string | null, line: number, previousChecked: boolean) {
     const result = await mutationOperations.toggleCheckbox(path, line, previousChecked);
     mutationError = result.error;
+    return result.status === "changed";
   }
 
   async function changeTaskStatusForPath(
@@ -89,6 +104,7 @@
       nextStatus,
     );
     mutationError = result.error;
+    return result.status === "changed";
   }
 
   async function changeTaskPriorityForPath(
@@ -104,6 +120,7 @@
       nextPriority,
     );
     mutationError = result.error;
+    return result.status === "changed";
   }
 </script>
 
@@ -130,14 +147,14 @@
           ›
         </button>
       </div>
-      <h2>{$rightPaneStore.path ?? "Right Pane"}</h2>
+      <h2>{displayedRightPanePath ?? "Right Pane"}</h2>
     </div>
     <div class="right-pane-header-actions">
       <button
         class="pane-transfer-button"
         type="button"
         title="Open current right pane page in editor"
-        disabled={!$rightPaneStore.path}
+        disabled={!displayedRightPanePath}
         on:click={openCurrentInEditor}
       >
         Open Editor
@@ -153,27 +170,53 @@
     onClose={closeErrorDialog}
   />
 
+  {#if missingLinkPath}
+    <div class="missing-link-action">
+      <span>Create missing page <strong>{missingLinkPath}</strong>?</span>
+      <div>
+        <button type="button" on:click={() => createMissingPage("right")}>
+          Create + open right
+        </button>
+        <button type="button" on:click={() => createMissingPage("editor")}>
+          Create + open editor
+        </button>
+        <button type="button" on:click={() => (missingLinkPath = null)}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  {/if}
+
   {#if !$rightPaneStore.pageView}
     <div class="preview-empty">Open a page in the right pane to preview it with backlinks.</div>
+  {:else if journalFeedActive && $rightPaneStore.path}
+    <JournalFeed
+      anchorPath={$rightPaneStore.path}
+      anchorView={$rightPaneStore.pageView}
+      pages={$workspaceStore.pages}
+      journalFolder={$workspaceStore.journalFolder}
+      sortDescending={journalSortDescending}
+      taskStates={$workspaceStore.taskStates}
+      taskStateColors={$workspaceStore.taskStateColors}
+      folderColors={$workspaceStore.folderColors}
+      openTasksOnly={$workspaceStore.backlinkView.openTasksOnly}
+      highlightedLine={$rightPaneStore.revealLine}
+      highlightToken={$rightPaneStore.revealToken}
+      onActivePathChange={(path) => (activeJournalPath = path)}
+      onWikiLink={openWikiTarget}
+      onMissingWikiLink={requestMissingPage}
+      onCheckboxToggle={toggleCheckboxForPath}
+      onOpenSourceLineInEditor={openCurrentLineInEditor}
+      onOpenBacklinkInEditor={openBacklinkInEditor}
+      onOpenBacklinkLineInEditor={openBacklinkLineInEditor}
+      onTaskStatusChange={changeTaskStatusForPath}
+      onTaskPriorityChange={changeTaskPriorityForPath}
+      onOpenTasksOnlyChange={saveBacklinkOpenTasksOnly}
+      onError={(error) => (mutationError = error)}
+    />
   {:else}
     <div class="right-pane-scroll">
       <article class="preview-content">
-        {#if missingLinkPath}
-          <div class="missing-link-action">
-            <span>Create missing page <strong>{missingLinkPath}</strong>?</span>
-            <div>
-              <button type="button" on:click={() => createMissingPage("right")}>
-                Create + open right
-              </button>
-              <button type="button" on:click={() => createMissingPage("editor")}>
-                Create + open editor
-              </button>
-              <button type="button" on:click={() => (missingLinkPath = null)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        {/if}
         <MarkdownView
           content={$rightPaneStore.pageView.content}
           pages={$workspaceStore.pages}
@@ -187,7 +230,8 @@
           onCheckboxToggle={(line, checked) =>
             void toggleCheckboxForPath($rightPaneStore.path, line, checked)}
           onOpenWikiLink={openWikiTarget}
-          onOpenSourceLineInEditor={openCurrentLineInEditor}
+          onOpenSourceLineInEditor={(line) =>
+            $rightPaneStore.path && openCurrentLineInEditor($rightPaneStore.path, line)}
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
           onTaskStatusChange={(line, currentStatus, nextStatus) =>

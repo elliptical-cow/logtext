@@ -15,6 +15,59 @@ function pageView(path: string): PageView {
   };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, resolve, reject };
+}
+
+test("keeps path and view consistent across journal, regular page, and journal", async () => {
+  const journalRequest = deferred<PageView>();
+  const store = createRightPaneStore({
+    getPageView: async (path) =>
+      path === "journal/2026-09-06.md" ? journalRequest.promise : pageView(path),
+  });
+
+  await store.open("journal/2026-09-05.md");
+  await store.open("Notes.md");
+  const openingJournal = store.open("journal/2026-09-06.md");
+
+  assert.equal(get(store).path, "Notes.md");
+  assert.equal(get(store).pageView?.page.path, "Notes.md");
+  assert.equal(get(store).pendingPath, "journal/2026-09-06.md");
+  assert.equal(get(store).loading, true);
+
+  journalRequest.resolve(pageView("journal/2026-09-06.md"));
+  await openingJournal;
+
+  assert.equal(get(store).path, "journal/2026-09-06.md");
+  assert.equal(get(store).pageView?.page.path, "journal/2026-09-06.md");
+  assert.equal(get(store).pendingPath, null);
+  assert.equal(get(store).loading, false);
+});
+
+test("preserves the loaded page when a pending right-pane navigation fails", async () => {
+  const journalRequest = deferred<PageView>();
+  const store = createRightPaneStore({
+    getPageView: async (path) =>
+      path === "journal/2026-09-06.md" ? journalRequest.promise : pageView(path),
+  });
+
+  await store.open("Notes.md");
+  const openingJournal = store.open("journal/2026-09-06.md");
+  journalRequest.reject(new Error("cannot load journal"));
+  await openingJournal;
+
+  assert.equal(get(store).path, "Notes.md");
+  assert.equal(get(store).pageView?.page.path, "Notes.md");
+  assert.equal(get(store).pendingPath, null);
+  assert.equal(get(store).error, "cannot load journal");
+});
+
 test("tracks right-pane back and forward history", async () => {
   const store = createRightPaneStore({ getPageView: async (path) => pageView(path) });
 

@@ -82,8 +82,16 @@ contains a `lastWorkspace` entry, the workspace is opened automatically. When a
 workspace is opened, the path is stored there again for the next start.
 
 After the workspace is loaded, the middle pane always opens today's journal at
-`journal/YYYY-MM-DD.md`. If the file does not exist, Logtext creates it. The
-right pane keeps its previous context page from the last session.
+`<journalFolder>/YYYY-MM-DD.md` (`journal/YYYY-MM-DD.md` by default). If the
+file does not exist, Logtext creates it. The right pane keeps its previous
+context page from the last session.
+
+While a dated journal page is open in the editor, scrolling beyond its top or
+bottom opens the previous or next existing dated file. The right pane presents
+dated journal pages as one continuous feed and loads more existing files near
+either scroll boundary. Scrolling never creates a missing day: use the Journal
+shortcuts or date picker when a new date file should be created. Both views
+follow the configured ascending or descending page order of the journal folder.
 
 Each workspace can also contain a `.config` file. Logtext creates it if needed
 and stores workspace-specific settings there, for example task colors, expanded
@@ -303,6 +311,7 @@ Example:
 
 ```json
 {
+  "journalFolder": "journal",
   "taskStates": ["TODO", "INPROGRESS", "WAITING", "DONE"],
   "taskStateColors": {
     "TODO": "red",
@@ -321,6 +330,11 @@ Example:
   "themeMode": "light"
 }
 ```
+
+`journalFolder` is a workspace-relative folder path. It defaults to `journal`.
+Journal navigation considers only valid calendar-date files named
+`YYYY-MM-DD.md` directly inside this folder. Logtext does not allow subfolders
+to be created or moved into the journal folder.
 
 Logtext may add more fields to `.config` as features evolve.
 

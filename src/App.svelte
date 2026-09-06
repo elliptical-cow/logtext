@@ -199,7 +199,7 @@
   }
 
   async function ensureTodayJournalPage() {
-    const path = journalPath();
+    const path = journalPath(new Date(), $workspaceStore.journalFolder);
     const existingPage = $workspaceStore.pages.find(
       (page) => page.path.toLocaleLowerCase() === path.toLocaleLowerCase(),
     );
