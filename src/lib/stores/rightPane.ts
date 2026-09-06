@@ -6,6 +6,7 @@ import { createNavigationHistory } from "./navigationHistory.js";
 
 type RightPaneState = {
   path: string | null;
+  pendingPath: string | null;
   pageView: PageView | null;
   revealLine: number | null;
   revealToken: number;
@@ -17,6 +18,7 @@ type RightPaneState = {
 
 const initialState: RightPaneState = {
   path: null,
+  pendingPath: null,
   pageView: null,
   revealLine: null,
   revealToken: 0,
@@ -48,7 +50,7 @@ export function createRightPaneStore(dependencies: RightPaneDependencies = defau
   });
 
   async function open(path: string, options: RightPaneOpenOptions = {}) {
-    if (currentState.path === path) {
+    if (currentState.path === path && !currentState.pendingPath) {
       update((state) => ({
         ...state,
         revealLine: options.line ?? state.revealLine,
@@ -60,7 +62,7 @@ export function createRightPaneStore(dependencies: RightPaneDependencies = defau
 
     const requestId = ++requestSequence;
     const previousPath = currentState.path;
-    update((state) => ({ ...state, path, loading: true, error: null }));
+    update((state) => ({ ...state, pendingPath: path, loading: true, error: null }));
 
     try {
       const pageView = await dependencies.getPageView(path);
@@ -73,6 +75,7 @@ export function createRightPaneStore(dependencies: RightPaneDependencies = defau
       const historyAvailability = navigationHistory.availability();
       set({
         path,
+        pendingPath: null,
         pageView,
         revealLine: options.line ?? null,
         revealToken: options.line ? currentState.revealToken + 1 : currentState.revealToken,
@@ -87,7 +90,7 @@ export function createRightPaneStore(dependencies: RightPaneDependencies = defau
       }
       update((state) => ({
         ...state,
-        path: previousPath,
+        pendingPath: null,
         loading: false,
         error: toErrorMessage(error),
       }));
@@ -107,7 +110,7 @@ export function createRightPaneStore(dependencies: RightPaneDependencies = defau
     },
     open,
     async refresh() {
-      if (!currentState.path) {
+      if (!currentState.path || currentState.pendingPath) {
         return;
       }
 
@@ -122,6 +125,7 @@ export function createRightPaneStore(dependencies: RightPaneDependencies = defau
         update((state) => ({
           ...state,
           path,
+          pendingPath: null,
           pageView,
           revealLine: state.revealLine,
           revealToken: state.revealToken,

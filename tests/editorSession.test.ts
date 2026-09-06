@@ -21,6 +21,7 @@ function savingStore(
     modifiedAt: string,
     expectedContentHash: string,
   ) => Promise<SavePageResult>,
+  notifyPageChanged?: (path: string) => void,
 ) {
   let diskContent = "original";
   let diskHash = "h0";
@@ -45,9 +46,29 @@ function savingStore(
       return result;
     },
     refreshRightPane: async () => {},
+    notifyPageChanged,
     autoSaveDelayMs: 10,
   });
 }
+
+test("publishes the saved page path for dependent multi-page views", async () => {
+  const changedPaths: string[] = [];
+  const store = savingStore(
+    async () => ({
+      status: "saved",
+      path: "Inbox.md",
+      modifiedAt: "m1",
+      contentHash: "h1",
+    }),
+    (path) => changedPaths.push(path),
+  );
+
+  await store.open("Inbox.md");
+  store.setContent("changed");
+  await store.save();
+
+  assert.deepEqual(changedPaths, ["Inbox.md"]);
+});
 
 test("saves the same editor page repeatedly with updated content hashes", async () => {
   const saveCalls: Array<{

@@ -112,6 +112,7 @@ export type ToggleCheckboxResult = {
 
 export type WorkspaceState = {
   root: string;
+  journalFolder: string;
   pages: PageSummary[];
   folders: string[];
   diagnostics: Diagnostic[];

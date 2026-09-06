@@ -67,6 +67,7 @@ pub fn open_workspace(
     let diagnostics = workspace.pages.collision_diagnostics();
     let response = WorkspaceStateDto {
         root: root.to_string_lossy().to_string(),
+        journal_folder: workspace.config.journal_folder.clone(),
         pages: page_summaries(&workspace.pages),
         folders: workspace.folders.clone(),
         diagnostics,

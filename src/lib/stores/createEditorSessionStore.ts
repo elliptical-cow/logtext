@@ -52,6 +52,7 @@ export type EditorSessionDependencies = {
   ) => Promise<SavePageResult>;
   refreshPages?: () => Promise<void>;
   refreshRightPane: () => Promise<void>;
+  notifyPageChanged?: (path: string) => void;
   autoSaveDelayMs: number;
 };
 
@@ -246,6 +247,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
           scheduleAutoSave(() => save());
         }
 
+        dependencies.notifyPageChanged?.(savedPage.path);
         await dependencies.refreshPages?.();
         await dependencies.refreshRightPane();
         return true;

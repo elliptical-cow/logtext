@@ -25,6 +25,7 @@ import { toErrorPresentation } from "../errors.js";
 import { DEFAULT_TASK_STATE_COLORS } from "../taskColors.js";
 import { DEFAULT_TASK_STATES } from "../taskKeywords.js";
 import { themeStore } from "./theme.js";
+import { DEFAULT_JOURNAL_FOLDER } from "../journals.js";
 import type {
   Diagnostic,
   BacklinkViewConfig,
@@ -69,6 +70,7 @@ function workspaceError(error: unknown) {
 
 type WorkspaceStoreState = {
   root: string | null;
+  journalFolder: string;
   pages: PageSummary[];
   folders: string[];
   diagnostics: Diagnostic[];
@@ -95,6 +97,7 @@ type WorkspaceStoreState = {
 
 const initialState: WorkspaceStoreState = {
   root: null,
+  journalFolder: DEFAULT_JOURNAL_FOLDER,
   pages: [],
   folders: [],
   diagnostics: [],
@@ -147,6 +150,7 @@ function createWorkspaceStore() {
         themeStore.set(themeMode);
         set({
           root: workspace.root,
+          journalFolder: workspace.journalFolder ?? DEFAULT_JOURNAL_FOLDER,
           pages: workspace.pages,
           folders: workspace.folders ?? [],
           diagnostics: workspace.diagnostics,
