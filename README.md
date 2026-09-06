@@ -397,7 +397,7 @@ Neither event creates releases. Completed changes are squash-merged into the
 stable `main` branch.
 
 Official releases are created only by pushing a semantic version tag such as
-`v0.7.0` on a tested `main` commit. `.github/workflows/release.yml` verifies the
+`v0.7.1` on a tested `main` commit. `.github/workflows/release.yml` verifies the
 tag and source versions, rebuilds all platforms, and publishes the Windows,
 macOS, and Linux assets after every build succeeds.
 

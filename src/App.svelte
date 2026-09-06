@@ -24,7 +24,7 @@
   const minLeftWidth = 220;
   const minEditorWidth = 360;
   const minRightWidth = 280;
-  const repositoryUrl = "https://github.com/SphericalCow1/logtext";
+  const repositoryUrl = "https://github.com/elliptical-cow/logtext";
   const licenseUrl = `${repositoryUrl}/blob/main/LICENSE`;
   let leftWidth = defaultLeftWidth;
   let rightWidth = defaultRightWidth;

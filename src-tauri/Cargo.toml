@@ -1,11 +1,11 @@
 [package]
 name = "logtext"
-version = "0.7.0"
+version = "0.7.1"
 description = "A local Markdown-first knowledge workspace for notes and tasks using backlinks as semantic tags."
 authors = ["Jens"]
 license = "AGPL-3.0-only"
-repository = "https://github.com/SphericalCow1/logtext"
-homepage = "https://github.com/SphericalCow1/logtext"
+repository = "https://github.com/elliptical-cow/logtext"
+homepage = "https://github.com/elliptical-cow/logtext"
 readme = "../README.md"
 edition = "2021"
 default-run = "Logtext"

@@ -25,7 +25,7 @@ generation and release compilation are outside the measurements.
 - Hardware: MacBook Air (MacBookAir7,2), Intel Core i5 1.8 GHz, 2 cores / 4 logical CPUs, 8 GB RAM
 - Build profile: Cargo `release`
 - Rust toolchain: rustc 1.97.1, Cargo 1.97.1
-- Logtext version: 0.7.0
+- Logtext version: 0.7.1
 
 ## Datasets
 

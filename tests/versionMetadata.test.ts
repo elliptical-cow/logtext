@@ -43,6 +43,6 @@ test("keeps the About dialog product name and repository link current", () => {
   const appSource = readFileSync(join(root, "src/App.svelte"), "utf8");
 
   assert.match(appSource, /<h2 id="about-dialog-title">Logtext<\/h2>/);
-  assert.match(appSource, /https:\/\/github\.com\/SphericalCow1\/logtext/);
+  assert.match(appSource, /https:\/\/github\.com\/elliptical-cow\/logtext/);
   assert.match(appSource, /A local Markdown-based knowledge workspace/);
 });
