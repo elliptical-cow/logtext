@@ -184,6 +184,7 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --title "Logtext v$version" \
             --generate-notes

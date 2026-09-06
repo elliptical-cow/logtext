@@ -46,3 +46,15 @@ test("keeps the About dialog product name and repository link current", () => {
   assert.match(appSource, /https:\/\/github\.com\/elliptical-cow\/logtext/);
   assert.match(appSource, /A local Markdown-based knowledge workspace/);
 });
+
+test("gives the release publisher explicit repository context", () => {
+  const releaseWorkflow = readFileSync(
+    join(root, ".github/workflows/release.yml"),
+    "utf8",
+  );
+
+  assert.match(
+    releaseWorkflow,
+    /gh release create[\s\S]*?--repo "\$GITHUB_REPOSITORY"/,
+  );
+});
