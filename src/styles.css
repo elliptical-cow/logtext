@@ -1957,15 +1957,15 @@ textarea {
 }
 
 .code-editor .cm-list-wrap-indent {
-  padding-left: calc(8px + var(--manicule-list-prefix-width)) !important;
-  text-indent: calc(-1 * var(--manicule-list-prefix-width));
+  padding-left: calc(8px + var(--logtext-list-prefix-width)) !important;
+  text-indent: calc(-1 * var(--logtext-list-prefix-width));
 }
 
 .code-editor .cm-list-indent-guides::before {
   position: absolute;
   inset: 0;
-  background-image: var(--manicule-indent-guide-images);
-  background-position: var(--manicule-indent-guide-positions);
+  background-image: var(--logtext-indent-guide-images);
+  background-position: var(--logtext-indent-guide-positions);
   background-repeat: no-repeat;
   background-size: 1px 100%;
   content: "";
@@ -2525,7 +2525,7 @@ textarea {
   transform-origin: center;
 }
 
-.markdown-view a[href^="manicule-missing:"] {
+.markdown-view a[href^="logtext-missing:"] {
   color: #9b1c1c;
   text-decoration-style: dotted;
   cursor: pointer;

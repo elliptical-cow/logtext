@@ -85,7 +85,7 @@ export function wikiLinkHref(target: string, pages: PageSummary[]): string | nul
     return null;
   }
 
-  const scheme = resolved.exists || pages.length === 0 ? "manicule" : "manicule-missing";
+  const scheme = resolved.exists || pages.length === 0 ? "logtext" : "logtext-missing";
   return `${scheme}:${encodeURIComponent(resolved.path)}`;
 }
 
@@ -208,9 +208,9 @@ export function applyWikiLinkColorStyles(
   folderColors: FolderColors = {},
 ) {
   return html.replace(
-    /<a href="(manicule:[^"]+)"([^>]*)>/g,
+    /<a href="(logtext:[^"]+)"([^>]*)>/g,
     (match, href: string, rest: string) => {
-      const target = decodeURIComponent(href.slice("manicule:".length));
+      const target = decodeURIComponent(href.slice("logtext:".length));
       const style = wikiLinkColorStyle(target, pages, folderColors);
 
       if (rest.includes("style=")) {

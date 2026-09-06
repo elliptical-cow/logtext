@@ -1,6 +1,6 @@
 import { writable } from "svelte/store";
 
-const zoomStorageKey = "manicule:zoom";
+const zoomStorageKey = "logtext:zoom";
 const defaultZoom = 1;
 const minZoom = 0.75;
 const maxZoom = 1.25;

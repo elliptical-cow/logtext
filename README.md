@@ -83,7 +83,7 @@ contains a `lastWorkspace` entry, the workspace is opened automatically. When a
 workspace is opened, the path is stored there again for the next start.
 
 After the workspace is loaded, the middle pane always opens today's journal at
-`journal/YYYY-MM-DD.md`. If the file does not exist, Manicule creates it. The
+`journal/YYYY-MM-DD.md`. If the file does not exist, Logtext creates it. The
 right pane keeps its previous context page from the last session.
 
 Each workspace can also contain a `.config` file. Logtext creates it if needed
@@ -292,7 +292,7 @@ Important editor shortcuts:
 - `Cmd/Ctrl + mouse wheel`: change UI zoom
 
 Editor text changes use CodeMirror undo. Task changes and checkbox changes made
-outside direct text editing are tracked by Logtext' app-level undo stack. The
+outside direct text editing are tracked by Logtext's app-level undo stack. The
 Edit menu shows the next undo or redo action when available.
 
 ## Configuration

@@ -4,15 +4,15 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use manicule_lib::app_state::WorkspaceState;
-use manicule_lib::content_snapshot::ContentSnapshot;
-use manicule_lib::dto::SavePageResultDto;
-use manicule_lib::index::backlink_index::BacklinkIndex;
-use manicule_lib::index::page_index::PageIndex;
-use manicule_lib::page_io::{content_hash, save_page_in_workspace};
-use manicule_lib::query::{list_tasks_in_workspace, search_pages_in_workspace};
-use manicule_lib::workspace_config::WorkspaceConfig;
-use manicule_lib::workspace_index::{reindex_workspace, reindex_workspace_paths};
+use logtext_lib::app_state::WorkspaceState;
+use logtext_lib::content_snapshot::ContentSnapshot;
+use logtext_lib::dto::SavePageResultDto;
+use logtext_lib::index::backlink_index::BacklinkIndex;
+use logtext_lib::index::page_index::PageIndex;
+use logtext_lib::page_io::{content_hash, save_page_in_workspace};
+use logtext_lib::query::{list_tasks_in_workspace, search_pages_in_workspace};
+use logtext_lib::workspace_config::WorkspaceConfig;
+use logtext_lib::workspace_index::{reindex_workspace, reindex_workspace_paths};
 
 #[derive(Debug, Clone)]
 struct BenchmarkConfig {
@@ -463,7 +463,7 @@ fn create_workspace(config: &BenchmarkConfig) -> Result<GeneratedWorkspace, Stri
         .duration_since(UNIX_EPOCH)
         .map_err(|error| format!("Failed to read system time: {error}"))?
         .as_nanos();
-    let root = env::temp_dir().join(format!("manicule-performance-benchmark-{now}"));
+    let root = env::temp_dir().join(format!("logtext-performance-benchmark-{now}"));
     fs::create_dir_all(&root)
         .map_err(|error| format!("Failed to create benchmark root: {error}"))?;
 

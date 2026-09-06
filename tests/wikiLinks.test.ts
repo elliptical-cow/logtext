@@ -32,35 +32,35 @@ const collidingPages: PageSummary[] = [
 test("renders wiki links with markdown extensions to the existing page path", () => {
   assert.equal(
     renderWikiLinks("[[projects/forecasts.md]]", pages),
-    "[Forecasts](manicule:Projects%2FForecasts.md)",
+    "[Forecasts](logtext:Projects%2FForecasts.md)",
   );
 });
 
 test("keeps explicit wiki link aliases", () => {
   assert.equal(
     renderWikiLinks("[[projects/forecasts.md|Forecast]]", pages),
-    "[Forecast](manicule:Projects%2FForecasts.md)",
+    "[Forecast](logtext:Projects%2FForecasts.md)",
   );
 });
 
 test("renders round-delimited wiki links with the same semantics", () => {
   assert.equal(
     renderWikiLinks("((projects/forecasts.md|Forecast))", pages),
-    "[Forecast](manicule:Projects%2FForecasts.md)",
+    "[Forecast](logtext:Projects%2FForecasts.md)",
   );
 });
 
 test("renders compact links with a visible hash marker", () => {
   assert.equal(
     renderWikiLinks("See #projects/forecasts today", pages),
-    "See [#Forecasts](manicule:Projects%2FForecasts.md) today",
+    "See [#Forecasts](logtext:Projects%2FForecasts.md) today",
   );
 });
 
 test("renders missing compact links with the existing creation workflow", () => {
   assert.equal(
     renderWikiLinks("See #Missing/Page", pages),
-    "See [#Missing/Page](manicule-missing:Missing%2FPage.md)",
+    "See [#Missing/Page](logtext-missing:Missing%2FPage.md)",
   );
 });
 
@@ -73,7 +73,7 @@ test("ignores compact link lookalikes and Markdown code", () => {
 });
 
 test("marks missing wiki targets with a non-navigating scheme", () => {
-  assert.equal(wikiLinkHref("Missing/Page", pages), "manicule-missing:Missing%2FPage.md");
+  assert.equal(wikiLinkHref("Missing/Page", pages), "logtext-missing:Missing%2FPage.md");
 });
 
 test("resolves wiki targets case insensitively", () => {
@@ -85,11 +85,11 @@ test("resolves wiki targets case insensitively", () => {
 });
 
 test("adds folder color styles to rendered wiki link anchors", () => {
-  const html = '<p><a href="manicule:Projects%2FForecasts.md">Forecast</a></p>';
+  const html = '<p><a href="logtext:Projects%2FForecasts.md">Forecast</a></p>';
 
   assert.equal(
     applyWikiLinkColorStyles(html, pages, { Projects: "orange" }),
-    '<p><a href="manicule:Projects%2FForecasts.md" class="wiki-link-chip" style="background-color: var(--folder-color-orange-chip-bg); color: var(--folder-color-orange-chip-text); border-bottom-color: var(--folder-color-orange-chip-border);">Forecast</a></p>',
+    '<p><a href="logtext:Projects%2FForecasts.md" class="wiki-link-chip" style="background-color: var(--folder-color-orange-chip-bg); color: var(--folder-color-orange-chip-text); border-bottom-color: var(--folder-color-orange-chip-border);">Forecast</a></p>',
   );
 });
 

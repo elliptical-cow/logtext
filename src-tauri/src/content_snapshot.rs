@@ -84,7 +84,7 @@ mod tests {
             .unwrap()
             .as_nanos();
         let path = std::env::temp_dir().join(format!(
-            "manicule-content-snapshot-test-{}-{nanos}-{unique}",
+            "logtext-content-snapshot-test-{}-{nanos}-{unique}",
             std::process::id()
         ));
         fs::create_dir_all(&path).unwrap();

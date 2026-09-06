@@ -1086,7 +1086,7 @@ mod tests {
             .unwrap()
             .as_nanos();
         let counter = TEMP_COUNTER.fetch_add(1, Ordering::SeqCst);
-        let root = std::env::temp_dir().join(format!("manicule-page-ops-test-{now}-{counter}"));
+        let root = std::env::temp_dir().join(format!("logtext-page-ops-test-{now}-{counter}"));
         fs::create_dir_all(&root).unwrap();
         root
     }

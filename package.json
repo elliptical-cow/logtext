@@ -5,12 +5,12 @@
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SphericalCow1/Manicule.git"
+    "url": "git+https://github.com/SphericalCow1/logtext.git"
   },
   "bugs": {
-    "url": "https://github.com/SphericalCow1/Manicule/issues"
+    "url": "https://github.com/SphericalCow1/logtext/issues"
   },
-  "homepage": "https://github.com/SphericalCow1/Manicule#readme",
+  "homepage": "https://github.com/SphericalCow1/logtext#readme",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",

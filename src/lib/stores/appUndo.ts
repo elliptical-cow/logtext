@@ -108,7 +108,7 @@ const defaultDependencies: AppUndoDependencies = {
   getTaskStates: () => get(workspaceStore).taskStates,
   requestEditorHistoryChange,
   isolateEditorHistory: () => {
-    window.dispatchEvent(new CustomEvent("manicule-editor-isolate-history"));
+    window.dispatchEvent(new CustomEvent("logtext-editor-isolate-history"));
   },
   setEditorCheckboxLine: (line, checked) => editorSessionStore.setCheckboxLine(line, checked),
   setEditorTaskStatusLine: (line, currentStatus, nextStatus, taskStates) =>
@@ -314,7 +314,7 @@ function requestEditorHistoryChange(direction: "undo" | "redo") {
   return new Promise<boolean>((resolve) => {
     let responded = false;
     window.dispatchEvent(
-      new CustomEvent(direction === "undo" ? "manicule-editor-undo" : "manicule-editor-redo", {
+      new CustomEvent(direction === "undo" ? "logtext-editor-undo" : "logtext-editor-redo", {
         detail: {
           respond(changed: boolean) {
             responded = true;

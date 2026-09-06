@@ -1,11 +1,11 @@
-# Manicule Developer Notes
+# Logtext Developer Notes
 
-This document describes the technical architecture and test concept of Manicule.
+This document describes the technical architecture and test concept of Logtext.
 It intentionally does not define product or functional requirements.
 
 ## Architectural Overview
 
-Manicule is a local desktop application built with Tauri, Rust, Svelte, and
+Logtext is a local desktop application built with Tauri, Rust, Svelte, and
 CodeMirror.
 
 The central architectural decision is that Markdown files in the selected
@@ -103,7 +103,7 @@ are kept in sync between `package.json` and `src-tauri/Cargo.toml`.
 
 The shell is configured in `src-tauri/tauri.conf.json`:
 
-- product name `Manicule`, bundle identifier `dev.manicule.app`
+- product name `Logtext`, bundle identifier `dev.logtext.desktop`
 - default window 1280x800 with a 960x600 minimum, resizable
 - `beforeDevCommand` and `beforeBuildCommand` delegate to the npm scripts
 - dev URL `http://localhost:1420`, production assets from `../dist`
@@ -111,8 +111,8 @@ The shell is configured in `src-tauri/tauri.conf.json`:
 The Vite dev server in `vite.config.ts` uses a strict port on `127.0.0.1:1420`
 and ignores `src-tauri/**` so Rust rebuilds do not trigger frontend reloads.
 
-Cargo explicitly declares the `Manicule` binary from `src/main.rs` and the
-`manicule_lib` library from `src/lib.rs`. Command permissions are granted through
+Cargo explicitly declares the `Logtext` binary from `src/main.rs` and the
+`logtext_lib` library from `src/lib.rs`. Command permissions are granted through
 `src-tauri/capabilities/default.json`.
 
 Performance measurements use the `reindex_benchmark` Cargo example. It is not
@@ -236,7 +236,7 @@ Markdown-specific parsing is split by concern:
   blocks
 
 The parser is intentionally lightweight and focused on the Markdown constructs
-Manicule needs for indexing and editing operations. Full Markdown rendering is
+Logtext needs for indexing and editing operations. Full Markdown rendering is
 handled in the frontend.
 
 Rendered list items receive `data-list-marker` from their Markdown-it token.
@@ -286,11 +286,11 @@ tasks, and rendered views can reflect the new content.
 
 ## Configuration Files
 
-Manicule uses two configuration scopes.
+Logtext uses two configuration scopes.
 
 User-level config:
 
-- Stored in the user's home directory as `.manicule`
+- Stored in the user's home directory as `.logtext`
 - Managed by `src-tauri/src/user_config.rs`
 - Currently stores the last opened workspace path
 
@@ -317,7 +317,7 @@ Main application shell:
 
 The shell derives a CSS grid from the current column widths, clamps them against
 per-pane minimum widths, and persists them in `localStorage` under
-`manicule:layout:columns`. Pane file selection is persisted separately through the
+`logtext:layout:columns`. Pane file selection is persisted separately through the
 workspace config, debounced before saving. On workspace change the shell ensures
 today's journal page exists and opens it in the middle pane.
 
@@ -488,7 +488,7 @@ The frontend responds by refreshing workspace data or warning about changed
 files depending on the active editing state.
 
 Watching `.config` later would require an explicit reload/merge policy and
-suppression of events caused by Manicule' own config writes. It should therefore
+suppression of events caused by Logtext's own config writes. It should therefore
 be introduced as a separate feature rather than added to the Markdown watcher
 implicitly.
 
@@ -501,7 +501,7 @@ configuration, and recent/favorite metadata.
 Page and wiki-link keys are matched with Unicode lowercasing. This is not
 locale-specific comparison or full Unicode case folding. Physical folders that
 differ only by case are kept as separate scanner entries and sorted by the
-lowercase key with the exact path as a deterministic tie-breaker; Manicule does
+lowercase key with the exact path as a deterministic tie-breaker; Logtext does
 not silently discard either filesystem entry.
 
 Navigation helper logic lives mostly in:

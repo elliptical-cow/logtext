@@ -286,14 +286,14 @@
   $: pruneSelection();
 
   onMount(() => {
-    window.addEventListener("manicule-new-page", handleNewPageEvent);
+    window.addEventListener("logtext-new-page", handleNewPageEvent);
   });
 
   onDestroy(() => {
     if (navigationLayoutSaveTimer) {
       clearTimeout(navigationLayoutSaveTimer);
     }
-    window.removeEventListener("manicule-new-page", handleNewPageEvent);
+    window.removeEventListener("logtext-new-page", handleNewPageEvent);
     window.removeEventListener("pointermove", resizeQuickAccess);
   });
 

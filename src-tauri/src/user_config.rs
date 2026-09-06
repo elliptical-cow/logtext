@@ -20,7 +20,7 @@ pub fn save_last_workspace(home_dir: &Path, path: &Path) -> Result<(), String> {
 }
 
 fn user_config_path(home_dir: &Path) -> PathBuf {
-    home_dir.join(".manicule")
+    home_dir.join(".logtext")
 }
 
 fn load_or_create_user_config_at(path: &Path) -> Result<UserConfig, String> {
@@ -31,7 +31,7 @@ fn load_or_create_user_config_at(path: &Path) -> Result<UserConfig, String> {
     }
 
     let content = fs::read_to_string(path)
-        .map_err(|error| format!("Failed to read user .manicule: {error}"))?;
+        .map_err(|error| format!("Failed to read user .logtext: {error}"))?;
 
     if content.trim().is_empty() {
         let config = UserConfig::default();
@@ -40,14 +40,14 @@ fn load_or_create_user_config_at(path: &Path) -> Result<UserConfig, String> {
     }
 
     serde_json::from_str(&content)
-        .map_err(|error| format!("Failed to parse user .manicule: {error}"))
+        .map_err(|error| format!("Failed to parse user .logtext: {error}"))
 }
 
 fn write_user_config(path: &Path, config: &UserConfig) -> Result<(), String> {
     let content = serde_json::to_string_pretty(config)
-        .map_err(|error| format!("Failed to serialize user .manicule: {error}"))?;
+        .map_err(|error| format!("Failed to serialize user .logtext: {error}"))?;
     fs::write(path, format!("{content}\n"))
-        .map_err(|error| format!("Failed to write user .manicule: {error}"))
+        .map_err(|error| format!("Failed to write user .logtext: {error}"))
 }
 
 #[cfg(test)]
@@ -66,14 +66,14 @@ mod tests {
         let config = load_or_create_user_config(&root).unwrap();
 
         assert_eq!(config, UserConfig::default());
-        assert!(root.join(".manicule").exists());
+        assert!(root.join(".logtext").exists());
         fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
     fn reads_last_workspace_from_user_config() {
         let root = temp_dir();
-        let path = root.join(".manicule");
+        let path = root.join(".logtext");
         write_user_config(
             &path,
             &UserConfig {
@@ -94,7 +94,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        path.push(format!("manicule-user-config-test-{nanos}"));
+        path.push(format!("logtext-user-config-test-{nanos}"));
         fs::create_dir_all(&path).unwrap();
         path
     }

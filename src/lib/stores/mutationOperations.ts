@@ -86,7 +86,7 @@ const defaultDependencies: MutationOperationDependencies = {
   updateTaskPriority,
   pushUndo: (operation) => appUndoStore.push(operation),
   isolateEditorHistory: () => {
-    window.dispatchEvent(new CustomEvent("manicule-editor-isolate-history"));
+    window.dispatchEvent(new CustomEvent("logtext-editor-isolate-history"));
   },
   refreshTasks: () => taskStore.refresh(),
   refreshRightPane: () => rightPaneStore.refresh(),

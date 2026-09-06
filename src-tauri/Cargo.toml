@@ -4,8 +4,8 @@ version = "0.7.0"
 description = "A local Markdown-first knowledge workspace for notes and tasks using backlinks as semantic tags."
 authors = ["Jens"]
 license = "AGPL-3.0-only"
-repository = "https://github.com/SphericalCow1/Manicule"
-homepage = "https://github.com/SphericalCow1/Manicule"
+repository = "https://github.com/SphericalCow1/logtext"
+homepage = "https://github.com/SphericalCow1/logtext"
 readme = "../README.md"
 edition = "2021"
 default-run = "Logtext"
@@ -16,7 +16,7 @@ name = "Logtext"
 path = "src/main.rs"
 
 [lib]
-name = "manicule_lib"
+name = "logtext_lib"
 path = "src/lib.rs"
 crate-type = ["staticlib", "cdylib", "rlib"]
 

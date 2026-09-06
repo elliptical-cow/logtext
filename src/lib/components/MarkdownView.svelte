@@ -208,7 +208,7 @@
     const replacements = [];
     const localLine = index + 1;
     const sourceLine = lineNumbers[index] ?? localLine;
-    const taskMarker = `MANICULE_TASK_${taskTokens.length}_TOKEN`;
+    const taskMarker = `LOGTEXT_TASK_${taskTokens.length}_TOKEN`;
     taskTokens.push({
       line: sourceLine,
       localLine,
@@ -219,7 +219,7 @@
 
     const priorityMatch = priorityCookieMatch(line, 0, states);
     if (priorityMatch) {
-      const priorityMarker = `MANICULE_PRIORITY_${priorityTokens.length}_TOKEN`;
+      const priorityMarker = `LOGTEXT_PRIORITY_${priorityTokens.length}_TOKEN`;
       priorityTokens.push({
         line: sourceLine,
         localLine,
@@ -265,18 +265,18 @@
     const link = (event.target as HTMLElement).closest("a");
     const href = link?.getAttribute("href");
 
-    if (href?.startsWith("manicule-missing:")) {
+    if (href?.startsWith("logtext-missing:")) {
       event.preventDefault();
-      onMissingWikiLink(decodeURIComponent(href.slice("manicule-missing:".length)));
+      onMissingWikiLink(decodeURIComponent(href.slice("logtext-missing:".length)));
       return;
     }
 
-    if (!href?.startsWith("manicule:")) {
+    if (!href?.startsWith("logtext:")) {
       return;
     }
 
     event.preventDefault();
-    onWikiLink(decodeURIComponent(href.slice("manicule:".length)));
+    onWikiLink(decodeURIComponent(href.slice("logtext:".length)));
   }
 
   function handleContextMenu(event: MouseEvent) {
@@ -306,7 +306,7 @@
     const link = (event.target as HTMLElement).closest("a");
     const href = link?.getAttribute("href");
 
-    if (!href?.startsWith("manicule:") && !href?.startsWith("manicule-missing:")) {
+    if (!href?.startsWith("logtext:") && !href?.startsWith("logtext-missing:")) {
       if (sourceLineMenuTargets.length === 0) {
         return;
       }
@@ -334,8 +334,8 @@
 
     taskContextMenu = null;
     sourceLineContextMenu = null;
-    const missing = href.startsWith("manicule-missing:");
-    const prefix = missing ? "manicule-missing:" : "manicule:";
+    const missing = href.startsWith("logtext-missing:");
+    const prefix = missing ? "logtext-missing:" : "logtext:";
     linkContextMenu = {
       x: event.clientX,
       y: event.clientY,

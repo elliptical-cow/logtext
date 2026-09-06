@@ -18,13 +18,13 @@
   import { workspaceStore } from "./lib/stores/workspace";
   import { zoomStore } from "./lib/stores/zoom";
 
-  const layoutStorageKey = "manicule:layout:columns";
+  const layoutStorageKey = "logtext:layout:columns";
   const defaultLeftWidth = 280;
   const defaultRightWidth = 440;
   const minLeftWidth = 220;
   const minEditorWidth = 360;
   const minRightWidth = 280;
-  const repositoryUrl = "https://github.com/SphericalCow1/Manicule";
+  const repositoryUrl = "https://github.com/SphericalCow1/logtext";
   const licenseUrl = `${repositoryUrl}/blob/main/LICENSE`;
   let leftWidth = defaultLeftWidth;
   let rightWidth = defaultRightWidth;
@@ -42,9 +42,9 @@
   onMount(() => {
     void initializeApp();
     loadLayout();
-    window.addEventListener("manicule-reset-layout", resetLayout);
-    window.addEventListener("manicule-show-about", openAboutDialog);
-    window.addEventListener("manicule-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
+    window.addEventListener("logtext-reset-layout", resetLayout);
+    window.addEventListener("logtext-show-about", openAboutDialog);
+    window.addEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.addEventListener("wheel", handleWheel, { passive: false });
   });
 
@@ -266,9 +266,9 @@
   onDestroy(() => {
     clearWorkspaceSessionSaveTimer();
     window.removeEventListener("pointermove", resizeColumns);
-    window.removeEventListener("manicule-reset-layout", resetLayout);
-    window.removeEventListener("manicule-show-about", openAboutDialog);
-    window.removeEventListener("manicule-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
+    window.removeEventListener("logtext-reset-layout", resetLayout);
+    window.removeEventListener("logtext-show-about", openAboutDialog);
+    window.removeEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.removeEventListener("wheel", handleWheel);
   });
 </script>

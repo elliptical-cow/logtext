@@ -76,7 +76,7 @@ impl Diagnostic {
 
 #[tauri::command]
 fn ping() -> &'static str {
-    "manicule-ready"
+    "logtext-ready"
 }
 
 #[tauri::command]

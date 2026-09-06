@@ -1,7 +1,7 @@
 import { writable } from "svelte/store";
 import type { EditorMode } from "../editorLivePreview";
 
-const storageKey = "manicule:editor-mode";
+const storageKey = "logtext:editor-mode";
 
 function loadEditorMode(): EditorMode {
   if (typeof localStorage === "undefined") {

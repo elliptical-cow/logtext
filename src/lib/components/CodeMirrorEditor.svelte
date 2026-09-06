@@ -234,7 +234,7 @@
 
     lastHistoryAvailability = serialized;
     window.dispatchEvent(
-      new CustomEvent("manicule-editor-history-availability", {
+      new CustomEvent("logtext-editor-history-availability", {
         detail: availability,
       }),
     );
@@ -896,11 +896,11 @@
   }
 
   onMount(() => {
-    window.addEventListener("manicule-editor-undo", handleEditorUndoEvent);
-    window.addEventListener("manicule-editor-redo", handleEditorRedoEvent);
-    window.addEventListener("manicule-editor-isolate-history", isolateEditorHistory);
-    window.addEventListener("manicule-collapse-all-blocks-below-level", handleCollapseBelowLevelEvent);
-    window.addEventListener("manicule-expand-all-blocks", handleExpandAllBlocksEvent);
+    window.addEventListener("logtext-editor-undo", handleEditorUndoEvent);
+    window.addEventListener("logtext-editor-redo", handleEditorRedoEvent);
+    window.addEventListener("logtext-editor-isolate-history", isolateEditorHistory);
+    window.addEventListener("logtext-collapse-all-blocks-below-level", handleCollapseBelowLevelEvent);
+    window.addEventListener("logtext-expand-all-blocks", handleExpandAllBlocksEvent);
     lastDocumentPath = documentPath;
     view = new EditorView({
       parent: host,
@@ -969,14 +969,14 @@
   }
 
   onDestroy(() => {
-    window.removeEventListener("manicule-editor-undo", handleEditorUndoEvent);
-    window.removeEventListener("manicule-editor-redo", handleEditorRedoEvent);
-    window.removeEventListener("manicule-editor-isolate-history", isolateEditorHistory);
+    window.removeEventListener("logtext-editor-undo", handleEditorUndoEvent);
+    window.removeEventListener("logtext-editor-redo", handleEditorRedoEvent);
+    window.removeEventListener("logtext-editor-isolate-history", isolateEditorHistory);
     window.removeEventListener(
-      "manicule-collapse-all-blocks-below-level",
+      "logtext-collapse-all-blocks-below-level",
       handleCollapseBelowLevelEvent,
     );
-    window.removeEventListener("manicule-expand-all-blocks", handleExpandAllBlocksEvent);
+    window.removeEventListener("logtext-expand-all-blocks", handleExpandAllBlocksEvent);
     if (highlightTimer) {
       clearTimeout(highlightTimer);
     }

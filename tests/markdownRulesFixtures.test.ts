@@ -104,7 +104,7 @@ test("renders shared wiki-link fixtures consistently", () => {
 
     for (const link of fixture.links) {
       const displayLabel = link.alias ?? wikiLinkDisplayLabel(link.target, pages);
-      assert.match(rendered, /\]\(manicule:/, fixture.name);
+      assert.match(rendered, /\]\(logtext:/, fixture.name);
       assert.ok(rendered.includes(displayLabel), fixture.name);
     }
   }

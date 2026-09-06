@@ -81,7 +81,7 @@ export async function setupCoreEvents() {
         return;
       }
 
-      window.dispatchEvent(new CustomEvent("manicule-new-page", { detail: { folderPath: "" } }));
+      window.dispatchEvent(new CustomEvent("logtext-new-page", { detail: { folderPath: "" } }));
     }),
   );
 
@@ -120,7 +120,7 @@ export async function setupCoreEvents() {
   setupThemeMenuLabel();
   setupTaskOverviewMenuLabel();
   setupEditorModeMenuLabel();
-  window.addEventListener("manicule-editor-history-availability", handleEditorHistoryAvailability);
+  window.addEventListener("logtext-editor-history-availability", handleEditorHistoryAvailability);
 
   await onCoreEvent(
     "menu-undo",
@@ -148,7 +148,7 @@ export async function setupCoreEvents() {
   });
 
   await onCoreEvent("menu-reset-layout", async () => {
-    window.dispatchEvent(new CustomEvent("manicule-reset-layout"));
+    window.dispatchEvent(new CustomEvent("logtext-reset-layout"));
   });
 
   for (const level of [1, 2, 3, 4]) {
@@ -156,7 +156,7 @@ export async function setupCoreEvents() {
       mainViewStore.set("editor");
       window.setTimeout(() => {
         window.dispatchEvent(
-          new CustomEvent("manicule-collapse-all-blocks-below-level", {
+          new CustomEvent("logtext-collapse-all-blocks-below-level", {
             detail: { level },
           }),
         );
@@ -167,7 +167,7 @@ export async function setupCoreEvents() {
   await onCoreEvent("menu-expand-all-blocks", async () => {
     mainViewStore.set("editor");
     window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("manicule-expand-all-blocks"));
+      window.dispatchEvent(new CustomEvent("logtext-expand-all-blocks"));
     }, 0);
   });
 
@@ -184,11 +184,11 @@ export async function setupCoreEvents() {
   });
 
   await onCoreEvent("menu-about", async () => {
-    window.dispatchEvent(new CustomEvent("manicule-show-about"));
+    window.dispatchEvent(new CustomEvent("logtext-show-about"));
   });
 
   await onCoreEvent("menu-keyboard-shortcuts", async () => {
-    window.dispatchEvent(new CustomEvent("manicule-show-keyboard-shortcuts"));
+    window.dispatchEvent(new CustomEvent("logtext-show-keyboard-shortcuts"));
   });
 }
 
@@ -293,7 +293,7 @@ function handleGlobalViewKeydown(event: KeyboardEvent) {
     mainViewStore.set("editor");
     window.setTimeout(() => {
       window.dispatchEvent(
-        new CustomEvent("manicule-collapse-all-blocks-below-level", {
+        new CustomEvent("logtext-collapse-all-blocks-below-level", {
           detail: { level: collapseLevel },
         }),
       );
@@ -317,7 +317,7 @@ function handleGlobalViewKeydown(event: KeyboardEvent) {
   if (key === "e") {
     mainViewStore.set("editor");
     window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("manicule-expand-all-blocks"));
+      window.dispatchEvent(new CustomEvent("logtext-expand-all-blocks"));
     }, 0);
     return;
   }
@@ -391,7 +391,7 @@ async function handleUndoRequest(source: "keyboard" | "menu") {
     }
 
     if (!undone && get(mainViewStore) === "editor") {
-      window.dispatchEvent(new CustomEvent("manicule-editor-undo"));
+      window.dispatchEvent(new CustomEvent("logtext-editor-undo"));
     }
   } finally {
     undoRunning = false;
@@ -428,7 +428,7 @@ async function handleRedoRequest(source: "keyboard" | "menu") {
     }
 
     if (!redone && get(mainViewStore) === "editor") {
-      window.dispatchEvent(new CustomEvent("manicule-editor-redo"));
+      window.dispatchEvent(new CustomEvent("logtext-editor-redo"));
     }
   } finally {
     redoRunning = false;

@@ -221,18 +221,18 @@
     const link = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>("a");
     const href = link?.getAttribute("href");
 
-    if (href?.startsWith("manicule:")) {
+    if (href?.startsWith("logtext:")) {
       event.preventDefault();
       event.stopPropagation();
-      void linkOperations.open(decodeURIComponent(href.slice("manicule:".length)), "right");
+      void linkOperations.open(decodeURIComponent(href.slice("logtext:".length)), "right");
       return;
     }
 
-    if (href?.startsWith("manicule-missing:")) {
+    if (href?.startsWith("logtext-missing:")) {
       event.preventDefault();
       event.stopPropagation();
       localError = `Linked page does not exist: ${decodeURIComponent(
-        href.slice("manicule-missing:".length),
+        href.slice("logtext-missing:".length),
       )}`;
       return;
     }

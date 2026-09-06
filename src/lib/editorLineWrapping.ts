@@ -58,15 +58,15 @@ function buildListWrapIndentDecorations(state: EditorState) {
     const styles = [];
     if (indent > 0) {
       classes.push("cm-list-wrap-indent");
-      styles.push(`--manicule-list-prefix-width: ${indent}ch`);
+      styles.push(`--logtext-list-prefix-width: ${indent}ch`);
     }
     if (guideOffsets.length > 0) {
       classes.push("cm-list-indent-guides");
       styles.push(
-        `--manicule-indent-guide-images: ${guideOffsets
+        `--logtext-indent-guide-images: ${guideOffsets
           .map(() => "linear-gradient(var(--block-indent-guide), var(--block-indent-guide))")
           .join(", ")}`,
-        `--manicule-indent-guide-positions: ${guideOffsets
+        `--logtext-indent-guide-positions: ${guideOffsets
           .map((offset) => `calc(8px + ${offset}ch) 0`)
           .join(", ")}`,
       );
