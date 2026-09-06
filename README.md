@@ -4,12 +4,11 @@
   <img src="assets/branding/logtext-wordmark.png" alt="Logtext — Write logs. Build context." width="720" />
 </p>
 
-Goal: Logtext allows frictionless capturing of daily logs in local Markdown files - context emerges then through grouped tags.
+Goal: Allow for frictionless capturing of daily logs in local Markdown files. 
+Context should emerge by grouped tags and backlinks. Simple task workflow.
 
 The app is inspired by OrgMode and Logseq, but Markdown files remain the source
-of truth. Logtext scans a local workspace folder, renders links and
-backlinks, and adds project-oriented task workflows on top of plain `.md`
-files.
+of truth.
 
 ## Example Workspace
 
