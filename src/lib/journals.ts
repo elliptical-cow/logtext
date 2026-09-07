@@ -61,6 +61,14 @@ export function isJournalPagePath(path: string, root = DEFAULT_JOURNAL_FOLDER) {
   return Boolean(match && journalPathForDateInput(match[1], normalizedRoot) === path);
 }
 
+export function shouldUseContinuousJournalView(
+  path: string | null,
+  root: string,
+  enabled: boolean,
+) {
+  return enabled && path !== null && isJournalPagePath(path, root);
+}
+
 export function adjacentJournalPath(
   currentPath: string,
   pagePaths: string[],

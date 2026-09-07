@@ -127,14 +127,32 @@
 
   function handleJournalWheel(event: WheelEvent) {
     void journalScrollNavigation.handleWheel(event, editorScroll, {
+      enabled: $workspaceStore.journalEditorContinuousScrolling,
       currentPath: $editorSessionStore.path,
       pagePaths: $workspaceStore.pages.map((page) => page.path),
       journalFolder: $workspaceStore.journalFolder,
-      sortDescending: (
-        $workspaceStore.folderPageSort[$workspaceStore.journalFolder] ??
-        $workspaceStore.defaultPageSort
-      ).endsWith("-desc"),
+      sortDescending: journalSortDescending(),
     });
+  }
+
+  function handleJournalPageKey(event: KeyboardEvent) {
+    if (!(event.target instanceof Node) || !editorScroll?.contains(event.target)) {
+      return;
+    }
+    void journalScrollNavigation.handlePageKey(event, editorScroll, {
+      enabled: $workspaceStore.journalEditorContinuousScrolling,
+      currentPath: $editorSessionStore.path,
+      pagePaths: $workspaceStore.pages.map((page) => page.path),
+      journalFolder: $workspaceStore.journalFolder,
+      sortDescending: journalSortDescending(),
+    });
+  }
+
+  function journalSortDescending() {
+    return (
+      $workspaceStore.folderPageSort[$workspaceStore.journalFolder] ??
+      $workspaceStore.defaultPageSort
+    ).endsWith("-desc");
   }
 
   onDestroy(() => {
@@ -142,6 +160,8 @@
   });
 
 </script>
+
+<svelte:window on:keydown|capture={handleJournalPageKey} />
 
 <section class="editor-pane" aria-label="Editor">
   <div class="pane-header">
@@ -198,7 +218,11 @@
     primaryActionLabel={$editorSessionStore.conflict ? "Overwrite disk" : null}
     onPrimaryAction={$editorSessionStore.conflict ? () => editorSessionStore.overwriteDisk() : null}
   />
-  <div class="editor-scroll" bind:this={editorScroll} on:wheel={handleJournalWheel}>
+  <div
+    class="editor-scroll"
+    bind:this={editorScroll}
+    on:wheel={handleJournalWheel}
+  >
     <CodeMirrorEditor
       bind:this={editor}
       value={$editorSessionStore.content}

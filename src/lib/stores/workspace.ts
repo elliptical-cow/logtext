@@ -71,6 +71,8 @@ function workspaceError(error: unknown) {
 type WorkspaceStoreState = {
   root: string | null;
   journalFolder: string;
+  journalEditorContinuousScrolling: boolean;
+  journalRightPaneContinuousScrolling: boolean;
   pages: PageSummary[];
   folders: string[];
   diagnostics: Diagnostic[];
@@ -98,6 +100,8 @@ type WorkspaceStoreState = {
 const initialState: WorkspaceStoreState = {
   root: null,
   journalFolder: DEFAULT_JOURNAL_FOLDER,
+  journalEditorContinuousScrolling: true,
+  journalRightPaneContinuousScrolling: true,
   pages: [],
   folders: [],
   diagnostics: [],
@@ -151,6 +155,10 @@ function createWorkspaceStore() {
         set({
           root: workspace.root,
           journalFolder: workspace.journalFolder ?? DEFAULT_JOURNAL_FOLDER,
+          journalEditorContinuousScrolling:
+            workspace.journalEditorContinuousScrolling ?? true,
+          journalRightPaneContinuousScrolling:
+            workspace.journalRightPaneContinuousScrolling ?? true,
           pages: workspace.pages,
           folders: workspace.folders ?? [],
           diagnostics: workspace.diagnostics,

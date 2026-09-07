@@ -87,11 +87,13 @@ file does not exist, Logtext creates it. The right pane keeps its previous
 context page from the last session.
 
 While a dated journal page is open in the editor, scrolling beyond its top or
-bottom opens the previous or next existing dated file. The right pane presents
-dated journal pages as one continuous feed and loads more existing files near
-either scroll boundary. Scrolling never creates a missing day: use the Journal
-shortcuts or date picker when a new date file should be created. Both views
-follow the configured ascending or descending page order of the journal folder.
+bottom opens the previous or next existing dated file. Page Up and Page Down
+provide the same transition on the next key press after reaching a boundary.
+The right pane presents dated journal pages as one continuous feed and loads
+more existing files near either scroll boundary. Scrolling never creates a
+missing day: use the Journal shortcuts or date picker when a new date file
+should be created. Both views follow the configured ascending or descending
+page order of the journal folder and can be disabled independently in `.config`.
 
 Each workspace can also contain a `.config` file. Logtext creates it if needed
 and stores workspace-specific settings there, for example task colors, expanded
@@ -312,6 +314,8 @@ Example:
 ```json
 {
   "journalFolder": "journal",
+  "journalEditorContinuousScrolling": true,
+  "journalRightPaneContinuousScrolling": true,
   "taskStates": ["TODO", "INPROGRESS", "WAITING", "DONE"],
   "taskStateColors": {
     "TODO": "red",
@@ -335,6 +339,11 @@ Example:
 Journal navigation considers only valid calendar-date files named
 `YYYY-MM-DD.md` directly inside this folder. Logtext does not allow subfolders
 to be created or moved into the journal folder.
+
+`journalEditorContinuousScrolling` controls boundary navigation between journal
+files in the editor, including mouse-wheel and Page Up/Page Down navigation.
+`journalRightPaneContinuousScrolling` controls the multi-file journal feed in
+the right pane. Both settings default to `true` and affect journal files only.
 
 Logtext may add more fields to `.config` as features evolve.
 
