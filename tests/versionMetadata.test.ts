@@ -58,3 +58,20 @@ test("gives the release publisher explicit repository context", () => {
     /gh release create[\s\S]*?--repo "\$GITHUB_REPOSITORY"/,
   );
 });
+
+test("uses explicit OS and architecture names for release assets", () => {
+  const releaseWorkflow = readFileSync(
+    join(root, ".github/workflows/release.yml"),
+    "utf8",
+  );
+
+  for (const assetName of [
+    "Logtext-${version}-windows-x86_64-portable.exe",
+    "Logtext-${version}-windows-x86_64-setup.exe",
+    "Logtext-${version}-macos-universal-app.zip",
+    "Logtext-${version}-linux-x86_64.AppImage",
+    "Logtext-${version}-linux-x86_64.deb",
+  ]) {
+    assert.equal(releaseWorkflow.includes(assetName), true);
+  }
+});
