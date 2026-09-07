@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import MarkdownIt from "markdown-it";
   import ContextMenuShell from "./ContextMenuShell.svelte";
   import ErrorDialog from "./ErrorDialog.svelte";
+  import { createMarkdownRenderer } from "../markdownRenderer";
   import { taskColorStyle } from "../taskColors";
   import { linkOperations } from "../stores/linkOperations";
   import { mutationOperations } from "../stores/mutationOperations";
@@ -29,11 +29,7 @@
     y: number;
     task: TaskItem;
   } | null = null;
-  const inlineMarkdown = new MarkdownIt({
-    breaks: false,
-    html: false,
-    linkify: true,
-  });
+  const inlineMarkdown = createMarkdownRenderer({ breaks: false });
 
   function closeErrorDialog() {
     localError = null;

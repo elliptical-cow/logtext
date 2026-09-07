@@ -2433,6 +2433,38 @@ textarea {
   margin: 0.45em 0;
 }
 
+.markdown-view .katex,
+.task-overview-main .katex {
+  color: inherit;
+}
+
+.markdown-view .katex .katex-mathml,
+.task-overview-main .katex .katex-mathml {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.markdown-view .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0.8em 0;
+  padding: 0.15em 0;
+}
+
+.markdown-view .katex-error,
+.task-overview-main .katex-error {
+  color: var(--error-text, #9b1c1c) !important;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
 .markdown-view ul,
 .markdown-view ol {
   margin: 4px 0 4px 1.2em;
@@ -2897,6 +2929,11 @@ textarea {
 
 :root[data-theme="dark"] .markdown-view a {
   color: var(--link-color);
+}
+
+:root[data-theme="dark"] .markdown-view .katex-error,
+:root[data-theme="dark"] .task-overview-main .katex-error {
+  color: #ffb4b4 !important;
 }
 
 :root[data-theme="dark"] .markdown-view a.wiki-link-chip,

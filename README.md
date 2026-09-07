@@ -231,6 +231,24 @@ Markdown checkboxes are rendered and clickable in the middle and right pane:
 
 Clicking a checkbox updates the underlying Markdown file.
 
+### LaTeX formulas
+
+Rendered Markdown views support LaTeX formulas through KaTeX. Use single dollar
+signs for inline formulas and double dollar signs for block formulas:
+
+```md
+Energy is $E = mc^2$.
+
+$$
+\int_0^1 x^2 \, dx
+$$
+```
+
+The Markdown source remains unchanged. Invalid formulas are shown as source text
+without interrupting the rest of the rendered page. Until formulas are rendered
+directly in the editor, its live-preview mode displays LaTeX regions with code
+styling and does not interpret their contents as Markdown.
+
 ### Task Overview
 
 Open the task overview from the left pane with `Show Task Overview`, or toggle

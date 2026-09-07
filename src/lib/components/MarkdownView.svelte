@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from "svelte";
-  import MarkdownIt from "markdown-it";
   import ContextMenuShell from "./ContextMenuShell.svelte";
+  import { createMarkdownRenderer } from "../markdownRenderer";
   import { renderCheckboxItems } from "../markdownRendering";
   import {
     renderedListMarker,
@@ -72,11 +72,7 @@
   let highlightTimer: ReturnType<typeof setTimeout> | null = null;
   const taskPriorityOptions = ["A", "B", "C"];
 
-  const markdown = new MarkdownIt({
-    breaks: true,
-    html: false,
-    linkify: true,
-  });
+  const markdown = createMarkdownRenderer({ breaks: true });
   const markdownWithSourceLines = markdown as unknown as MarkdownItWithSourceLines;
 
   $: taskRender = markTaskKeywordsForRendering(content, taskStates, sourceLineNumbers);
