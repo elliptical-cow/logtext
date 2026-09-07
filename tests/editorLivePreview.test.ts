@@ -5,12 +5,72 @@ import {
   activeBlockLineNumbers,
   checkboxAtDocumentPosition,
   emphasisSpans,
+  inlineLatexSourceSpans,
+  latexBlockLineNumbers,
+  livePreviewExtension,
   liveCheckboxCheckClass,
   previewDecorationsForLine,
   taskKeywordAtDocumentPosition,
   wikiLinkAtDocumentPosition,
   wikiLinkAtPosition,
 } from "../src/lib/editorLivePreview.js";
+
+test("shows inline LaTeX as code without applying Markdown decorations", () => {
+  const decorations = previewDecorationsForLine(String.raw`Formula $x_i * y_i$ and **bold**`);
+
+  assert.deepEqual(inlineLatexSourceSpans(String.raw`Formula $x_i * y_i$ and **bold**`), [
+    { start: 8, end: 19 },
+  ]);
+  assert.deepEqual(
+    decorations.map(({ from, to }) => ({ from, to })),
+    [
+      { from: 8, to: 19 },
+      { from: 24, to: 26 },
+      { from: 26, to: 30 },
+      { from: 30, to: 32 },
+    ],
+  );
+});
+
+test("does not treat escaped dollars or code spans as LaTeX", () => {
+  assert.deepEqual(inlineLatexSourceSpans("Price \\$5 and code `$x$`"), []);
+  assert.deepEqual(inlineLatexSourceSpans("Not inline $$x_i$$ here"), []);
+});
+
+test("does not activate wiki links contained in inline LaTeX", () => {
+  assert.equal(wikiLinkAtPosition(String.raw`$\text{[[Alpha]]}$`, 0, 9), null);
+});
+
+test("shows block LaTeX as code without interpreting fenced code as formulas", () => {
+  const source = [
+    "Before",
+    "$$",
+    String.raw`x_i * y_i`,
+    "$$",
+    "```text",
+    "$$not a formula$$",
+    "```",
+  ].join("\n");
+
+  assert.deepEqual([...latexBlockLineNumbers(source)], [2, 3, 4]);
+});
+
+test("builds live preview decorations for multiline block LaTeX", () => {
+  const state = EditorState.create({
+    doc: ["Before", "$$", String.raw`x_i * y_i`, "$$", "After"].join("\n"),
+    extensions: livePreviewExtension(),
+  });
+
+  assert.equal(state.doc.lines, 5);
+});
+
+test("does not activate wiki links contained in block LaTeX", () => {
+  const state = EditorState.create({
+    doc: ["$$", String.raw`\text{[[Alpha]]}`, "$$"].join("\n"),
+  });
+
+  assert.equal(wikiLinkAtDocumentPosition(state, 11), null);
+});
 
 test("creates preview decorations for headings without changing text", () => {
   const decorations = previewDecorationsForLine("## Project Alpha", 10);
