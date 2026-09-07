@@ -8,16 +8,17 @@
   import { rightPaneStore } from "../stores/rightPane";
   import { workspaceStore } from "../stores/workspace";
   import type { BacklinkView } from "../types";
-  import { isJournalPagePath } from "../journals";
+  import { shouldUseContinuousJournalView } from "../journals";
 
   let lastPagePath: string | null = null;
   let missingLinkPath: string | null = null;
   let mutationError: string | null = null;
   let activeJournalPath: string | null = null;
 
-  $: journalFeedActive = Boolean(
-    $rightPaneStore.path &&
-      isJournalPagePath($rightPaneStore.path, $workspaceStore.journalFolder),
+  $: journalFeedActive = shouldUseContinuousJournalView(
+    $rightPaneStore.path,
+    $workspaceStore.journalFolder,
+    $workspaceStore.journalRightPaneContinuousScrolling,
   );
   $: displayedRightPanePath = journalFeedActive
     ? activeJournalPath ?? $rightPaneStore.path

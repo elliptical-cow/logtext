@@ -14,6 +14,10 @@ pub const DEFAULT_JOURNAL_FOLDER: &str = "journal";
 pub struct WorkspaceConfig {
     #[serde(default = "default_journal_folder")]
     pub journal_folder: String,
+    #[serde(default = "default_journal_continuous_scrolling")]
+    pub journal_editor_continuous_scrolling: bool,
+    #[serde(default = "default_journal_continuous_scrolling")]
+    pub journal_right_pane_continuous_scrolling: bool,
     pub task_states: Vec<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub task_state_colors: HashMap<String, String>,
@@ -109,6 +113,8 @@ impl Default for WorkspaceConfig {
             .collect();
         Self {
             journal_folder: default_journal_folder(),
+            journal_editor_continuous_scrolling: default_journal_continuous_scrolling(),
+            journal_right_pane_continuous_scrolling: default_journal_continuous_scrolling(),
             task_state_colors: default_task_state_colors(&task_states),
             task_states,
             task_done_sound_enabled: default_task_done_sound_enabled(),
@@ -159,6 +165,8 @@ pub fn load_or_create_workspace_config(root: &Path) -> Result<WorkspaceConfig, S
 
     Ok(WorkspaceConfig {
         journal_folder: normalize_journal_folder(config.journal_folder)?,
+        journal_editor_continuous_scrolling: config.journal_editor_continuous_scrolling,
+        journal_right_pane_continuous_scrolling: config.journal_right_pane_continuous_scrolling,
         task_states,
         task_state_colors,
         task_done_sound_enabled: config.task_done_sound_enabled,
@@ -497,6 +505,10 @@ fn default_task_done_sound_enabled() -> bool {
     true
 }
 
+fn default_journal_continuous_scrolling() -> bool {
+    true
+}
+
 fn default_page_sort() -> String {
     DEFAULT_PAGE_SORT.to_string()
 }
@@ -578,6 +590,8 @@ mod tests {
 
         assert_eq!(config.task_states, vec!["TODO", "BLOCKED", "DONE"]);
         assert_eq!(config.journal_folder, "journal");
+        assert!(config.journal_editor_continuous_scrolling);
+        assert!(config.journal_right_pane_continuous_scrolling);
         assert_eq!(
             config.task_state_colors.get("TODO"),
             Some(&"red".to_string())
@@ -615,6 +629,23 @@ mod tests {
         let config = load_or_create_workspace_config(&root).unwrap();
 
         assert_eq!(config.journal_folder, "daily/logs");
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn loads_independent_journal_continuous_scrolling_flags() {
+        let root = temp_workspace();
+        fs::write(
+            root.join(".config"),
+            r#"{"taskStates":["TODO","DONE"],"journalEditorContinuousScrolling":false,"journalRightPaneContinuousScrolling":true}"#,
+        )
+        .unwrap();
+
+        let config = load_or_create_workspace_config(&root).unwrap();
+
+        assert!(!config.journal_editor_continuous_scrolling);
+        assert!(config.journal_right_pane_continuous_scrolling);
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -875,6 +906,8 @@ mod tests {
         let root = temp_workspace();
         let config = WorkspaceConfig {
             journal_folder: default_journal_folder(),
+            journal_editor_continuous_scrolling: true,
+            journal_right_pane_continuous_scrolling: true,
             task_states: vec!["TODO".to_string(), "DONE".to_string()],
             task_state_colors: default_task_state_colors(&["TODO".to_string(), "DONE".to_string()]),
             task_done_sound_enabled: true,
@@ -907,6 +940,8 @@ mod tests {
         let root = temp_workspace();
         let config = WorkspaceConfig {
             journal_folder: default_journal_folder(),
+            journal_editor_continuous_scrolling: false,
+            journal_right_pane_continuous_scrolling: true,
             task_states: vec!["TODO".to_string(), "DONE".to_string()],
             task_state_colors: default_task_state_colors(&["TODO".to_string(), "DONE".to_string()]),
             task_done_sound_enabled: false,
@@ -947,6 +982,8 @@ mod tests {
         assert!(saved.contains("\"themeMode\": \"dark\""));
         assert!(saved.contains("\"openTasksOnly\": true"));
         assert!(saved.contains("\"taskDoneSoundEnabled\": false"));
+        assert!(saved.contains("\"journalEditorContinuousScrolling\": false"));
+        assert!(saved.contains("\"journalRightPaneContinuousScrolling\": true"));
         assert!(saved.contains("\"defaultPageSort\": \"name-asc\""));
         assert!(saved.contains("\"folderPageSort\""));
         assert!(saved.contains("\"manualPageOrder\""));

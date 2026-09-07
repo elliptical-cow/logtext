@@ -7,6 +7,7 @@ import {
 type ScrollContainer = Pick<HTMLElement, "scrollTop" | "scrollHeight" | "clientHeight">;
 
 type JournalScrollContext = {
+  enabled: boolean;
   currentPath: string | null;
   pagePaths: string[];
   journalFolder: string;
@@ -18,6 +19,8 @@ type JournalScrollDependencies = {
   afterOpen: () => Promise<unknown>;
   gestureLockMs?: number;
 };
+
+type BoundaryNavigationEvent = Pick<Event, "preventDefault" | "stopPropagation">;
 
 export function createJournalScrollNavigation(dependencies: JournalScrollDependencies) {
   let navigationPending = false;
@@ -43,7 +46,58 @@ export function createJournalScrollNavigation(dependencies: JournalScrollDepende
       container.clientHeight,
       event.deltaY,
     );
-    if (!direction || !context.currentPath) {
+    if (!direction) {
+      return false;
+    }
+
+    return openAdjacent(event, container, context, direction, {
+      lockGesture: true,
+      stopPropagation: false,
+    });
+  }
+
+  async function handlePageKey(
+    event: KeyboardEvent,
+    container: ScrollContainer,
+    context: JournalScrollContext,
+  ) {
+    if (
+      destroyed ||
+      navigationPending ||
+      event.repeat ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey
+    ) {
+      return false;
+    }
+
+    const deltaY = event.key === "PageUp" ? -1 : event.key === "PageDown" ? 1 : 0;
+    const direction = journalBoundaryDirection(
+      container.scrollTop,
+      container.scrollHeight,
+      container.clientHeight,
+      deltaY,
+    );
+    if (!direction) {
+      return false;
+    }
+
+    return openAdjacent(event, container, context, direction, {
+      lockGesture: false,
+      stopPropagation: true,
+    });
+  }
+
+  async function openAdjacent(
+    event: BoundaryNavigationEvent,
+    container: ScrollContainer,
+    context: JournalScrollContext,
+    direction: JournalDirection,
+    options: { lockGesture: boolean; stopPropagation: boolean },
+  ) {
+    if (!context.enabled || !context.currentPath) {
       return false;
     }
     const targetPath = adjacentJournalPath(
@@ -58,8 +112,13 @@ export function createJournalScrollNavigation(dependencies: JournalScrollDepende
     }
 
     event.preventDefault();
-    gestureLocked = true;
-    scheduleGestureUnlock();
+    if (options.stopPropagation) {
+      event.stopPropagation();
+    }
+    if (options.lockGesture) {
+      gestureLocked = true;
+      scheduleGestureUnlock();
+    }
     navigationPending = true;
     try {
       const opened = await dependencies.openPage(targetPath);
@@ -89,6 +148,7 @@ export function createJournalScrollNavigation(dependencies: JournalScrollDepende
 
   return {
     handleWheel,
+    handlePageKey,
     destroy() {
       destroyed = true;
       if (gestureTimer) {

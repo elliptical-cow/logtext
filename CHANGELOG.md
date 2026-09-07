@@ -3,6 +3,16 @@
 This file records notable user-facing and development changes to Logtext. The
 current source version is `0.7.1`.
 
+## Unreleased
+
+### Added
+
+- Added Page Up and Page Down navigation across journal file boundaries in the
+  editor, using the same configured order as mouse-wheel navigation.
+- Added independent `journalEditorContinuousScrolling` and
+  `journalRightPaneContinuousScrolling` workspace settings. Both default to
+  enabled for compatibility with existing workspaces.
+
 ## 0.7.1
 
 Changes since `v0.6.7`.
