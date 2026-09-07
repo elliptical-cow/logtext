@@ -18,6 +18,11 @@ current source version is `0.7.1`.
   `journalRightPaneContinuousScrolling` workspace settings. Both default to
   enabled for compatibility with existing workspaces.
 
+### Changed
+
+- Release assets now use consistent names that explicitly identify Logtext's
+  version, target operating system, architecture, and Windows package variant.
+
 ## 0.7.1
 
 Changes since `v0.6.7`.
