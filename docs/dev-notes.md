@@ -343,15 +343,16 @@ signature, enforces the size limit, creates a collision-safe flat filename, and
 writes it beneath the configured `mediaFolder`. No media database or lifecycle
 index is maintained.
 
-Markdown retains ordinary relative image syntax. `src/lib/mediaPaths.ts`
-resolves local targets relative to their source page and maps them to the
-workspace-scoped `logtext-media` protocol. The protocol canonicalizes paths,
-keeps reads inside the open workspace, and serves only validated PNG, JPEG,
-WebP, or GIF content. `MarkdownView` and the CodeMirror live-preview widget use
-the same URL helper. Optional editor resizing stores a validated pixel width as
-`logtext-width=<n>px` in the standard Markdown image title. Both renderers share
-the parsing helper, retain any user-authored title, use automatic height, and
-cap the result at the pane width.
+Newly pasted images use standard Markdown image syntax with a leading `/` as a
+Logtext convention for the workspace root. Existing document-relative targets
+remain supported. `src/lib/mediaPaths.ts` resolves both forms and maps them to
+the workspace-scoped `logtext-media` protocol. The protocol canonicalizes
+paths, keeps reads inside the open workspace, and serves only validated PNG,
+JPEG, WebP, or GIF content. `MarkdownView` and the CodeMirror live-preview
+widget use the same URL helper. Optional editor resizing stores a validated
+pixel width as `logtext-width=<n>px` in the standard Markdown image title. Both
+renderers share the parsing helper, retain any user-authored title, use
+automatic height, and cap the result at the pane width.
 
 The workspace scanner excludes the media subtree from Markdown indexing and
 navigation. App-managed file operations prevent pages from entering that

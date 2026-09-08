@@ -8,15 +8,17 @@ export function resolveWorkspaceImagePath(
   markdownTarget: string,
 ): string | null {
   const target = decodeMarkdownTarget(markdownTarget.trim());
-  if (!target || externalImageScheme.test(target) || target.startsWith("/")) {
+  if (!target || externalImageScheme.test(target) || target.startsWith("//")) {
     return null;
   }
 
-  const sourceSegments = sourceDocumentPath.replace(/\\/g, "/").split("/");
-  sourceSegments.pop();
-  const resolved = [...sourceSegments];
+  const workspaceRootRelative = target.startsWith("/");
+  const resolved = workspaceRootRelative
+    ? []
+    : sourceDocumentPath.replace(/\\/g, "/").split("/").slice(0, -1);
+  const targetPath = workspaceRootRelative ? target.slice(1) : target;
 
-  for (const segment of target.replace(/\\/g, "/").split("/")) {
+  for (const segment of targetPath.replace(/\\/g, "/").split("/")) {
     if (!segment || segment === ".") {
       continue;
     }

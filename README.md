@@ -166,11 +166,11 @@ Missing target pages are marked in rendered views and can be created explicitly.
 
 Paste a screenshot or raster image from the clipboard directly into an open
 page. Logtext stores PNG, JPEG, WebP, and GIF images of up to 20 MiB in the
-configured workspace media folder and inserts a portable relative Markdown
-reference at the current editor selection:
+configured workspace media folder and inserts a Markdown reference rooted at
+the workspace at the current editor selection:
 
 ```md
-![Pasted image](../media/projects-roadmap--1788890400000--a1b2c3d4.png)
+![Pasted image](/media/projects-roadmap--1788890400000--a1b2c3d4.png)
 ```
 
 The filename contains a normalized form of the source page path, a timestamp,
@@ -178,6 +178,8 @@ and a short content fingerprint. Images are rendered in the editor's live
 preview and in all rendered Markdown views, including the right pane, journal
 feed, linked references, and Task Overview. Ordinary relative Markdown image
 links to supported image files elsewhere in the workspace are rendered too.
+In Logtext, a leading `/` in an image target means the workspace root rather
+than the operating system's filesystem root.
 
 Hover over an image in the editor live preview to reveal `−` and `+` controls.
 They change the displayed width in 20–25 percent steps and persist it in the
@@ -186,9 +188,10 @@ always follows the original aspect ratio. Images wider than the available pane
 remain limited to the pane width.
 
 The media folder is application-managed and omitted from page navigation and
-Markdown indexing. Moving or renaming a page or folder through Logtext rewrites
-its relative local image targets so they still resolve. Logtext does not delete
-image files automatically when a reference is removed.
+Markdown indexing. Workspace-root image targets remain stable when their page
+moves. Logtext also rewrites older document-relative local image targets during
+page and folder moves. It does not delete image files automatically when a
+reference is removed.
 
 ### Backlinks
 

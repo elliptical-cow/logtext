@@ -113,7 +113,7 @@ pub fn save_pasted_image_in_workspace(
         }
 
         let workspace_path = format!("{}/{file_name}", workspace.config.media_folder);
-        return relative_markdown_path(document_path, &workspace_path);
+        return Ok(format!("/{workspace_path}"));
     }
 
     Err("Could not allocate a unique pasted image filename".to_string())
@@ -191,6 +191,9 @@ pub(crate) fn rewrite_local_image_paths_for_move(
     let mut replacements = 0;
 
     for image in markdown_image_targets(markdown) {
+        if is_workspace_root_image_target(image.target) {
+            continue;
+        }
         let Some(workspace_path) = workspace_path_for_local_image(old_document_path, image.target)
         else {
             continue;
@@ -221,7 +224,6 @@ pub(crate) fn workspace_path_for_local_image(
     let target = decoded.replace('\\', "/");
     let target_lower = target.to_ascii_lowercase();
     if target.is_empty()
-        || target.starts_with('/')
         || target.starts_with('#')
         || target_lower.starts_with("http:")
         || target_lower.starts_with("https:")
@@ -229,6 +231,14 @@ pub(crate) fn workspace_path_for_local_image(
         || target_lower.starts_with("blob:")
     {
         return None;
+    }
+
+    if target.starts_with('/') {
+        if target.starts_with("//") {
+            return None;
+        }
+        let segments = normal_segments(Path::new(target.trim_start_matches('/'))).ok()?;
+        return (!segments.is_empty()).then(|| segments.join("/"));
     }
 
     let mut segments = normal_segments(Path::new(source_document_path).parent()?).ok()?;
@@ -242,6 +252,12 @@ pub(crate) fn workspace_path_for_local_image(
         }
     }
     (!segments.is_empty()).then(|| segments.join("/"))
+}
+
+fn is_workspace_root_image_target(markdown_target: &str) -> bool {
+    percent_decode_str(markdown_target)
+        .decode_utf8()
+        .is_ok_and(|target| target.starts_with('/') && !target.starts_with("//"))
 }
 
 pub(crate) fn relative_markdown_path(
@@ -516,13 +532,13 @@ mod tests {
         )
         .unwrap();
 
-        assert!(link.starts_with("../media/projects-roadmap--"));
+        assert!(link.starts_with("/media/projects-roadmap--"));
         assert!(link.ends_with(".png"));
         assert_eq!(
             fs::read(root.join("projects").join("missing.png")).ok(),
             None
         );
-        let stored_path = root.join("projects").join(&link);
+        let stored_path = root.join(link.trim_start_matches('/'));
         assert_eq!(fs::read(stored_path).unwrap(), b"\x89PNG\r\n\x1a\nimage");
         fs::remove_dir_all(root).unwrap();
     }
@@ -573,6 +589,21 @@ mod tests {
 
         assert_eq!(rewritten, source);
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn preserves_workspace_root_image_paths_when_a_page_moves() {
+        let source = "![Image](/media/image.png)";
+
+        let (rewritten, count) =
+            rewrite_local_image_paths_for_move(source, "Inbox.md", "projects/Inbox.md");
+
+        assert_eq!(rewritten, source);
+        assert_eq!(count, 0);
+        assert_eq!(
+            workspace_path_for_local_image("projects/Inbox.md", "/media/image.png"),
+            Some("media/image.png".to_string())
+        );
     }
 
     fn temp_workspace() -> PathBuf {

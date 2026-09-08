@@ -42,6 +42,12 @@ test("resolves workspace images relative to the source document", () => {
     }),
     /src="logtext-media:\/\/localhost\/media\/My%20image\.png"/,
   );
+  assert.match(
+    markdown.render("![Screenshot](/media/My%20image.png)", {
+      sourcePath: "projects/deep/Roadmap.md",
+    }),
+    /src="logtext-media:\/\/localhost\/media\/My%20image\.png"/,
+  );
 });
 
 test("applies persisted image widths while keeping images within the pane", () => {
@@ -57,6 +63,10 @@ test("applies persisted image widths while keeping images within the pane", () =
   assert.equal(/logtext-width/.test(rendered), false);
   assert.match(styles, /\.workspace-image\s*\{[^}]*max-width: 100%;/s);
   assert.match(styles, /\.cm-live-image\s*\{[^}]*max-width: 100%;[^}]*height: auto;/s);
+  assert.match(
+    styles,
+    /\.cm-live-image-controls\s*\{[^}]*top: 6px;[^}]*left: 6px;/s,
+  );
 });
 
 test("keeps rendering after malformed LaTeX and ignores formulas in Markdown code", () => {

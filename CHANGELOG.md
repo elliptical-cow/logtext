@@ -8,11 +8,11 @@ current source version is `0.7.1`.
 ### Added
 
 - Added clipboard image paste for PNG, JPEG, WebP, and GIF files. Logtext stores
-  validated images in a configurable workspace media folder, inserts portable
-  relative Markdown, and renders workspace images in the editor live preview
-  and all rendered views. Live-preview controls resize images without changing
-  their aspect ratio, persist the chosen width in Markdown, and retain the
-  existing page-width limit.
+  validated images in a configurable workspace media folder, inserts
+  workspace-root-relative Markdown targets, and renders workspace images in the
+  editor live preview and all rendered views. Live-preview controls resize
+  images without changing their aspect ratio, persist the chosen width in
+  Markdown, and retain the existing page-width limit.
 - Added KaTeX rendering for inline (`$...$`) and block (`$$...$$`) LaTeX
   formulas in rendered Markdown views, including the right pane, journal feed,
   linked references, and Task Overview. Until full editor rendering is added,
@@ -29,6 +29,8 @@ current source version is `0.7.1`.
 - Page and folder moves now rewrite relative local image targets in moved pages.
   The configured media folder is excluded from page indexing and protected from
   page and folder operations in the navigation tree.
+- Newly pasted images use stable `/media-folder/file` targets rooted at the
+  workspace. Existing document-relative image links remain supported.
 - Compact `#` link completion now offers every page and automatically switches
   to `[[target]]` syntax when the selected target contains spaces.
 - Round-delimited text such as `((target))` is no longer interpreted as a page

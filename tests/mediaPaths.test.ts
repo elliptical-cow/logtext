@@ -11,6 +11,15 @@ test("resolves local images relative to their Markdown document", () => {
   assert.equal(resolveWorkspaceImagePath("Inbox.md", "media/image.png"), "media/image.png");
 });
 
+test("resolves leading-slash image targets from the workspace root", () => {
+  assert.equal(
+    resolveWorkspaceImagePath("projects/deep/Roadmap.md", "/media/image.png"),
+    "media/image.png",
+  );
+  assert.equal(resolveWorkspaceImagePath("Inbox.md", "//remote/image.png"), null);
+  assert.equal(resolveWorkspaceImagePath("Inbox.md", "/../outside.png"), null);
+});
+
 test("rejects local image targets that leave the workspace", () => {
   assert.equal(resolveWorkspaceImagePath("Inbox.md", "../outside.png"), null);
   assert.equal(resolveWorkspaceImagePath("projects/Roadmap.md", "../../outside.png"), null);
