@@ -1071,7 +1071,13 @@
     view.dispatch({
       effects: previewMode.reconfigure(
         mode === "live-preview"
-          ? livePreviewExtension(taskStates, taskStateColors, pages, folderColors)
+          ? livePreviewExtension(
+              taskStates,
+              taskStateColors,
+              pages,
+              folderColors,
+              documentPath ?? "",
+            )
           : [],
       ),
     });

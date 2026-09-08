@@ -34,6 +34,12 @@ current source version is `0.7.1`.
 - Release assets now use consistent names that explicitly identify Logtext's
   version, target operating system, architecture, and Windows package variant.
 
+### Fixed
+
+- Editor live-preview images now retain the active page path when CodeMirror
+  reconfigures its preview extension, so relative image links resolve from the
+  same source page as the right pane.
+
 ## 0.7.1
 
 Changes since `v0.6.7`.
