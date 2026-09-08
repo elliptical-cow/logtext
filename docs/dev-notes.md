@@ -343,9 +343,10 @@ signature, enforces the size limit, creates a collision-safe flat filename, and
 writes it beneath the configured `mediaFolder`. No media database or lifecycle
 index is maintained.
 
-Newly pasted images use standard Markdown image syntax with a leading `/` as a
-Logtext convention for the workspace root. Existing document-relative targets
-remain supported. `src/lib/mediaPaths.ts` resolves both forms and maps them to
+Newly pasted images use standard Markdown image syntax with a local target
+relative to the workspace root, such as `media/image.png`. All local image
+targets use this same rule; leading `/`, operating-system absolute paths, and
+parent segments are rejected. `src/lib/mediaPaths.ts` maps validated targets to
 the workspace-scoped `logtext-media` protocol. The protocol canonicalizes
 paths, keeps reads inside the open workspace, and serves only validated PNG,
 JPEG, WebP, or GIF content. `MarkdownView` and the CodeMirror live-preview
@@ -363,9 +364,8 @@ from this action to avoid cross-origin canvas behavior.
 
 The workspace scanner excludes the media subtree from Markdown indexing and
 navigation. App-managed file operations prevent pages from entering that
-subtree and protect the configured folder path. When a page or folder moves,
-the backend rewrites local image paths inside the moved Markdown documents;
-remote and data URLs and image-like text in Markdown code remain unchanged.
+subtree and protect the configured folder path. Page and folder moves leave
+workspace-relative image paths unchanged.
 
 Primary components:
 

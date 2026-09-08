@@ -28,23 +28,16 @@ current source version is `0.7.1`.
 
 ### Changed
 
-- Page and folder moves now rewrite relative local image targets in moved pages.
-  The configured media folder is excluded from page indexing and protected from
+- All local image targets now use stable `media-folder/file` paths relative to
+  the workspace root, so they remain valid when copied between pages. The
+  configured media folder is excluded from page indexing and protected from
   page and folder operations in the navigation tree.
-- Newly pasted images use stable `/media-folder/file` targets rooted at the
-  workspace. Existing document-relative image links remain supported.
 - Compact `#` link completion now offers every page and automatically switches
   to `[[target]]` syntax when the selected target contains spaces.
 - Round-delimited text such as `((target))` is no longer interpreted as a page
   link; `[[target]]` and compact `#target` remain the supported link syntaxes.
 - Release assets now use consistent names that explicitly identify Logtext's
   version, target operating system, architecture, and Windows package variant.
-
-### Fixed
-
-- Editor live-preview images now retain the active page path when CodeMirror
-  reconfigures its preview extension, so relative image links resolve from the
-  same source page as the right pane.
 
 ## 0.7.1
 

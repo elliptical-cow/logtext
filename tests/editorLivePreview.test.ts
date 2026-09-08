@@ -67,18 +67,18 @@ test("builds live preview decorations for multiline block LaTeX", () => {
 });
 
 test("recognizes Markdown images through the editor syntax tree", () => {
-  const source = "Before ![Screenshot](../media/image.png) after";
+  const source = "Before ![Screenshot](media/image.png) after";
   const state = EditorState.create({
     doc: source,
-    extensions: [markdown(), livePreviewExtension([], {}, [], {}, "projects/Roadmap.md")],
+    extensions: [markdown(), livePreviewExtension()],
   });
 
   assert.deepEqual(markdownImagesInState(state), [
     {
       from: 7,
-      to: 40,
+      to: 37,
       alt: "Screenshot",
-      target: "../media/image.png",
+      target: "media/image.png",
       title: null,
       titleFrom: null,
       titleTo: null,
@@ -110,7 +110,7 @@ test("keeps image syntax parseable inside inline LaTeX source", () => {
   const source = String.raw`Formula $![not an image](media/image.png)$`;
   const state = EditorState.create({
     doc: source,
-    extensions: [markdown(), livePreviewExtension([], {}, [], {}, "Notes.md")],
+    extensions: [markdown(), livePreviewExtension()],
   });
 
   // Constructing the state builds the decoration set. Markdown-looking formula

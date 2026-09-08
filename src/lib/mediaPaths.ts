@@ -4,30 +4,26 @@ import { isTauriRuntime } from "./api.js";
 const externalImageScheme = /^(?:https?:|data:|blob:)/i;
 
 export function resolveWorkspaceImagePath(
-  sourceDocumentPath: string,
   markdownTarget: string,
 ): string | null {
   const target = decodeMarkdownTarget(markdownTarget.trim());
-  if (!target || externalImageScheme.test(target) || target.startsWith("//")) {
+  if (
+    !target ||
+    externalImageScheme.test(target) ||
+    target.startsWith("/") ||
+    target.startsWith("\\") ||
+    /^[a-z]:[\\/]/i.test(target)
+  ) {
     return null;
   }
 
-  const workspaceRootRelative = target.startsWith("/");
-  const resolved = workspaceRootRelative
-    ? []
-    : sourceDocumentPath.replace(/\\/g, "/").split("/").slice(0, -1);
-  const targetPath = workspaceRootRelative ? target.slice(1) : target;
-
-  for (const segment of targetPath.replace(/\\/g, "/").split("/")) {
+  const resolved: string[] = [];
+  for (const segment of target.replace(/\\/g, "/").split("/")) {
     if (!segment || segment === ".") {
       continue;
     }
     if (segment === "..") {
-      if (resolved.length === 0) {
-        return null;
-      }
-      resolved.pop();
-      continue;
+      return null;
     }
     resolved.push(segment);
   }
@@ -35,12 +31,12 @@ export function resolveWorkspaceImagePath(
   return resolved.length > 0 ? resolved.join("/") : null;
 }
 
-export function workspaceImageUrl(sourceDocumentPath: string, markdownTarget: string) {
+export function workspaceImageUrl(markdownTarget: string) {
   if (externalImageScheme.test(markdownTarget.trim())) {
     return markdownTarget;
   }
 
-  const workspacePath = resolveWorkspaceImagePath(sourceDocumentPath, markdownTarget);
+  const workspacePath = resolveWorkspaceImagePath(markdownTarget);
   if (!workspacePath) {
     return "about:blank#invalid-workspace-image";
   }
@@ -55,10 +51,10 @@ export function workspaceImageUrl(sourceDocumentPath: string, markdownTarget: st
     .join("/")}`;
 }
 
-export function isWorkspaceImageTarget(sourceDocumentPath: string, markdownTarget: string) {
+export function isWorkspaceImageTarget(markdownTarget: string) {
   return (
     !externalImageScheme.test(markdownTarget.trim()) &&
-    resolveWorkspaceImagePath(sourceDocumentPath, markdownTarget) !== null
+    resolveWorkspaceImagePath(markdownTarget) !== null
   );
 }
 

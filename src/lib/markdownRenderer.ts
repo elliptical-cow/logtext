@@ -23,16 +23,15 @@ export function createMarkdownRenderer({ breaks, workspaceImages = false }: Mark
   });
 
   if (workspaceImages) {
-    markdown.renderer.rules.image = (tokens, index, options, env, renderer) => {
+    markdown.renderer.rules.image = (tokens, index, options, _env, renderer) => {
       const token = tokens[index];
-      const sourcePath = typeof env.sourcePath === "string" ? env.sourcePath : "";
       const target = token.attrGet("src") ?? "";
       const title = token.attrGet("title");
       const configuredWidth = logtextImageWidth(title);
-      token.attrSet("src", workspaceImageUrl(sourcePath, target));
+      token.attrSet("src", workspaceImageUrl(target));
       token.attrSet("loading", "lazy");
       token.attrSet("class", "workspace-image");
-      if (isWorkspaceImageTarget(sourcePath, target)) {
+      if (isWorkspaceImageTarget(target)) {
         token.attrSet("data-workspace-image", "true");
         token.attrSet("crossorigin", "anonymous");
       }
@@ -48,7 +47,7 @@ export function createMarkdownRenderer({ breaks, workspaceImages = false }: Mark
       }
       const altIndex = token.attrIndex("alt");
       if (altIndex >= 0) {
-        token.attrs![altIndex][1] = renderer.renderInlineAsText(token.children ?? [], options, env);
+        token.attrs![altIndex][1] = renderer.renderInlineAsText(token.children ?? [], options, _env);
       }
       return renderer.renderToken(tokens, index, options);
     };

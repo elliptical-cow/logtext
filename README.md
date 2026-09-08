@@ -170,16 +170,16 @@ configured workspace media folder and inserts a Markdown reference rooted at
 the workspace at the current editor selection:
 
 ```md
-![Pasted image](/media/projects-roadmap--1788890400000--a1b2c3d4.png)
+![Pasted image](media/projects-roadmap--1788890400000--a1b2c3d4.png)
 ```
 
 The filename contains a normalized form of the source page path, a timestamp,
 and a short content fingerprint. Images are rendered in the editor's live
 preview and in all rendered Markdown views, including the right pane, journal
-feed, linked references, and Task Overview. Ordinary relative Markdown image
-links to supported image files elsewhere in the workspace are rendered too.
-In Logtext, a leading `/` in an image target means the workspace root rather
-than the operating system's filesystem root.
+feed, linked references, and Task Overview. Every local Markdown image target is
+resolved relative to the workspace root, so the same target remains valid when
+copied to another page. Leading `/`, operating-system absolute paths, and `..`
+segments are not supported.
 
 Hover over an image in the editor live preview to reveal `−` and `+` controls.
 They change the displayed width in 20–25 percent steps and persist it in the
@@ -193,10 +193,9 @@ action is available for workspace images only; Logtext does not request
 clipboard read access.
 
 The media folder is application-managed and omitted from page navigation and
-Markdown indexing. Workspace-root image targets remain stable when their page
-moves. Logtext also rewrites older document-relative local image targets during
-page and folder moves. It does not delete image files automatically when a
-reference is removed.
+Markdown indexing. Workspace-relative image targets remain stable when their
+page moves. Logtext does not delete image files automatically when a reference
+is removed.
 
 ### Backlinks
 
@@ -319,8 +318,7 @@ Useful navigation and file actions:
 - open yesterday, today, or tomorrow from the journal shortcuts
 
 When pages or folders are renamed or moved, Logtext updates matching wiki links
-to the affected pages and preserves relative local image targets within moved
-pages.
+to the affected pages. Workspace-relative local image targets remain unchanged.
 
 Folder colors are stored in `.config`. They color the folder icon and wiki-link
 chips that point to pages in that folder. The default wiki-link style remains a

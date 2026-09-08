@@ -33,27 +33,21 @@ $$`);
   assert.match(block, /class="katex-display"/);
 });
 
-test("resolves workspace images relative to the source document", () => {
+test("resolves workspace images from the workspace root", () => {
   const markdown = createMarkdownRenderer({ breaks: true, workspaceImages: true });
 
   assert.match(
-    markdown.render("![Screenshot](../media/My%20image.png)", {
+    markdown.render("![Screenshot](media/My%20image.png)", {
       sourcePath: "projects/Roadmap.md",
     }),
     /src="logtext-media:\/\/localhost\/media\/My%20image\.png"/,
   );
   assert.match(
-    markdown.render("![Screenshot](/media/My%20image.png)", {
-      sourcePath: "projects/deep/Roadmap.md",
-    }),
-    /src="logtext-media:\/\/localhost\/media\/My%20image\.png"/,
-  );
-  assert.match(
-    markdown.render("![Screenshot](/media/image.png)", { sourcePath: "Notes.md" }),
+    markdown.render("![Screenshot](media/image.png)", { sourcePath: "Notes.md" }),
     /data-workspace-image="true"/,
   );
   assert.match(
-    markdown.render("![Screenshot](/media/image.png)", { sourcePath: "Notes.md" }),
+    markdown.render("![Screenshot](media/image.png)", { sourcePath: "Notes.md" }),
     /crossorigin="anonymous"/,
   );
   assert.equal(

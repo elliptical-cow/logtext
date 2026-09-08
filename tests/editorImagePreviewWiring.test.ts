@@ -8,13 +8,13 @@ const editor = readFileSync(
   "utf8",
 );
 
-test("keeps the active document path and image menu when live preview is reconfigured", () => {
-  const configuredWithSourcePath =
-    /livePreviewExtension\(\s*taskStates,\s*taskStateColors,\s*pages,\s*folderColors,\s*documentPath \?\? "",\s*openImageContextMenu,?\s*\)/g;
+test("keeps the image menu when live preview is reconfigured", () => {
+  const configuredWithImageMenu =
+    /livePreviewExtension\(\s*taskStates,\s*taskStateColors,\s*pages,\s*folderColors,\s*openImageContextMenu,?\s*\)/g;
 
   assert.equal(
-    [...editor.matchAll(configuredWithSourcePath)].length,
+    [...editor.matchAll(configuredWithImageMenu)].length,
     2,
-    "initial setup and reactive reconfiguration must resolve images from the active page and retain the image context menu",
+    "initial setup and reactive reconfiguration must retain the image context menu",
   );
 });

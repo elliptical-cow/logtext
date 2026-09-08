@@ -992,7 +992,6 @@
               taskStateColors,
               pages,
               folderColors,
-              documentPath ?? "",
               openImageContextMenu,
             )
           : [],
@@ -1095,7 +1094,6 @@
               taskStateColors,
               pages,
               folderColors,
-              documentPath ?? "",
               openImageContextMenu,
             )
           : [],

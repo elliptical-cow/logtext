@@ -73,7 +73,6 @@ export function livePreviewExtension(
   taskStateColors: TaskStateColors = {},
   pages: PageSummary[] = [],
   folderColors: FolderColors = {},
-  sourcePath = "",
   onImageContextMenu: (event: MouseEvent, image: HTMLImageElement) => void = () => {},
 ) {
   return [
@@ -82,7 +81,6 @@ export function livePreviewExtension(
       taskStateColors,
       pages,
       folderColors,
-      sourcePath,
       onImageContextMenu,
     ),
     livePreviewTheme,
@@ -232,7 +230,6 @@ function livePreviewField(
   taskStateColors: TaskStateColors,
   pages: PageSummary[],
   folderColors: FolderColors,
-  sourcePath: string,
   onImageContextMenu: (event: MouseEvent, image: HTMLImageElement) => void,
 ) {
   return StateField.define<DecorationSet>({
@@ -243,7 +240,6 @@ function livePreviewField(
         taskStateColors,
         pages,
         folderColors,
-        sourcePath,
         onImageContextMenu,
       );
     },
@@ -255,7 +251,6 @@ function livePreviewField(
           taskStateColors,
           pages,
           folderColors,
-          sourcePath,
           onImageContextMenu,
         );
       }
@@ -364,7 +359,6 @@ function buildLivePreviewDecorations(
   taskStateColors: TaskStateColors,
   pages: PageSummary[],
   folderColors: FolderColors,
-  sourcePath: string,
   onImageContextMenu: (event: MouseEvent, image: HTMLImageElement) => void,
 ) {
   const builder = new RangeSetBuilder<Decoration>();
@@ -416,11 +410,11 @@ function buildLivePreviewDecorations(
       to: image.to,
       decoration: Decoration.replace({
         widget: new MarkdownImageWidget(
-          workspaceImageUrl(sourcePath, image.target),
+          workspaceImageUrl(image.target),
           image.alt,
           logtextImageWidth(image.title),
           image.from,
-          isWorkspaceImageTarget(sourcePath, image.target) ? onImageContextMenu : null,
+          isWorkspaceImageTarget(image.target) ? onImageContextMenu : null,
         ),
       }),
     }));

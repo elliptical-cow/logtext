@@ -1,6 +1,6 @@
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use percent_encoding::percent_decode_str;
@@ -9,7 +9,6 @@ use tauri::ipc::{InvokeBody, Request as InvokeRequest};
 use tauri::{AppHandle, Manager, Runtime, State};
 
 use crate::app_state::{AppState, WorkspaceState};
-use crate::parser::wiki_links::is_markdown_code_position;
 use crate::workspace::paths::resolve_workspace_relative_path;
 
 const MAX_PASTED_IMAGE_BYTES: usize = 20 * 1024 * 1024;
@@ -113,7 +112,7 @@ pub fn save_pasted_image_in_workspace(
         }
 
         let workspace_path = format!("{}/{file_name}", workspace.config.media_folder);
-        return Ok(format!("/{workspace_path}"));
+        return Ok(workspace_path);
     }
 
     Err("Could not allocate a unique pasted image filename".to_string())
@@ -179,223 +178,6 @@ fn safe_existing_workspace_file(
         return Err("Workspace image resolves outside the workspace".to_string());
     }
     Ok(canonical_path)
-}
-
-pub(crate) fn rewrite_local_image_paths_for_move(
-    markdown: &str,
-    old_document_path: &str,
-    new_document_path: &str,
-) -> (String, usize) {
-    let mut rewritten = String::with_capacity(markdown.len());
-    let mut cursor = 0;
-    let mut replacements = 0;
-
-    for image in markdown_image_targets(markdown) {
-        if is_workspace_root_image_target(image.target) {
-            continue;
-        }
-        let Some(workspace_path) = workspace_path_for_local_image(old_document_path, image.target)
-        else {
-            continue;
-        };
-        let Ok(relative_path) = relative_markdown_path(new_document_path, &workspace_path) else {
-            continue;
-        };
-        let replacement = encode_markdown_path(&relative_path);
-        if replacement == image.target {
-            continue;
-        }
-
-        rewritten.push_str(&markdown[cursor..image.from]);
-        rewritten.push_str(&replacement);
-        cursor = image.to;
-        replacements += 1;
-    }
-
-    rewritten.push_str(&markdown[cursor..]);
-    (rewritten, replacements)
-}
-
-pub(crate) fn workspace_path_for_local_image(
-    source_document_path: &str,
-    markdown_target: &str,
-) -> Option<String> {
-    let decoded = percent_decode_str(markdown_target).decode_utf8().ok()?;
-    let target = decoded.replace('\\', "/");
-    let target_lower = target.to_ascii_lowercase();
-    if target.is_empty()
-        || target.starts_with('#')
-        || target_lower.starts_with("http:")
-        || target_lower.starts_with("https:")
-        || target_lower.starts_with("data:")
-        || target_lower.starts_with("blob:")
-    {
-        return None;
-    }
-
-    if target.starts_with('/') {
-        if target.starts_with("//") {
-            return None;
-        }
-        let segments = normal_segments(Path::new(target.trim_start_matches('/'))).ok()?;
-        return (!segments.is_empty()).then(|| segments.join("/"));
-    }
-
-    let mut segments = normal_segments(Path::new(source_document_path).parent()?).ok()?;
-    for segment in target.split('/') {
-        match segment {
-            "" | "." => {}
-            ".." => {
-                segments.pop()?;
-            }
-            value => segments.push(value.to_string()),
-        }
-    }
-    (!segments.is_empty()).then(|| segments.join("/"))
-}
-
-fn is_workspace_root_image_target(markdown_target: &str) -> bool {
-    percent_decode_str(markdown_target)
-        .decode_utf8()
-        .is_ok_and(|target| target.starts_with('/') && !target.starts_with("//"))
-}
-
-pub(crate) fn relative_markdown_path(
-    document_path: &str,
-    target_path: &str,
-) -> Result<String, String> {
-    let source_parent = Path::new(document_path)
-        .parent()
-        .unwrap_or_else(|| Path::new(""));
-    let source_segments = normal_segments(source_parent)?;
-    let target_segments = normal_segments(Path::new(target_path))?;
-    let shared = source_segments
-        .iter()
-        .zip(target_segments.iter())
-        .take_while(|(left, right)| left == right)
-        .count();
-    let mut parts = vec!["..".to_string(); source_segments.len() - shared];
-    parts.extend(target_segments[shared..].iter().cloned());
-    if parts.is_empty() {
-        return Err("Image path must not equal the source document path".to_string());
-    }
-    Ok(parts.join("/"))
-}
-
-struct MarkdownImageTarget<'a> {
-    from: usize,
-    to: usize,
-    target: &'a str,
-}
-
-fn markdown_image_targets(markdown: &str) -> Vec<MarkdownImageTarget<'_>> {
-    let bytes = markdown.as_bytes();
-    let mut targets = Vec::new();
-    let mut cursor = 0;
-
-    while cursor + 1 < bytes.len() {
-        if &bytes[cursor..cursor + 2] != b"![" || is_markdown_code_position(markdown, cursor) {
-            cursor += 1;
-            continue;
-        }
-
-        let Some(label_close) = find_unescaped_byte(bytes, cursor + 2, b']') else {
-            break;
-        };
-        if bytes.get(label_close + 1) != Some(&b'(') {
-            cursor = label_close + 1;
-            continue;
-        }
-
-        let mut target_start = label_close + 2;
-        while bytes.get(target_start).is_some_and(u8::is_ascii_whitespace) {
-            target_start += 1;
-        }
-        let (target_from, target_to, close_search_start) = if bytes.get(target_start) == Some(&b'<')
-        {
-            let Some(target_close) = find_unescaped_byte(bytes, target_start + 1, b'>') else {
-                cursor = target_start + 1;
-                continue;
-            };
-            (target_start + 1, target_close, target_close + 1)
-        } else {
-            let Some(target_end) = bare_image_target_end(bytes, target_start) else {
-                cursor = target_start + 1;
-                continue;
-            };
-            (target_start, target_end, target_end)
-        };
-        if target_from == target_to
-            || find_unescaped_byte(bytes, close_search_start, b')').is_none()
-        {
-            cursor = close_search_start;
-            continue;
-        }
-
-        targets.push(MarkdownImageTarget {
-            from: target_from,
-            to: target_to,
-            target: &markdown[target_from..target_to],
-        });
-        cursor = target_to;
-    }
-
-    targets
-}
-
-fn find_unescaped_byte(bytes: &[u8], start: usize, needle: u8) -> Option<usize> {
-    (start..bytes.len())
-        .find(|index| bytes[*index] == needle && (*index == 0 || bytes[*index - 1] != b'\\'))
-}
-
-fn bare_image_target_end(bytes: &[u8], start: usize) -> Option<usize> {
-    let mut depth = 0;
-    let mut cursor = start;
-    while cursor < bytes.len() {
-        match bytes[cursor] {
-            b'\\' => cursor += 2,
-            b'(' => {
-                depth += 1;
-                cursor += 1;
-            }
-            b')' if depth > 0 => {
-                depth -= 1;
-                cursor += 1;
-            }
-            b')' | b' ' | b'\t' | b'\n' | b'\r' if depth == 0 => return Some(cursor),
-            _ => cursor += 1,
-        }
-    }
-    None
-}
-
-fn encode_markdown_path(path: &str) -> String {
-    path.split('/')
-        .map(|segment| {
-            if segment == ".." {
-                return segment.to_string();
-            }
-            let mut encoded = String::new();
-            for byte in segment.as_bytes() {
-                if byte.is_ascii_alphanumeric() || matches!(*byte, b'-' | b'.' | b'_' | b'~') {
-                    encoded.push(char::from(*byte));
-                } else {
-                    encoded.push_str(&format!("%{byte:02X}"));
-                }
-            }
-            encoded
-        })
-        .collect::<Vec<_>>()
-        .join("/")
-}
-
-fn normal_segments(path: &Path) -> Result<Vec<String>, String> {
-    path.components()
-        .map(|component| match component {
-            Component::Normal(segment) => Ok(segment.to_string_lossy().to_string()),
-            _ => Err("Path contains unsupported components".to_string()),
-        })
-        .collect()
 }
 
 fn document_slug(document_path: &str) -> String {
@@ -499,18 +281,6 @@ mod tests {
     use crate::workspace_config::WorkspaceConfig;
 
     #[test]
-    fn builds_relative_markdown_paths_from_nested_pages() {
-        assert_eq!(
-            relative_markdown_path("projects/roadmap.md", "media/image.png").unwrap(),
-            "../media/image.png"
-        );
-        assert_eq!(
-            relative_markdown_path("Inbox.md", "media/image.png").unwrap(),
-            "media/image.png"
-        );
-    }
-
-    #[test]
     fn saves_validated_images_with_traceable_unique_names() {
         let root = temp_workspace();
         let mut pages = PageIndex::default();
@@ -532,13 +302,13 @@ mod tests {
         )
         .unwrap();
 
-        assert!(link.starts_with("/media/projects-roadmap--"));
+        assert!(link.starts_with("media/projects-roadmap--"));
         assert!(link.ends_with(".png"));
         assert_eq!(
             fs::read(root.join("projects").join("missing.png")).ok(),
             None
         );
-        let stored_path = root.join(link.trim_start_matches('/'));
+        let stored_path = root.join(link);
         assert_eq!(fs::read(stored_path).unwrap(), b"\x89PNG\r\n\x1a\nimage");
         fs::remove_dir_all(root).unwrap();
     }
@@ -547,63 +317,6 @@ mod tests {
     fn rejects_mismatched_or_active_image_formats() {
         assert!(validated_image_extension("image/jpeg", b"\x89PNG\r\n\x1a\n").is_err());
         assert!(validated_image_extension("image/svg+xml", b"<svg></svg>").is_err());
-    }
-
-    #[test]
-    fn rewrites_relative_image_paths_when_a_page_moves() {
-        let source = "Before ![Chart](../media/chart.png) after";
-
-        let (rewritten, count) = rewrite_local_image_paths_for_move(
-            source,
-            "projects/Roadmap.md",
-            "archive/2026/Roadmap.md",
-        );
-
-        assert_eq!(rewritten, "Before ![Chart](../../media/chart.png) after");
-        assert_eq!(count, 1);
-    }
-
-    #[test]
-    fn rewrites_encoded_and_angle_bracket_image_targets() {
-        let source = "![Chart](<../media/My%20chart.png> \"Title\")";
-
-        let (rewritten, count) = rewrite_local_image_paths_for_move(
-            source,
-            "projects/Roadmap.md",
-            "archive/2026/Roadmap.md",
-        );
-
-        assert_eq!(
-            rewritten,
-            "![Chart](<../../media/My%20chart.png> \"Title\")"
-        );
-        assert_eq!(count, 1);
-    }
-
-    #[test]
-    fn preserves_remote_images_and_images_in_code() {
-        let source = "![Remote](https://example.test/a.png) `![Code](media/a.png)`";
-
-        let (rewritten, count) =
-            rewrite_local_image_paths_for_move(source, "Inbox.md", "projects/Inbox.md");
-
-        assert_eq!(rewritten, source);
-        assert_eq!(count, 0);
-    }
-
-    #[test]
-    fn preserves_workspace_root_image_paths_when_a_page_moves() {
-        let source = "![Image](/media/image.png)";
-
-        let (rewritten, count) =
-            rewrite_local_image_paths_for_move(source, "Inbox.md", "projects/Inbox.md");
-
-        assert_eq!(rewritten, source);
-        assert_eq!(count, 0);
-        assert_eq!(
-            workspace_path_for_local_image("projects/Inbox.md", "/media/image.png"),
-            Some("media/image.png".to_string())
-        );
     }
 
     fn temp_workspace() -> PathBuf {

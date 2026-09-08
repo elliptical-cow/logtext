@@ -4,8 +4,8 @@
 
 - [x] Paste supported clipboard images into the editor, store them in a
   configurable workspace media folder, render standard local Markdown images
-  in live preview and rendered views, and use stable workspace-root targets for
-  new media while preserving older relative targets when pages or folders move.
+  in live preview and rendered views, and use stable `media-folder/file` targets
+  relative to the workspace root so paths remain valid across pages and moves.
   Editor controls can resize their persisted display width without changing the
   aspect ratio or exceeding the pane width, and a context-menu action copies
   workspace images to the system clipboard.

@@ -11,12 +11,8 @@ test("accepts supported raster clipboard formats but rejects SVG", () => {
 
 test("creates portable Markdown while encoding unsafe path characters", () => {
   assert.equal(
-    pastedImageMarkdown("../media files/screenshot (1).png"),
-    "![Pasted image](../media%20files/screenshot%20(1).png)",
+    pastedImageMarkdown("media files/screenshot (1).png"),
+    "![Pasted image](media%20files/screenshot%20(1).png)",
   );
   assert.equal(pastedImageMarkdown("media/image.png", "Chart ] draft"), "![Chart \\] draft](media/image.png)");
-  assert.equal(
-    pastedImageMarkdown("/media files/root image.png"),
-    "![Pasted image](/media%20files/root%20image.png)",
-  );
 });

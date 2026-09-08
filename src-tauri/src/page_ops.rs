@@ -9,7 +9,6 @@ use crate::dto::{
     RenamePageResultDto,
 };
 use crate::index::page_index::{default_h1_for_path, Page, PageIndex};
-use crate::media::rewrite_local_image_paths_for_move;
 use crate::parser::wiki_links::rewrite_wiki_link_targets;
 use crate::workspace::paths::{
     case_insensitive_key, folder_path_from_target, markdown_path_from_page_target,
@@ -272,9 +271,6 @@ pub(crate) fn move_page_in_workspace(
             format!("Failed to read page '{}': {error}", resolved_path),
         )
     })?;
-    let (moved_content, updated_image_count) =
-        rewrite_local_image_paths_for_move(&content, &resolved_path, &target_path);
-
     if let Some(parent) = target_absolute_path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
             AppError::io(
@@ -294,21 +290,9 @@ pub(crate) fn move_page_in_workspace(
         )
     })?;
 
-    if updated_image_count > 0 {
-        if let Err(error) = fs::write(&target_absolute_path, &moved_content) {
-            let rollback = fs::rename(&target_absolute_path, &source_absolute_path);
-            return Err(AppError::io(
-                "The page could not be moved because its image links could not be updated.",
-                format!(
-                    "Failed to update image links in '{target_path}': {error}. Rollback result: {rollback:?}"
-                ),
-            ));
-        }
-    }
-
     workspace.remove_indexed_page(&resolved_path);
     let page = workspace
-        .index_page_content(target_path.clone(), moved_content)
+        .index_page_content(target_path.clone(), content)
         .ok_or_else(|| {
             AppError::internal(
                 "The page was moved, but Logtext could not update the workspace index. Refresh the workspace.",
@@ -316,8 +300,8 @@ pub(crate) fn move_page_in_workspace(
             )
         })?;
     let page_path = page.path.clone();
-    let updated_link_count = updated_image_count
-        + rewrite_links_to_targets_with_recovery(workspace, &[(source_key, page_path)])?;
+    let updated_link_count =
+        rewrite_links_to_targets_with_recovery(workspace, &[(source_key, page_path)])?;
     refresh_workspace_folders(workspace)?;
 
     Ok(MovePageResultDto {
@@ -411,9 +395,6 @@ pub(crate) fn rename_page_in_workspace(
             format!("Failed to read page '{}': {error}", resolved_path),
         )
     })?;
-    let (renamed_content, updated_image_count) =
-        rewrite_local_image_paths_for_move(&content, &resolved_path, &target_path);
-
     fs::rename(&source_absolute_path, &target_absolute_path).map_err(|error| {
         AppError::io(
             "The page could not be renamed. Check the folder permissions and try again.",
@@ -421,21 +402,9 @@ pub(crate) fn rename_page_in_workspace(
         )
     })?;
 
-    if updated_image_count > 0 {
-        if let Err(error) = fs::write(&target_absolute_path, &renamed_content) {
-            let rollback = fs::rename(&target_absolute_path, &source_absolute_path);
-            return Err(AppError::io(
-                "The page could not be renamed because its image links could not be updated.",
-                format!(
-                    "Failed to update image links in '{target_path}': {error}. Rollback result: {rollback:?}"
-                ),
-            ));
-        }
-    }
-
     workspace.remove_indexed_page(&resolved_path);
     let page = workspace
-        .index_page_content(target_path.clone(), renamed_content)
+        .index_page_content(target_path.clone(), content)
         .ok_or_else(|| {
             AppError::internal(
                 "The page was renamed, but Logtext could not update the workspace index. Refresh the workspace.",
@@ -443,8 +412,8 @@ pub(crate) fn rename_page_in_workspace(
             )
         })?;
     let page_path = page.path.clone();
-    let updated_link_count = updated_image_count
-        + rewrite_links_to_targets_with_recovery(workspace, &[(source_key, page_path)])?;
+    let updated_link_count =
+        rewrite_links_to_targets_with_recovery(workspace, &[(source_key, page_path)])?;
     refresh_workspace_folders(workspace)?;
 
     Ok(RenamePageResultDto {
@@ -546,14 +515,8 @@ fn move_folder_to_path(
         )
     })?;
 
-    let updated_image_count = rewrite_moved_folder_image_paths_with_recovery(
-        workspace,
-        &pages_to_rename,
-        &target_rewrites,
-    )?;
     reindex_after_file_operation(workspace)?;
-    let updated_link_count =
-        updated_image_count + rewrite_links_to_targets_with_recovery(workspace, &target_rewrites)?;
+    let updated_link_count = rewrite_links_to_targets_with_recovery(workspace, &target_rewrites)?;
 
     Ok(RenameFolderResultDto {
         old_path: old_folder,
@@ -579,51 +542,6 @@ fn refresh_workspace_folders(workspace: &mut WorkspaceState) -> AppResult<()> {
         })?
         .folders;
     Ok(())
-}
-
-fn rewrite_moved_folder_image_paths_with_recovery(
-    workspace: &mut WorkspaceState,
-    old_pages: &[Page],
-    target_rewrites: &[(String, String)],
-) -> AppResult<usize> {
-    let result = old_pages.iter().zip(target_rewrites.iter()).try_fold(
-        0,
-        |updated_count, (old_page, (_, new_path))| {
-            let absolute_path = resolve_workspace_relative_path(&workspace.root, new_path)
-                .ok_or_else(|| invalid_page_path(new_path))?;
-            let content = fs::read_to_string(&absolute_path).map_err(|error| {
-                AppError::io(
-                    "A moved page could not be read while updating its image links.",
-                    format!("Failed to read page '{new_path}': {error}"),
-                )
-            })?;
-            let (rewritten, replacements) =
-                rewrite_local_image_paths_for_move(&content, &old_page.path, new_path);
-            if replacements > 0 {
-                fs::write(&absolute_path, rewritten).map_err(|error| {
-                    AppError::io(
-                        "A moved page could not be updated. Review its local image links.",
-                        format!("Failed to update image links in '{new_path}': {error}"),
-                    )
-                })?;
-            }
-            Ok(updated_count + replacements)
-        },
-    );
-
-    result.map_err(|error: AppError| {
-        let original_detail = error.detail.unwrap_or(error.message);
-        match reindex_workspace(workspace) {
-            Ok(()) => AppError::io(
-                "The folder move completed, but not all local image links could be updated. Review the moved pages.",
-                format!("{original_detail}. The workspace index was rebuilt."),
-            ),
-            Err(reindex_error) => AppError::internal(
-                "The folder move completed, but image links and the workspace index could not be updated. Reopen the workspace.",
-                format!("{original_detail}. Index rebuild failed: {reindex_error}"),
-            ),
-        }
-    })
 }
 
 fn rewrite_links_to_targets(
@@ -1289,14 +1207,14 @@ mod tests {
     }
 
     #[test]
-    fn moving_pages_and_folders_preserves_relative_image_targets() {
+    fn moving_pages_and_folders_preserves_workspace_root_image_targets() {
         let root = temp_workspace();
         fs::create_dir_all(root.join("projects")).unwrap();
         fs::create_dir_all(root.join("media")).unwrap();
         fs::write(root.join("media/chart.png"), b"image").unwrap();
         fs::write(
             root.join("projects/Roadmap.md"),
-            "# Roadmap\n\n![Chart](../media/chart.png)",
+            "# Roadmap\n\n![Chart](media/chart.png)",
         )
         .unwrap();
         let mut workspace = WorkspaceState {
@@ -1315,16 +1233,16 @@ mod tests {
             "archive/2026".to_string(),
         )
         .unwrap();
-        assert_eq!(page_result.updated_link_count, 1);
+        assert_eq!(page_result.updated_link_count, 0);
         assert_eq!(
             fs::read_to_string(root.join("archive/2026/Roadmap.md")).unwrap(),
-            "# Roadmap\n\n![Chart](../../media/chart.png)"
+            "# Roadmap\n\n![Chart](media/chart.png)"
         );
 
         fs::create_dir_all(root.join("projects")).unwrap();
         fs::write(
             root.join("projects/Notes.md"),
-            "# Notes\n\n![Chart](../media/chart.png)",
+            "# Notes\n\n![Chart](media/chart.png)",
         )
         .unwrap();
         reindex_workspace(&mut workspace).unwrap();
@@ -1335,10 +1253,10 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(folder_result.updated_link_count, 1);
+        assert_eq!(folder_result.updated_link_count, 0);
         assert_eq!(
             fs::read_to_string(root.join("archive/projects/Notes.md")).unwrap(),
-            "# Notes\n\n![Chart](../../media/chart.png)"
+            "# Notes\n\n![Chart](media/chart.png)"
         );
 
         fs::remove_dir_all(root).unwrap();
