@@ -79,6 +79,29 @@ test("recognizes Markdown images through the editor syntax tree", () => {
       to: 40,
       alt: "Screenshot",
       target: "../media/image.png",
+      title: null,
+      titleFrom: null,
+      titleTo: null,
+    },
+  ]);
+});
+
+test("reads persistent image width metadata from Markdown titles", () => {
+  const source = '![Diagram](media/diagram.png "Overview | logtext-width=640px")';
+  const state = EditorState.create({
+    doc: source,
+    extensions: [markdown()],
+  });
+
+  assert.deepEqual(markdownImagesInState(state), [
+    {
+      from: 0,
+      to: source.length,
+      alt: "Diagram",
+      target: "media/diagram.png",
+      title: "Overview | logtext-width=640px",
+      titleFrom: 29,
+      titleTo: 61,
     },
   ]);
 });

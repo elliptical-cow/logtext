@@ -179,6 +179,12 @@ preview and in all rendered Markdown views, including the right pane, journal
 feed, linked references, and Task Overview. Ordinary relative Markdown image
 links to supported image files elsewhere in the workspace are rendered too.
 
+Hover over an image in the editor live preview to reveal `−` and `+` controls.
+They change the displayed width in 20–25 percent steps and persist it in the
+optional Markdown image title, while preserving an existing title. Image height
+always follows the original aspect ratio. Images wider than the available pane
+remain limited to the pane width.
+
 The media folder is application-managed and omitted from page navigation and
 Markdown indexing. Moving or renaming a page or folder through Logtext rewrites
 its relative local image targets so they still resolve. Logtext does not delete

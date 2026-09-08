@@ -2976,3 +2976,45 @@ textarea {
   vertical-align: middle;
   border-radius: 4px;
 }
+
+.cm-live-image-widget {
+  display: inline-block;
+  position: relative;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.cm-live-image-controls {
+  display: flex;
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.cm-live-image-widget:hover .cm-live-image-controls,
+.cm-live-image-widget:focus-within .cm-live-image-controls {
+  opacity: 1;
+}
+
+.cm-live-image-resize {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+}
+
+.cm-live-image-resize:hover,
+.cm-live-image-resize:focus-visible {
+  background: var(--surface-hover);
+}

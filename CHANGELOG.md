@@ -10,7 +10,9 @@ current source version is `0.7.1`.
 - Added clipboard image paste for PNG, JPEG, WebP, and GIF files. Logtext stores
   validated images in a configurable workspace media folder, inserts portable
   relative Markdown, and renders workspace images in the editor live preview
-  and all rendered views.
+  and all rendered views. Live-preview controls resize images without changing
+  their aspect ratio, persist the chosen width in Markdown, and retain the
+  existing page-width limit.
 - Added KaTeX rendering for inline (`$...$`) and block (`$$...$$`) LaTeX
   formulas in rendered Markdown views, including the right pane, journal feed,
   linked references, and Task Overview. Until full editor rendering is added,

@@ -11,6 +11,12 @@ import { wikiLinkColorStyle } from "./folderColors.js";
 import { parseCheckboxListItem } from "./markdownPatterns.js";
 import { wikiLinkDisplayLabel, wikiLinksInText } from "./wikiLinks.js";
 import { workspaceImageUrl } from "./mediaPaths.js";
+import {
+  imageTitleWithLogtextWidth,
+  logtextImageWidth,
+  nextImageWidth,
+  type ImageResizeDirection,
+} from "./imageSizing.js";
 import type { FolderColors, PageSummary, TaskStateColors } from "./types.js";
 
 export type EditorMode = "source" | "live-preview";
@@ -44,6 +50,9 @@ export type MarkdownImageMatch = {
   to: number;
   alt: string;
   target: string;
+  title: string | null;
+  titleFrom: number | null;
+  titleTo: number | null;
 };
 
 type CheckboxAtPosition = {
@@ -397,6 +406,8 @@ function buildLivePreviewDecorations(
         widget: new MarkdownImageWidget(
           workspaceImageUrl(sourcePath, image.target),
           image.alt,
+          logtextImageWidth(image.title),
+          image.from,
         ),
       }),
     }));
@@ -435,11 +446,15 @@ export function markdownImagesInState(state: EditorState): MarkdownImageMatch[] 
       }
       const prefix = state.sliceDoc(imageNode.from, urlNode.from);
       const altEnd = prefix.lastIndexOf("](");
+      const titleNode = imageNode.getChild("LinkTitle");
       matches.push({
         from: imageNode.from,
         to: imageNode.to,
         alt: altEnd >= 2 ? prefix.slice(2, altEnd) : "",
         target: state.sliceDoc(urlNode.from, urlNode.to),
+        title: titleNode ? markdownLinkTitle(state.sliceDoc(titleNode.from, titleNode.to)) : null,
+        titleFrom: titleNode?.from ?? null,
+        titleTo: titleNode?.to ?? null,
       });
     },
   });
@@ -945,20 +960,95 @@ class MarkdownImageWidget extends WidgetType {
   constructor(
     private readonly source: string,
     private readonly alt: string,
+    private readonly configuredWidth: number | null,
+    private readonly imageFrom: number,
   ) {
     super();
   }
 
   eq(other: MarkdownImageWidget) {
-    return this.source === other.source && this.alt === other.alt;
+    return (
+      this.source === other.source &&
+      this.alt === other.alt &&
+      this.configuredWidth === other.configuredWidth &&
+      this.imageFrom === other.imageFrom
+    );
   }
 
-  toDOM() {
+  ignoreEvent(event: Event) {
+    return event.target instanceof HTMLButtonElement;
+  }
+
+  toDOM(view: EditorView) {
+    const container = document.createElement("span");
+    container.className = "cm-live-image-widget";
+    container.setAttribute("contenteditable", "false");
     const image = document.createElement("img");
     image.className = "cm-live-image";
     image.src = this.source;
     image.alt = this.alt;
     image.loading = "lazy";
-    return image;
+    if (this.configuredWidth !== null) {
+      image.style.width = `${this.configuredWidth}px`;
+    }
+    container.append(image);
+
+    const controls = document.createElement("span");
+    controls.className = "cm-live-image-controls";
+    controls.setAttribute("aria-label", "Image size");
+    controls.append(
+      this.resizeButton(view, image, "smaller", "−", "Make image smaller"),
+      this.resizeButton(view, image, "larger", "+", "Make image larger"),
+    );
+    container.append(controls);
+    return container;
   }
+
+  private resizeButton(
+    view: EditorView,
+    image: HTMLImageElement,
+    direction: ImageResizeDirection,
+    label: string,
+    title: string,
+  ) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "cm-live-image-resize";
+    button.textContent = label;
+    button.title = title;
+    button.setAttribute("aria-label", title);
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const renderedWidth = image.getBoundingClientRect().width || image.naturalWidth;
+      const width = nextImageWidth(this.configuredWidth, renderedWidth, direction);
+      resizeMarkdownImage(view, this.imageFrom, width);
+    });
+    return button;
+  }
+}
+
+function resizeMarkdownImage(view: EditorView, imageFrom: number, width: number) {
+  const image = markdownImagesInState(view.state).find((candidate) => candidate.from === imageFrom);
+  if (!image) {
+    return;
+  }
+  const title = `"${escapeMarkdownLinkTitle(imageTitleWithLogtextWidth(image.title, width))}"`;
+  const changes =
+    image.titleFrom !== null && image.titleTo !== null
+      ? { from: image.titleFrom, to: image.titleTo, insert: title }
+      : { from: image.to - 1, to: image.to - 1, insert: ` ${title}` };
+  view.dispatch({ changes, userEvent: "input" });
+}
+
+function markdownLinkTitle(source: string) {
+  if (source.length < 2) {
+    return source;
+  }
+  return source.slice(1, -1).replace(/\\([\\"'])/g, "$1");
+}
+
+function escapeMarkdownLinkTitle(title: string) {
+  return title.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
