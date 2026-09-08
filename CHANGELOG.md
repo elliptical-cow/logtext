@@ -20,6 +20,8 @@ current source version is `0.7.1`.
 
 ### Changed
 
+- Compact `#` link completion now offers every page and automatically switches
+  to `[[target]]` syntax when the selected target contains spaces.
 - Release assets now use consistent names that explicitly identify Logtext's
   version, target operating system, architecture, and Windows package variant.
 
