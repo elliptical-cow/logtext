@@ -43,11 +43,11 @@ test("keeps explicit wiki link aliases", () => {
   );
 });
 
-test("renders round-delimited wiki links with the same semantics", () => {
-  assert.equal(
-    renderWikiLinks("((projects/forecasts.md|Forecast))", pages),
-    "[Forecast](logtext:Projects%2FForecasts.md)",
-  );
+test("keeps round-delimited text unchanged", () => {
+  const source = "((projects/forecasts.md|Forecast))";
+
+  assert.deepEqual(wikiLinksInText(source), []);
+  assert.equal(renderWikiLinks(source, pages), source);
 });
 
 test("renders compact links with a visible hash marker", () => {

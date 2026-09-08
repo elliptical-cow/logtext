@@ -13,7 +13,7 @@ export type ResolvedWikiTarget =
       key: string;
     };
 
-export type WikiLinkSyntax = "square" | "round" | "compact";
+export type WikiLinkSyntax = "square" | "compact";
 
 export type WikiLinkMatch = {
   from: number;
@@ -27,7 +27,7 @@ export type WikiLinkMatch = {
 const compactSegmentPattern = String.raw`[\p{L}\p{N}_](?:[\p{L}\p{N}_-]|\.(?=[\p{L}\p{N}_]))*`;
 const compactTargetPattern = `${compactSegmentPattern}(?:/${compactSegmentPattern})*`;
 const wikiLinkPattern = new RegExp(
-  String.raw`\[\[([^\]\n]+)\]\]|\(\(([^)\n]+)\)\)|#(${compactTargetPattern})`,
+  String.raw`\[\[([^\]\n]+)\]\]|#(${compactTargetPattern})`,
   "gu",
 );
 const compactTargetPatternExact = new RegExp(`^${compactTargetPattern}$`, "u");
@@ -119,12 +119,8 @@ export function wikiLinksInText(source: string): WikiLinkMatch[] {
   for (const match of source.matchAll(wikiLinkPattern)) {
     const from = match.index ?? 0;
     const raw = match[0];
-    const compactTarget = match[3];
-    const syntax: WikiLinkSyntax = compactTarget
-      ? "compact"
-      : match[1] !== undefined
-        ? "square"
-        : "round";
+    const compactTarget = match[2];
+    const syntax: WikiLinkSyntax = compactTarget ? "compact" : "square";
 
     if (
       isMarkdownCodePosition(source, from) ||
@@ -134,7 +130,7 @@ export function wikiLinksInText(source: string): WikiLinkMatch[] {
       continue;
     }
 
-    const inner = compactTarget ?? match[1] ?? match[2];
+    const inner = compactTarget ?? match[1];
     const [rawTarget, rawAlias] = inner.split("|", 2);
     const target = rawTarget.trim();
     if (!isValidWikiTarget(target)) {

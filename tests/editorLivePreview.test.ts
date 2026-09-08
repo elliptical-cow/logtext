@@ -100,20 +100,10 @@ test("creates preview decorations for wiki links and aliases", () => {
   );
 });
 
-test("creates preview decorations for round-delimited wiki links", () => {
+test("does not create preview decorations for round-delimited text", () => {
   const decorations = previewDecorationsForLine("See ((projects/alpha|Alpha)) and ((Beta))");
 
-  assert.deepEqual(
-    decorations.map(({ from, to }) => ({ from, to })),
-    [
-      { from: 4, to: 21 },
-      { from: 21, to: 26 },
-      { from: 26, to: 28 },
-      { from: 33, to: 35 },
-      { from: 35, to: 39 },
-      { from: 39, to: 41 },
-    ],
-  );
+  assert.deepEqual(decorations, []);
 });
 
 test("creates preview decorations for compact links", () => {
@@ -258,12 +248,7 @@ test("finds wiki links at document positions", () => {
     label: "Beta",
   });
 
-  assert.deepEqual(wikiLinkAtPosition("((Beta))", 0, 3), {
-    from: 0,
-    to: 8,
-    target: "Beta",
-    label: "Beta",
-  });
+  assert.equal(wikiLinkAtPosition("((Beta))", 0, 3), null);
 
   assert.deepEqual(wikiLinkAtPosition("See #projects/alpha", 0, 8), {
     from: 4,

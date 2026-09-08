@@ -150,9 +150,11 @@ characters, and hash text in code are not interpreted as compact links.
 
 After typing `[[` or a compact `#` target in the editor, Logtext offers matching
 page suggestions based on the current input. Selecting a `[[` suggestion inserts
-the target and closes the link with `]]`; compact suggestions insert the
-space-free target without a closing delimiter. Suggestions show the full
-relative page path so the inserted target is unambiguous.
+the target and closes the link with `]]`. The `#` suggestions include all pages:
+space-free targets remain compact links, while selecting a target containing
+spaces automatically replaces the compact input with a `[[target]]` link.
+Suggestions show the full relative page path so the inserted target is
+unambiguous.
 
 Rendered wiki links without an alias use a compact display label. If the page
 name is unique, only the page name is shown; if multiple pages share that name,

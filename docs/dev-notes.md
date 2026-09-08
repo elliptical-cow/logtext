@@ -245,13 +245,14 @@ markers, fixed-width ordered markers, task checkboxes, and nested-list hierarchy
 guides on one shared `em`-based axis. This avoids platform font metrics and keeps
 the horizontal geometry stable when the application font size changes.
 
-Page links are recognized in square (`[[page]]`), round (`((page))`), and compact
-(`#page`) syntax. Compact targets are slash-separated, whitespace-free path
-segments. The Rust parser and TypeScript live-preview scanner deliberately share
-fixtures for valid links and exclusions such as headings, task priorities, URL
-fragments, escaped hashes, inline code, and fenced code. Rename and move
-operations preserve compact syntax when the replacement remains valid and fall
-back to square syntax when a new target contains spaces.
+Page links are recognized in square (`[[page]]`) and compact (`#page`) syntax.
+Round delimiters such as `((page))` are ordinary text. Compact targets are
+slash-separated, whitespace-free path segments. The Rust parser and TypeScript
+live-preview scanner deliberately share fixtures for valid links and exclusions
+such as headings, task priorities, URL fragments, escaped hashes, inline code,
+and fenced code. Rename and move operations preserve compact syntax when the
+replacement remains valid and fall back to square syntax when a new target
+contains spaces.
 
 ## File Operations
 

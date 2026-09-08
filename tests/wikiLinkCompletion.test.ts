@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   matchWikiLinkCompletion,
+  wikiLinkCompletionApply,
   wikiLinkSuggestions,
 } from "../src/lib/wikiLinkCompletion.js";
 import type { PageSummary } from "../src/lib/types.js";
@@ -15,22 +16,20 @@ const pages: PageSummary[] = [
 test("matches text after an open wiki link marker", () => {
   assert.deepEqual(matchWikiLinkCompletion("- siehe [[pro", 14), {
     from: 11,
+    replacementFrom: 11,
     query: "pro",
     closingDelimiter: "]]",
   });
 });
 
-test("matches text after an open round-delimited wiki link marker", () => {
-  assert.deepEqual(matchWikiLinkCompletion("- siehe ((pro", 14), {
-    from: 11,
-    query: "pro",
-    closingDelimiter: "))",
-  });
+test("does not complete round-delimited text", () => {
+  assert.equal(matchWikiLinkCompletion("- siehe ((pro", 14), null);
 });
 
 test("matches compact link completion after a hash marker", () => {
   assert.deepEqual(matchWikiLinkCompletion("- see #pro", 10), {
     from: 7,
+    replacementFrom: 6,
     query: "pro",
     closingDelimiter: "",
   });
@@ -42,7 +41,7 @@ test("does not treat headings or task priorities as compact link completion", ()
   assert.equal(matchWikiLinkCompletion("word#Alpha", 10), null);
 });
 
-test("does not match aliases or closed wiki links", () => {
+test("does not match aliases, closed wiki links, or round-delimited text", () => {
   assert.equal(matchWikiLinkCompletion("[[projects|Alias", 16), null);
   assert.equal(matchWikiLinkCompletion("[[projects]]", 12), null);
   assert.equal(matchWikiLinkCompletion("((projects|Alias", 16), null);
@@ -128,18 +127,55 @@ test("keeps full suggestion labels in the dropdown", () => {
   ]);
 });
 
-test("compact completion excludes page targets containing spaces", () => {
+test("compact completion offers page targets containing spaces", () => {
   const compactPages: PageSummary[] = [
     ...pages,
     { exists: true, key: "projects/new alpha", path: "projects/new alpha.md", title: "New Alpha" },
   ];
 
-  assert.deepEqual(wikiLinkSuggestions("pro", compactPages, undefined, true), [
+  assert.deepEqual(wikiLinkSuggestions("new", compactPages), [
     {
-      label: "projects/forecasts",
-      apply: "projects/forecasts",
+      label: "projects/new alpha",
+      apply: "projects/new alpha",
     },
   ]);
+});
+
+test("keeps compact completions for compatible page targets", () => {
+  const match = matchWikiLinkCompletion("See #fore", 9);
+
+  assert.ok(match);
+  assert.equal(
+    wikiLinkCompletionApply({ label: "forecasts", apply: "projects/forecasts" }, match!),
+    "#projects/forecasts",
+  );
+});
+
+test("replaces compact syntax with brackets for page targets containing spaces", () => {
+  const match = matchWikiLinkCompletion("See #new", 8);
+
+  assert.ok(match);
+  assert.equal(match!.replacementFrom, 4);
+  assert.equal(
+    wikiLinkCompletionApply(
+      { label: "projects/new alpha", apply: "projects/new alpha" },
+      match!,
+    ),
+    "[[projects/new alpha]]",
+  );
+});
+
+test("keeps bracket completion behavior unchanged", () => {
+  const match = matchWikiLinkCompletion("See [[new", 9);
+
+  assert.ok(match);
+  assert.equal(
+    wikiLinkCompletionApply(
+      { label: "projects/new alpha", apply: "projects/new alpha" },
+      match!,
+    ),
+    "projects/new alpha]]",
+  );
 });
 
 test("returns up to thirty suggestions by default", () => {

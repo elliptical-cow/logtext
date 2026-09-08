@@ -59,7 +59,11 @@
     type EditorContextMenuKind,
   } from "../editorContextMenu";
   import { minimalTextChange } from "../textChanges";
-  import { matchWikiLinkCompletion, wikiLinkSuggestions } from "../wikiLinkCompletion";
+  import {
+    matchWikiLinkCompletion,
+    wikiLinkCompletionApply,
+    wikiLinkSuggestions,
+  } from "../wikiLinkCompletion";
   import { resolveWikiTarget } from "../wikiLinks";
   import type { LinkTargetPane } from "../stores/linkOperations";
   import type { FolderColors, PageSummary, TaskStateColors } from "../types";
@@ -827,22 +831,17 @@
       return null;
     }
 
-    const suggestions = wikiLinkSuggestions(
-      match.query,
-      pages,
-      undefined,
-      match.closingDelimiter === "",
-    );
+    const suggestions = wikiLinkSuggestions(match.query, pages);
     if (suggestions.length === 0 && !context.explicit) {
       return null;
     }
 
     return {
-      from: match.from,
+      from: match.replacementFrom,
       options: suggestions.map((suggestion) => ({
         label: suggestion.label,
         type: "file",
-        apply: `${suggestion.apply}${match.closingDelimiter}`,
+        apply: wikiLinkCompletionApply(suggestion, match),
       })),
       filter: false,
     };
