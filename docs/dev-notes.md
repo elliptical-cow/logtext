@@ -301,8 +301,8 @@ Workspace-level config:
 - Managed by `src-tauri/src/workspace_config.rs`
 - Stores derived UI and workspace preferences such as task states, task colors,
   folder colors, expanded folders, favorites, recent pages, task overview
-  filters, backlink view options, sort configuration, the journal folder, pane
-  session state, and navigation layout values
+  filters, backlink view options, sort configuration, the journal and media
+  folders, pane session state, and navigation layout values
 
 The workspace config is normalized when loaded. Invalid or unknown values are
 discarded or replaced with defaults where practical.
@@ -333,6 +333,28 @@ new page mode with stale content from the previous page.
 App-managed page operations enforce valid calendar filenames in the configured
 journal folder and prevent journal subfolders. External files remain preserved
 and are excluded from the journal sequence.
+
+## Workspace Images
+
+Clipboard image paste crosses the frontend/backend boundary once. The editor
+sends raw image bytes plus the active Markdown path and clipboard MIME type to
+`src-tauri/src/media.rs`. The backend validates both the MIME type and file
+signature, enforces the size limit, creates a collision-safe flat filename, and
+writes it beneath the configured `mediaFolder`. No media database or lifecycle
+index is maintained.
+
+Markdown retains ordinary relative image syntax. `src/lib/mediaPaths.ts`
+resolves local targets relative to their source page and maps them to the
+workspace-scoped `logtext-media` protocol. The protocol canonicalizes paths,
+keeps reads inside the open workspace, and serves only validated PNG, JPEG,
+WebP, or GIF content. `MarkdownView` and the CodeMirror live-preview widget use
+the same URL helper.
+
+The workspace scanner excludes the media subtree from Markdown indexing and
+navigation. App-managed file operations prevent pages from entering that
+subtree and protect the configured folder path. When a page or folder moves,
+the backend rewrites local image paths inside the moved Markdown documents;
+remote and data URLs and image-like text in Markdown code remain unchanged.
 
 Primary components:
 
