@@ -116,6 +116,48 @@ export async function setupCoreEvents() {
     await editorSessionStore.save();
   });
 
+  await onCoreEvent(
+    "menu-clean-media",
+    userAction("Could not prepare media cleanup", async () => {
+      if (!get(workspaceStore).root) {
+        await message("Open a workspace before cleaning media.", {
+          title: "Logtext",
+          kind: "warning",
+        });
+        return;
+      }
+
+      let editor = get(editorSessionStore);
+      if (editor.saving) {
+        await message("Wait for the current save to finish before cleaning media.", {
+          title: "Logtext",
+          kind: "warning",
+        });
+        return;
+      }
+      if (editor.conflict) {
+        await message("Resolve the current editor conflict before cleaning media.", {
+          title: "Logtext",
+          kind: "warning",
+        });
+        return;
+      }
+      if (editor.dirty) {
+        await editorSessionStore.save();
+        editor = get(editorSessionStore);
+        if (editor.dirty || editor.conflict || editor.saving) {
+          await message("Save the current page successfully before cleaning media.", {
+            title: "Logtext",
+            kind: "warning",
+          });
+          return;
+        }
+      }
+
+      window.dispatchEvent(new CustomEvent("logtext-clean-media"));
+    }),
+  );
+
   setupUndoRedoMenuLabels();
   setupThemeMenuLabel();
   setupTaskOverviewMenuLabel();

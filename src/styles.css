@@ -1588,6 +1588,77 @@ textarea {
   width: min(560px, 100%);
 }
 
+.media-cleanup-dialog {
+  width: min(620px, 100%);
+  max-height: min(680px, calc(100vh - 48px));
+}
+
+.media-cleanup-body {
+  min-height: 84px;
+  overflow: hidden;
+}
+
+.media-cleanup-status,
+.media-cleanup-summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.media-cleanup-list {
+  display: grid;
+  max-height: min(380px, 50vh);
+  gap: 1px;
+  margin: 8px 0 0;
+  padding: 4px;
+  overflow: auto;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--surface-pane-subtle);
+  list-style: none;
+}
+
+.media-cleanup-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.media-cleanup-list li:nth-child(even) {
+  background: var(--surface-elevated);
+}
+
+.media-cleanup-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-cleanup-list small {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.media-cleanup-dialog footer {
+  gap: 8px;
+}
+
+.media-cleanup-dialog footer .secondary-action {
+  border-color: var(--border-control);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.media-cleanup-dialog footer button:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
 .shortcut-list div {
   grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
   align-items: start;

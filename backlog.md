@@ -8,7 +8,10 @@
   relative to the workspace root so paths remain valid across pages and moves.
   Editor controls can resize their persisted display width without changing the
   aspect ratio or exceeding the pane width, and a context-menu action copies
-  workspace images to the system clipboard.
+  workspace images to the system clipboard. File > Clean Media lists
+  unreferenced supported images in a scrollable confirmation dialog and moves
+  confirmed candidates to the operating system trash after a fresh safety
+  check, without a permanent-delete fallback.
 
 ## Long term
 

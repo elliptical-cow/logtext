@@ -110,6 +110,22 @@ export type ToggleCheckboxResult = {
   checked: boolean;
 };
 
+export type MediaCleanupCandidate = {
+  path: string;
+  sizeBytes: number;
+};
+
+export type MediaTrashFailure = {
+  path: string;
+  message: string;
+};
+
+export type MediaTrashResult = {
+  movedPaths: string[];
+  skippedPaths: string[];
+  failures: MediaTrashFailure[];
+};
+
 export type WorkspaceState = {
   root: string;
   journalFolder: string;

@@ -189,6 +189,28 @@ pub struct ToggleCheckboxResultDto {
     pub checked: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaCleanupCandidateDto {
+    pub path: String,
+    pub size_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaTrashFailureDto {
+    pub path: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaTrashResultDto {
+    pub moved_paths: Vec<String>,
+    pub skipped_paths: Vec<String>,
+    pub failures: Vec<MediaTrashFailureDto>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "status")]
 pub enum SavePageResultDto {

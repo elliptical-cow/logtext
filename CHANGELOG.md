@@ -14,7 +14,9 @@ current source version is `0.7.1`.
   images without changing their aspect ratio, persist the chosen width in
   Markdown, and retain the existing page-width limit. A shared image context
   menu copies workspace images from the editor or rendered views to the system
-  clipboard.
+  clipboard. A File-menu cleanup action lists unreferenced images and, after a
+  final reference check, moves confirmed files to the operating system trash
+  without falling back to permanent deletion.
 - Added KaTeX rendering for inline (`$...$`) and block (`$$...$$`) LaTeX
   formulas in rendered Markdown views, including the right pane, journal feed,
   linked references, and Task Overview. Until full editor rendering is added,

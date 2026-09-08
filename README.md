@@ -399,7 +399,9 @@ to be created or moved into the journal folder.
 `mediaFolder` is a workspace-relative folder path and defaults to `media`.
 It must not overlap the configured journal folder. Logtext creates it on the
 first image paste, excludes it from page navigation and indexing, and reserves
-it for stored media rather than Markdown pages.
+it for stored media rather than Markdown pages. `File > Clean Media...` scans
+the workspace for unreferenced supported images, lists the candidates before
+making changes, and moves confirmed files to the operating system trash.
 
 `journalEditorContinuousScrolling` controls boundary navigation between journal
 files in the editor, including mouse-wheel and Page Up/Page Down navigation.

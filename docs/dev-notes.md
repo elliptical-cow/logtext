@@ -367,6 +367,23 @@ navigation. App-managed file operations prevent pages from entering that
 subtree and protect the configured folder path. Page and folder moves leave
 workspace-relative image paths unchanged.
 
+`File > Clean Media...` performs a fresh scan of Markdown files and shows every
+unreferenced supported image in a scrollable confirmation dialog. Before acting,
+Logtext saves a dirty editor page; immediately before moving the displayed files
+it scans again and skips anything that has since become referenced. Confirmed
+files go to the operating system trash so they remain recoverable through the
+normal system restore workflow. If the system trash is unavailable, Logtext
+reports the affected file and does not fall back to permanent deletion.
+
+Media cleanup is implemented in `src-tauri/src/media_cleanup.rs`. It enumerates
+supported image files below the configured media folder, skips links, and reads
+Markdown directly from disk rather than relying on an eventually consistent
+index. Reference matching is deliberately conservative: Markdown is
+percent-decoded, path separators and case are normalized, and any occurrence of
+the workspace-relative media path retains the file. The backend recomputes the
+unused set immediately before moving requested candidates with the cross-platform
+system-trash API. Failures are reported per file.
+
 Primary components:
 
 - `FileTree.svelte`: left navigation pane

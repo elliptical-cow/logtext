@@ -4,9 +4,10 @@
   import EditorPane from "./lib/components/EditorPane.svelte";
   import ErrorDialog from "./lib/components/ErrorDialog.svelte";
   import FileTree from "./lib/components/FileTree.svelte";
+  import MediaCleanupDialog from "./lib/components/MediaCleanupDialog.svelte";
   import RightPane from "./lib/components/RightPane.svelte";
   import TaskOverview from "./lib/components/TaskOverview.svelte";
-  import { setWindowTitle } from "./lib/api";
+  import { listUnusedMedia, moveUnusedMediaToTrash, setWindowTitle } from "./lib/api";
   import { setupCoreEvents } from "./lib/coreEvents";
   import { trapDialogFocus } from "./lib/dialogFocus";
   import { journalPath } from "./lib/journals";
@@ -17,6 +18,7 @@
   import { rightPaneStore } from "./lib/stores/rightPane";
   import { workspaceStore } from "./lib/stores/workspace";
   import { zoomStore } from "./lib/stores/zoom";
+  import type { MediaCleanupCandidate } from "./lib/types";
 
   const layoutStorageKey = "logtext:layout:columns";
   const defaultLeftWidth = 280;
@@ -31,6 +33,11 @@
   let activeResize: "left" | "right" | null = null;
   let showAbout = false;
   let showKeyboardShortcuts = false;
+  let showMediaCleanup = false;
+  let mediaCleanupCandidates: MediaCleanupCandidate[] = [];
+  let mediaCleanupScanning = false;
+  let mediaCleanupMoving = false;
+  let mediaCleanupRequest = 0;
   let appVersion = "0.1.0";
   let sessionRestoreRoot: string | null = null;
   let restoringWorkspaceSession = false;
@@ -45,6 +52,7 @@
     window.addEventListener("logtext-reset-layout", resetLayout);
     window.addEventListener("logtext-show-about", openAboutDialog);
     window.addEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
+    window.addEventListener("logtext-clean-media", handleCleanMediaRequest);
     window.addEventListener("wheel", handleWheel, { passive: false });
   });
 
@@ -122,6 +130,73 @@
 
   function closeKeyboardShortcutsDialog() {
     showKeyboardShortcuts = false;
+  }
+
+  function handleCleanMediaRequest() {
+    void runUserAction("Could not search for unused media", openMediaCleanupDialog);
+  }
+
+  async function openMediaCleanupDialog() {
+    const request = ++mediaCleanupRequest;
+    mediaCleanupCandidates = [];
+    mediaCleanupScanning = true;
+    mediaCleanupMoving = false;
+    showMediaCleanup = true;
+
+    try {
+      const candidates = await listUnusedMedia();
+      if (showMediaCleanup && request === mediaCleanupRequest) {
+        mediaCleanupCandidates = candidates;
+      }
+    } catch (error) {
+      if (request === mediaCleanupRequest) {
+        showMediaCleanup = false;
+        mediaCleanupCandidates = [];
+      }
+      throw error;
+    } finally {
+      if (request === mediaCleanupRequest) {
+        mediaCleanupScanning = false;
+      }
+    }
+  }
+
+  function closeMediaCleanupDialog() {
+    if (mediaCleanupMoving) {
+      return;
+    }
+    mediaCleanupRequest += 1;
+    showMediaCleanup = false;
+    mediaCleanupScanning = false;
+    mediaCleanupCandidates = [];
+  }
+
+  function handleMoveMediaToTrash() {
+    void runUserAction("Could not move all unused media to the system trash", async () => {
+      mediaCleanupMoving = true;
+      try {
+        const result = await moveUnusedMediaToTrash(
+          mediaCleanupCandidates.map((candidate) => candidate.path),
+        );
+        const failedPaths = new Set(result.failures.map((failure) => failure.path));
+        mediaCleanupCandidates = mediaCleanupCandidates.filter((candidate) =>
+          failedPaths.has(candidate.path),
+        );
+
+        if (result.failures.length > 0) {
+          throw new Error(
+            result.failures
+              .map((failure) => `${failure.path}: ${failure.message}`)
+              .join("\n"),
+          );
+        }
+
+        showMediaCleanup = false;
+        mediaCleanupCandidates = [];
+      } finally {
+        mediaCleanupMoving = false;
+      }
+    });
   }
 
   function persistLayout() {
@@ -269,6 +344,7 @@
     window.removeEventListener("logtext-reset-layout", resetLayout);
     window.removeEventListener("logtext-show-about", openAboutDialog);
     window.removeEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
+    window.removeEventListener("logtext-clean-media", handleCleanMediaRequest);
     window.removeEventListener("wheel", handleWheel);
   });
 </script>
@@ -308,6 +384,16 @@
     ></button>
     <RightPane />
   </main>
+{/if}
+
+{#if showMediaCleanup}
+  <MediaCleanupDialog
+    candidates={mediaCleanupCandidates}
+    scanning={mediaCleanupScanning}
+    moving={mediaCleanupMoving}
+    onCancel={closeMediaCleanupDialog}
+    onMoveToTrash={handleMoveMediaToTrash}
+  />
 {/if}
 
 <ErrorDialog
