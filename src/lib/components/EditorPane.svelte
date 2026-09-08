@@ -3,7 +3,7 @@
   import CodeMirrorEditor from "./CodeMirrorEditor.svelte";
   import ErrorDialog from "./ErrorDialog.svelte";
   import LinkedReferences from "./LinkedReferences.svelte";
-  import { getPageView } from "../api";
+  import { getPageView, savePastedImage } from "../api";
   import { toErrorMessage } from "../errors";
   import { editorSessionStore } from "../stores/editorSession";
   import { editorModeStore } from "../stores/editorMode";
@@ -243,6 +243,8 @@
       onOpenWikiLink={openWikiTarget}
       onMissingWikiLink={requestMissingPage}
       onOpenSourceLineInRightPane={openCurrentLineInRightPane}
+      onPasteImage={savePastedImage}
+      onPasteImageError={(error) => (pageViewError = toErrorMessage(error))}
     />
     {#if missingLinkPath}
       <div class="missing-link-action editor-missing-link-action">

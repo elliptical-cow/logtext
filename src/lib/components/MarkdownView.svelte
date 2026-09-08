@@ -21,6 +21,7 @@
   import type { FolderColors, PageSummary, TaskStateColors } from "../types";
 
   export let content = "";
+  export let sourcePath = "";
   export let pages: PageSummary[] = [];
   export let taskStates: string[] = DEFAULT_TASK_STATES;
   export let taskStateColors: TaskStateColors = {};
@@ -72,7 +73,7 @@
   let highlightTimer: ReturnType<typeof setTimeout> | null = null;
   const taskPriorityOptions = ["A", "B", "C"];
 
-  const markdown = createMarkdownRenderer({ breaks: true });
+  const markdown = createMarkdownRenderer({ breaks: true, workspaceImages: true });
   const markdownWithSourceLines = markdown as unknown as MarkdownItWithSourceLines;
 
   $: taskRender = markTaskKeywordsForRendering(content, taskStates, sourceLineNumbers);
@@ -159,7 +160,7 @@
   }
 
   function renderMarkdownWithSourceLines(markdownContent: string) {
-    return markdownWithSourceLines.render(markdownContent, { sourceLineNumbers });
+    return markdownWithSourceLines.render(markdownContent, { sourceLineNumbers, sourcePath });
   }
 
   function renderTaskKeywordMarkers(html: string, tokens: TaskKeywordToken[]) {
@@ -504,6 +505,7 @@
 
   type MarkdownRenderEnv = {
     sourceLineNumbers: number[];
+    sourcePath: string;
   };
 
   type MarkdownRenderer = {

@@ -59,6 +59,7 @@
     type EditorContextMenuKind,
   } from "../editorContextMenu";
   import { minimalTextChange } from "../textChanges";
+  import { isSupportedClipboardImageType, pastedImageMarkdown } from "../pastedImages";
   import {
     matchWikiLinkCompletion,
     wikiLinkCompletionApply,
@@ -86,6 +87,14 @@
   export let onOpenWikiLink: (path: string, targetPane: LinkTargetPane) => void = () => {};
   export let onMissingWikiLink: (path: string) => void = () => {};
   export let onOpenSourceLineInRightPane: (line: number) => void = () => {};
+  export let onPasteImage: (
+    documentPath: string,
+    mimeType: string,
+    bytes: Uint8Array,
+  ) => Promise<string> = async () => {
+    throw new Error("Image paste is unavailable");
+  };
+  export let onPasteImageError: (error: unknown) => void = () => {};
   type ContextMenuLink = {
     link: WikiLinkAtPosition;
     resolvedPath: string | null;
@@ -121,12 +130,42 @@
   let searchInput: HTMLInputElement;
   let replaceInput: HTMLInputElement;
   let lastHistoryAvailability = "";
+  let nextImagePasteId = 1;
   const editable = new Compartment();
   const completions = new Compartment();
   const previewMode = new Compartment();
   const blockKeys = new Compartment();
   const taskPriorityOptions = ["A", "B", "C"];
   const highlightLineEffect = StateEffect.define<number | null>();
+  type PendingImagePaste = { id: number; from: number; to: number };
+  const beginImagePasteEffect = StateEffect.define<PendingImagePaste>();
+  const finishImagePasteEffect = StateEffect.define<number>();
+  const pendingImagePastesField = StateField.define<PendingImagePaste[]>({
+    create: () => [],
+    update(pendingPastes, transaction) {
+      let next = pendingPastes.map((pending) => {
+        if (pending.from === pending.to) {
+          const position = transaction.changes.mapPos(pending.from, 1);
+          return { ...pending, from: position, to: position };
+        }
+        return {
+          ...pending,
+          from: transaction.changes.mapPos(pending.from, -1),
+          to: transaction.changes.mapPos(pending.to, 1),
+        };
+      });
+
+      for (const effect of transaction.effects) {
+        if (effect.is(beginImagePasteEffect)) {
+          next = [...next, effect.value];
+        } else if (effect.is(finishImagePasteEffect)) {
+          next = next.filter((pending) => pending.id !== effect.value);
+        }
+      }
+
+      return next;
+    },
+  });
   const highlightLineField = StateField.define<DecorationSet>({
     create() {
       return Decoration.none;
@@ -847,6 +886,81 @@
     };
   }
 
+  function handleEditorPaste(event: ClipboardEvent) {
+    if (!view || disabled || !documentPath) {
+      return false;
+    }
+
+    const imageFile = Array.from(event.clipboardData?.items ?? [])
+      .filter((item) => item.kind === "file" && isSupportedClipboardImageType(item.type))
+      .map((item) => item.getAsFile())
+      .find((file): file is File => file !== null);
+    if (!imageFile) {
+      return false;
+    }
+
+    event.preventDefault();
+    const editorView = view;
+    const pastedIntoPath = documentPath;
+    const selection = editorView.state.selection.main;
+    const pasteId = nextImagePasteId++;
+    editorView.dispatch({
+      effects: beginImagePasteEffect.of({
+        id: pasteId,
+        from: selection.from,
+        to: selection.to,
+      }),
+      annotations: Transaction.addToHistory.of(false),
+    });
+    void persistPastedImage(editorView, pastedIntoPath, pasteId, imageFile);
+    return true;
+  }
+
+  async function persistPastedImage(
+    editorView: EditorView,
+    pastedIntoPath: string,
+    pasteId: number,
+    imageFile: File,
+  ) {
+    try {
+      const bytes = new Uint8Array(await imageFile.arrayBuffer());
+      const relativePath = await onPasteImage(pastedIntoPath, imageFile.type, bytes);
+      if (view !== editorView || documentPath !== pastedIntoPath) {
+        if (view === editorView) {
+          editorView.dispatch({
+            effects: finishImagePasteEffect.of(pasteId),
+            annotations: Transaction.addToHistory.of(false),
+          });
+        }
+        return;
+      }
+
+      const pending = editorView.state
+        .field(pendingImagePastesField)
+        .find((candidate) => candidate.id === pasteId);
+      if (!pending) {
+        return;
+      }
+
+      const markdownImage = pastedImageMarkdown(relativePath);
+      editorView.dispatch({
+        changes: { from: pending.from, to: pending.to, insert: markdownImage },
+        selection: { anchor: pending.from + markdownImage.length },
+        effects: finishImagePasteEffect.of(pasteId),
+        scrollIntoView: true,
+      });
+      editorView.focus();
+    } catch (error) {
+      if (view === editorView && documentPath === pastedIntoPath) {
+        editorView.dispatch({
+          effects: finishImagePasteEffect.of(pasteId),
+          annotations: Transaction.addToHistory.of(false),
+        });
+      }
+      onPasteImageError(error);
+    }
+  }
+
   function editorExtensions() {
     return [
       lineNumbers(),
@@ -857,15 +971,17 @@
       listWrapIndentExtension,
       highlightLineField,
       searchDecorationsField,
+      pendingImagePastesField,
       completions.of(autocompletion({ override: [wikiLinkCompletionSource] })),
       previewMode.of(
         mode === "live-preview"
-          ? livePreviewExtension(taskStates, taskStateColors, pages, folderColors)
+          ? livePreviewExtension(taskStates, taskStateColors, pages, folderColors, documentPath ?? "")
           : [],
       ),
       saveKeymap,
       blockKeys.of(blockEditingKeymap(taskStates, playDoneSoundForStatus)),
       keymap.of(defaultKeymap),
+      EditorView.domEventHandlers({ paste: handleEditorPaste }),
       editable.of(EditorView.editable.of(!disabled)),
       EditorView.updateListener.of((update) => {
         if (!update.docChanged || applyingExternalValue) {

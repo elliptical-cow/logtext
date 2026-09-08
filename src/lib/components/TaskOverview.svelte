@@ -29,7 +29,7 @@
     y: number;
     task: TaskItem;
   } | null = null;
-  const inlineMarkdown = createMarkdownRenderer({ breaks: false });
+  const inlineMarkdown = createMarkdownRenderer({ breaks: false, workspaceImages: true });
 
   function closeErrorDialog() {
     localError = null;
@@ -207,7 +207,9 @@
 
   function renderTaskText(task: TaskItem) {
     return applyWikiLinkColorStyles(
-      inlineMarkdown.renderInline(renderWikiLinks(taskDisplayText(task), $workspaceStore.pages)),
+      inlineMarkdown.renderInline(renderWikiLinks(taskDisplayText(task), $workspaceStore.pages), {
+        sourcePath: task.path,
+      }),
       $workspaceStore.pages,
       $workspaceStore.folderColors,
     );

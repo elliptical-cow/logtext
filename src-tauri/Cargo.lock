@@ -1722,6 +1722,7 @@ name = "logtext"
 version = "0.7.1"
 dependencies = [
  "notify",
+ "percent-encoding",
  "serde",
  "serde_json",
  "tauri",

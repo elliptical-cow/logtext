@@ -224,6 +224,23 @@ export function savePage(
   });
 }
 
+export function savePastedImage(
+  documentPath: string,
+  mimeType: string,
+  bytes: Uint8Array,
+): Promise<string> {
+  if (!isTauriRuntime()) {
+    return Promise.reject(new Error(TAURI_REQUIRED_MESSAGE));
+  }
+
+  return invoke<string>("save_pasted_image", bytes, {
+    headers: {
+      "document-path": encodeURIComponent(documentPath),
+      "mime-type": mimeType,
+    },
+  });
+}
+
 export function getPageView(path: string): Promise<PageView> {
   return invokeTauri<PageView>("get_page_view", { path });
 }

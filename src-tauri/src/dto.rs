@@ -20,6 +20,7 @@ pub struct PageSummaryDto {
 pub struct WorkspaceStateDto {
     pub root: String,
     pub journal_folder: String,
+    pub media_folder: String,
     pub journal_editor_continuous_scrolling: bool,
     pub journal_right_pane_continuous_scrolling: bool,
     pub pages: Vec<PageSummaryDto>,

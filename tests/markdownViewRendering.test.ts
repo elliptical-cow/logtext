@@ -33,6 +33,17 @@ $$`);
   assert.match(block, /class="katex-display"/);
 });
 
+test("resolves workspace images relative to the source document", () => {
+  const markdown = createMarkdownRenderer({ breaks: true, workspaceImages: true });
+
+  assert.match(
+    markdown.render("![Screenshot](../media/My%20image.png)", {
+      sourcePath: "projects/Roadmap.md",
+    }),
+    /src="logtext-media:\/\/localhost\/media\/My%20image\.png"/,
+  );
+});
+
 test("keeps rendering after malformed LaTeX and ignores formulas in Markdown code", () => {
   const markdown = createMarkdownRenderer({ breaks: true });
   const malformed = markdown.render(String.raw`Before $\notacommand{$ after **still here**.`);

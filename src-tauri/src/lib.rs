@@ -5,6 +5,7 @@ pub mod config_commands;
 pub mod content_snapshot;
 pub mod dto;
 pub mod index;
+pub mod media;
 pub mod navigation_order;
 pub mod page_io;
 pub mod page_ops;
@@ -139,6 +140,9 @@ fn update_editor_mode_menu_label(app: AppHandle, is_live_preview: bool) -> Resul
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .register_uri_scheme_protocol("logtext-media", |context, request| {
+            media::workspace_media_response(context.app_handle(), request)
+        })
         .menu(build_app_menu)
         .on_menu_event(|app, event| {
             let event_name = match event.id().as_ref() {
@@ -205,7 +209,8 @@ pub fn run() {
             commands::list_tasks,
             commands::update_task_status,
             commands::update_task_priority,
-            commands::toggle_checkbox
+            commands::toggle_checkbox,
+            media::save_pasted_image
         ])
         .run(tauri::generate_context!())
         .expect("error while running Logtext");

@@ -1,4 +1,5 @@
 import { EditorState, RangeSetBuilder, StateField } from "@codemirror/state";
+import { syntaxTree } from "@codemirror/language";
 import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
 import {
   DEFAULT_TASK_STATES,
@@ -9,6 +10,7 @@ import { taskColorStyle } from "./taskColors.js";
 import { wikiLinkColorStyle } from "./folderColors.js";
 import { parseCheckboxListItem } from "./markdownPatterns.js";
 import { wikiLinkDisplayLabel, wikiLinksInText } from "./wikiLinks.js";
+import { workspaceImageUrl } from "./mediaPaths.js";
 import type { FolderColors, PageSummary, TaskStateColors } from "./types.js";
 
 export type EditorMode = "source" | "live-preview";
@@ -37,6 +39,13 @@ export type LatexSourceSpan = {
   end: number;
 };
 
+export type MarkdownImageMatch = {
+  from: number;
+  to: number;
+  alt: string;
+  target: string;
+};
+
 type CheckboxAtPosition = {
   from: number;
   to: number;
@@ -55,8 +64,12 @@ export function livePreviewExtension(
   taskStateColors: TaskStateColors = {},
   pages: PageSummary[] = [],
   folderColors: FolderColors = {},
+  sourcePath = "",
 ) {
-  return [livePreviewField(taskStates, taskStateColors, pages, folderColors), livePreviewTheme];
+  return [
+    livePreviewField(taskStates, taskStateColors, pages, folderColors, sourcePath),
+    livePreviewTheme,
+  ];
 }
 
 export function previewDecorationsForLine(
@@ -202,10 +215,18 @@ function livePreviewField(
   taskStateColors: TaskStateColors,
   pages: PageSummary[],
   folderColors: FolderColors,
+  sourcePath: string,
 ) {
   return StateField.define<DecorationSet>({
     create(state) {
-      return buildLivePreviewDecorations(state, taskStates, taskStateColors, pages, folderColors);
+      return buildLivePreviewDecorations(
+        state,
+        taskStates,
+        taskStateColors,
+        pages,
+        folderColors,
+        sourcePath,
+      );
     },
     update(decorations, transaction) {
       if (transaction.docChanged || transaction.selection) {
@@ -215,6 +236,7 @@ function livePreviewField(
           taskStateColors,
           pages,
           folderColors,
+          sourcePath,
         );
       }
 
@@ -322,10 +344,12 @@ function buildLivePreviewDecorations(
   taskStateColors: TaskStateColors,
   pages: PageSummary[],
   folderColors: FolderColors,
+  sourcePath: string,
 ) {
   const builder = new RangeSetBuilder<Decoration>();
   const activeLines = activeBlockLineNumbers(state);
   const latexBlockLines = latexBlockLineNumbers(state.doc.toString());
+  const imageMatches = markdownImagesInState(state);
   let inFencedCode = false;
 
   for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber += 1) {
@@ -357,6 +381,25 @@ function buildLivePreviewDecorations(
       continue;
     }
 
+    const latexSpans = inlineLatexSourceSpans(line.text);
+    const lineImages = imageMatches.filter((image) => {
+      if (image.from < line.from || image.to > line.to) {
+        return false;
+      }
+      return !latexSpans.some(
+        ({ start, end }) => image.from < line.from + end && image.to > line.from + start,
+      );
+    });
+    const imageDecorations = lineImages.map((image) => ({
+      from: image.from,
+      to: image.to,
+      decoration: Decoration.replace({
+        widget: new MarkdownImageWidget(
+          workspaceImageUrl(sourcePath, image.target),
+          image.alt,
+        ),
+      }),
+    }));
     const lineDecorations = previewDecorationsForLine(
       line.text,
       line.from,
@@ -364,13 +407,43 @@ function buildLivePreviewDecorations(
       taskStateColors,
       pages,
       folderColors,
+    ).filter(
+      (decoration) =>
+        !lineImages.some((image) => decoration.from < image.to && decoration.to > image.from),
     );
-    for (const { from, to, decoration } of lineDecorations) {
+    for (const { from, to, decoration } of [...imageDecorations, ...lineDecorations].sort(
+      (left, right) => left.from - right.from || left.to - right.to,
+    )) {
       builder.add(from, to, decoration);
     }
   }
 
   return builder.finish();
+}
+
+export function markdownImagesInState(state: EditorState): MarkdownImageMatch[] {
+  const matches: MarkdownImageMatch[] = [];
+  syntaxTree(state).iterate({
+    enter(node) {
+      if (node.name !== "Image") {
+        return;
+      }
+      const imageNode = node.node;
+      const urlNode = imageNode.getChild("URL");
+      if (!urlNode) {
+        return;
+      }
+      const prefix = state.sliceDoc(imageNode.from, urlNode.from);
+      const altEnd = prefix.lastIndexOf("](");
+      matches.push({
+        from: imageNode.from,
+        to: imageNode.to,
+        alt: altEnd >= 2 ? prefix.slice(2, altEnd) : "",
+        target: state.sliceDoc(urlNode.from, urlNode.to),
+      });
+    },
+  });
+  return matches;
 }
 
 export function latexBlockLineNumbers(source: string) {
@@ -865,5 +938,27 @@ class WikiLinkLabelWidget extends WidgetType {
     span.setAttribute("style", this.style);
     span.textContent = this.label;
     return span;
+  }
+}
+
+class MarkdownImageWidget extends WidgetType {
+  constructor(
+    private readonly source: string,
+    private readonly alt: string,
+  ) {
+    super();
+  }
+
+  eq(other: MarkdownImageWidget) {
+    return this.source === other.source && this.alt === other.alt;
+  }
+
+  toDOM() {
+    const image = document.createElement("img");
+    image.className = "cm-live-image";
+    image.src = this.source;
+    image.alt = this.alt;
+    image.loading = "lazy";
+    return image;
   }
 }

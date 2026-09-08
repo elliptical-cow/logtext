@@ -220,6 +220,7 @@
       <article class="preview-content">
         <MarkdownView
           content={$rightPaneStore.pageView.content}
+          sourcePath={$rightPaneStore.pageView.page.path}
           pages={$workspaceStore.pages}
           taskStates={$workspaceStore.taskStates}
           taskStateColors={$workspaceStore.taskStateColors}

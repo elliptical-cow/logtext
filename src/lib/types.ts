@@ -113,6 +113,7 @@ export type ToggleCheckboxResult = {
 export type WorkspaceState = {
   root: string;
   journalFolder: string;
+  mediaFolder: string;
   journalEditorContinuousScrolling: boolean;
   journalRightPaneContinuousScrolling: boolean;
   pages: PageSummary[];
