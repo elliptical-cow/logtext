@@ -48,6 +48,22 @@ test("resolves workspace images relative to the source document", () => {
     }),
     /src="logtext-media:\/\/localhost\/media\/My%20image\.png"/,
   );
+  assert.match(
+    markdown.render("![Screenshot](/media/image.png)", { sourcePath: "Notes.md" }),
+    /data-workspace-image="true"/,
+  );
+  assert.match(
+    markdown.render("![Screenshot](/media/image.png)", { sourcePath: "Notes.md" }),
+    /crossorigin="anonymous"/,
+  );
+  assert.equal(
+    /data-workspace-image/.test(
+      markdown.render("![Remote](https://example.test/image.png)", {
+        sourcePath: "Notes.md",
+      }),
+    ),
+    false,
+  );
 });
 
 test("applies persisted image widths while keeping images within the pane", () => {

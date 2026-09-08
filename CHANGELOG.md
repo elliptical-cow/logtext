@@ -12,7 +12,9 @@ current source version is `0.7.1`.
   workspace-root-relative Markdown targets, and renders workspace images in the
   editor live preview and all rendered views. Live-preview controls resize
   images without changing their aspect ratio, persist the chosen width in
-  Markdown, and retain the existing page-width limit.
+  Markdown, and retain the existing page-width limit. A shared image context
+  menu copies workspace images from the editor or rendered views to the system
+  clipboard.
 - Added KaTeX rendering for inline (`$...$`) and block (`$$...$$`) LaTeX
   formulas in rendered Markdown views, including the right pane, journal feed,
   linked references, and Task Overview. Until full editor rendering is added,

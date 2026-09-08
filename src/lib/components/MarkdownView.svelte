@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from "svelte";
   import ContextMenuShell from "./ContextMenuShell.svelte";
+  import ImageContextMenu from "./ImageContextMenu.svelte";
   import { createMarkdownRenderer } from "../markdownRenderer";
   import { renderCheckboxItems } from "../markdownRendering";
   import {
@@ -19,6 +20,7 @@
   import { applyWikiLinkColorStyles, renderWikiLinks } from "../wikiLinks";
   import type { LinkTargetPane } from "../stores/linkOperations";
   import type { FolderColors, PageSummary, TaskStateColors } from "../types";
+  import type { ImageContextMenuTarget } from "../imageClipboard";
 
   export let content = "";
   export let sourcePath = "";
@@ -67,6 +69,7 @@
     y: number;
     line: number;
   } | null = null;
+  let imageContextMenu: ImageContextMenuTarget | null = null;
   let markdownElement: HTMLElement | null = null;
   let lastHighlightKey = "";
   let lastObservedWidth: number | null = null;
@@ -246,6 +249,7 @@
     linkContextMenu = null;
     taskContextMenu = null;
     sourceLineContextMenu = null;
+    imageContextMenu = null;
 
     const checkbox = (event.target as HTMLElement).closest<HTMLInputElement>(
       "input.task-list-checkbox",
@@ -277,6 +281,20 @@
   }
 
   function handleContextMenu(event: MouseEvent) {
+    const image = (event.target as HTMLElement).closest<HTMLImageElement>(
+      'img.workspace-image[data-workspace-image="true"]',
+    );
+    if (image) {
+      event.preventDefault();
+      event.stopPropagation();
+      linkContextMenu = null;
+      taskContextMenu = null;
+      sourceLineContextMenu = null;
+      imageContextMenu = { x: event.clientX, y: event.clientY, image };
+      return;
+    }
+    imageContextMenu = null;
+
     if (enableTaskContextMenu) {
       const taskKeyword = (event.target as HTMLElement).closest<HTMLElement>(
         ".task-keyword, .task-priority",
@@ -382,6 +400,7 @@
     linkContextMenu = null;
     taskContextMenu = null;
     sourceLineContextMenu = null;
+    imageContextMenu = null;
   }
 
   function handleWindowKeydown(event: KeyboardEvent) {
@@ -532,6 +551,15 @@
 >
   {@html rendered}
 </div>
+
+{#if imageContextMenu}
+  <ImageContextMenu
+    x={imageContextMenu.x}
+    y={imageContextMenu.y}
+    image={imageContextMenu.image}
+    onClose={closeContextMenu}
+  />
+{/if}
 
 {#if linkContextMenu}
   <ContextMenuShell

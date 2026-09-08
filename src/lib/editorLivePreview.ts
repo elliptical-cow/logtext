@@ -10,7 +10,7 @@ import { taskColorStyle } from "./taskColors.js";
 import { wikiLinkColorStyle } from "./folderColors.js";
 import { parseCheckboxListItem } from "./markdownPatterns.js";
 import { wikiLinkDisplayLabel, wikiLinksInText } from "./wikiLinks.js";
-import { workspaceImageUrl } from "./mediaPaths.js";
+import { isWorkspaceImageTarget, workspaceImageUrl } from "./mediaPaths.js";
 import {
   imageTitleWithLogtextWidth,
   logtextImageWidth,
@@ -74,9 +74,17 @@ export function livePreviewExtension(
   pages: PageSummary[] = [],
   folderColors: FolderColors = {},
   sourcePath = "",
+  onImageContextMenu: (event: MouseEvent, image: HTMLImageElement) => void = () => {},
 ) {
   return [
-    livePreviewField(taskStates, taskStateColors, pages, folderColors, sourcePath),
+    livePreviewField(
+      taskStates,
+      taskStateColors,
+      pages,
+      folderColors,
+      sourcePath,
+      onImageContextMenu,
+    ),
     livePreviewTheme,
   ];
 }
@@ -225,6 +233,7 @@ function livePreviewField(
   pages: PageSummary[],
   folderColors: FolderColors,
   sourcePath: string,
+  onImageContextMenu: (event: MouseEvent, image: HTMLImageElement) => void,
 ) {
   return StateField.define<DecorationSet>({
     create(state) {
@@ -235,6 +244,7 @@ function livePreviewField(
         pages,
         folderColors,
         sourcePath,
+        onImageContextMenu,
       );
     },
     update(decorations, transaction) {
@@ -246,6 +256,7 @@ function livePreviewField(
           pages,
           folderColors,
           sourcePath,
+          onImageContextMenu,
         );
       }
 
@@ -354,6 +365,7 @@ function buildLivePreviewDecorations(
   pages: PageSummary[],
   folderColors: FolderColors,
   sourcePath: string,
+  onImageContextMenu: (event: MouseEvent, image: HTMLImageElement) => void,
 ) {
   const builder = new RangeSetBuilder<Decoration>();
   const activeLines = activeBlockLineNumbers(state);
@@ -408,6 +420,7 @@ function buildLivePreviewDecorations(
           image.alt,
           logtextImageWidth(image.title),
           image.from,
+          isWorkspaceImageTarget(sourcePath, image.target) ? onImageContextMenu : null,
         ),
       }),
     }));
@@ -962,6 +975,7 @@ class MarkdownImageWidget extends WidgetType {
     private readonly alt: string,
     private readonly configuredWidth: number | null,
     private readonly imageFrom: number,
+    private readonly onContextMenu: ((event: MouseEvent, image: HTMLImageElement) => void) | null,
   ) {
     super();
   }
@@ -971,7 +985,8 @@ class MarkdownImageWidget extends WidgetType {
       this.source === other.source &&
       this.alt === other.alt &&
       this.configuredWidth === other.configuredWidth &&
-      this.imageFrom === other.imageFrom
+      this.imageFrom === other.imageFrom &&
+      this.onContextMenu === other.onContextMenu
     );
   }
 
@@ -985,9 +1000,19 @@ class MarkdownImageWidget extends WidgetType {
     container.setAttribute("contenteditable", "false");
     const image = document.createElement("img");
     image.className = "cm-live-image";
+    if (this.onContextMenu) {
+      image.crossOrigin = "anonymous";
+    }
     image.src = this.source;
     image.alt = this.alt;
     image.loading = "lazy";
+    if (this.onContextMenu) {
+      image.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.onContextMenu?.(event, image);
+      });
+    }
     if (this.configuredWidth !== null) {
       image.style.width = `${this.configuredWidth}px`;
     }

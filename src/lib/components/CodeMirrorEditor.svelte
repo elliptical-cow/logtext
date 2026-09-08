@@ -24,6 +24,7 @@
   } from "@codemirror/commands";
   import { onDestroy, onMount, tick } from "svelte";
   import ContextMenuShell from "./ContextMenuShell.svelte";
+  import ImageContextMenu from "./ImageContextMenu.svelte";
   import {
     applyInlineMarkdownFormat,
     canApplyInlineMarkdownFormat,
@@ -68,6 +69,7 @@
   import { resolveWikiTarget } from "../wikiLinks";
   import type { LinkTargetPane } from "../stores/linkOperations";
   import type { FolderColors, PageSummary, TaskStateColors } from "../types";
+  import type { ImageContextMenuTarget } from "../imageClipboard";
 
   export let value = "";
   export let documentPath: string | null = null;
@@ -114,6 +116,7 @@
   let host: HTMLDivElement;
   let view: EditorView | null = null;
   let editorContextMenu: EditorContextMenu | null = null;
+  let imageContextMenu: ImageContextMenuTarget | null = null;
   let applyingExternalValue = false;
   let applyingHistoryCommand = false;
   let lastDocumentPath: string | null = null;
@@ -491,6 +494,7 @@
 
     event.preventDefault();
     event.stopPropagation();
+    imageContextMenu = null;
     editorContextMenu = {
       kind,
       x: event.clientX,
@@ -500,6 +504,13 @@
       task,
       link,
     };
+  }
+
+  function openImageContextMenu(event: MouseEvent, image: HTMLImageElement) {
+    event.preventDefault();
+    event.stopPropagation();
+    editorContextMenu = null;
+    imageContextMenu = { x: event.clientX, y: event.clientY, image };
   }
 
   function handleEditorMouseDown(event: MouseEvent) {
@@ -800,6 +811,7 @@
 
   function closeEditorContextMenu() {
     editorContextMenu = null;
+    imageContextMenu = null;
   }
 
   function selectedFormatText() {
@@ -975,7 +987,14 @@
       completions.of(autocompletion({ override: [wikiLinkCompletionSource] })),
       previewMode.of(
         mode === "live-preview"
-          ? livePreviewExtension(taskStates, taskStateColors, pages, folderColors, documentPath ?? "")
+          ? livePreviewExtension(
+              taskStates,
+              taskStateColors,
+              pages,
+              folderColors,
+              documentPath ?? "",
+              openImageContextMenu,
+            )
           : [],
       ),
       saveKeymap,
@@ -1077,6 +1096,7 @@
               pages,
               folderColors,
               documentPath ?? "",
+              openImageContextMenu,
             )
           : [],
       ),
@@ -1217,6 +1237,15 @@
     on:contextmenu={openEditorContextMenu}
   ></div>
 </div>
+
+{#if imageContextMenu}
+  <ImageContextMenu
+    x={imageContextMenu.x}
+    y={imageContextMenu.y}
+    image={imageContextMenu.image}
+    onClose={closeEditorContextMenu}
+  />
+{/if}
 
 {#if editorContextMenu}
   {@const blockLevel = currentSourceLineBlockLevel()}

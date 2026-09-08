@@ -7,7 +7,8 @@
   in live preview and rendered views, and use stable workspace-root targets for
   new media while preserving older relative targets when pages or folders move.
   Editor controls can resize their persisted display width without changing the
-  aspect ratio or exceeding the pane width.
+  aspect ratio or exceeding the pane width, and a context-menu action copies
+  workspace images to the system clipboard.
 
 ## Long term
 

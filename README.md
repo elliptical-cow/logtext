@@ -187,6 +187,11 @@ optional Markdown image title, while preserving an existing title. Image height
 always follows the original aspect ratio. Images wider than the available pane
 remain limited to the pane width.
 
+Right-click a workspace image in the editor live preview or a rendered view and
+choose `Copy image` to place the image itself on the system clipboard. This
+action is available for workspace images only; Logtext does not request
+clipboard read access.
+
 The media folder is application-managed and omitted from page navigation and
 Markdown indexing. Workspace-root image targets remain stable when their page
 moves. Logtext also rewrites older document-relative local image targets during

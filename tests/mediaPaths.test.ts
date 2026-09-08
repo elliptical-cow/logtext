@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveWorkspaceImagePath, workspaceImageUrl } from "../src/lib/mediaPaths.js";
+import {
+  isWorkspaceImageTarget,
+  resolveWorkspaceImagePath,
+  workspaceImageUrl,
+} from "../src/lib/mediaPaths.js";
 
 test("resolves local images relative to their Markdown document", () => {
   assert.equal(
@@ -37,4 +41,6 @@ test("keeps remote image URLs unchanged", () => {
     workspaceImageUrl("projects/Roadmap.md", "https://example.test/image.png"),
     "https://example.test/image.png",
   );
+  assert.equal(isWorkspaceImageTarget("Notes.md", "https://example.test/image.png"), false);
+  assert.equal(isWorkspaceImageTarget("Notes.md", "/media/image.png"), true);
 });

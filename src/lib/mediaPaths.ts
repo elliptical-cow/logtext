@@ -55,6 +55,13 @@ export function workspaceImageUrl(sourceDocumentPath: string, markdownTarget: st
     .join("/")}`;
 }
 
+export function isWorkspaceImageTarget(sourceDocumentPath: string, markdownTarget: string) {
+  return (
+    !externalImageScheme.test(markdownTarget.trim()) &&
+    resolveWorkspaceImagePath(sourceDocumentPath, markdownTarget) !== null
+  );
+}
+
 function decodeMarkdownTarget(target: string) {
   try {
     return decodeURIComponent(target);

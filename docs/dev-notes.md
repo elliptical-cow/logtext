@@ -354,6 +354,13 @@ pixel width as `logtext-width=<n>px` in the standard Markdown image title. Both
 renderers share the parsing helper, retain any user-authored title, use
 automatic height, and cap the result at the pane width.
 
+Image copy uses one shared context-menu component across CodeMirror and rendered
+Markdown. The browser canvas converts an already displayed workspace image to
+RGBA data, then the official Tauri clipboard plugin writes it to the native
+clipboard. The application capability grants only `allow-write-image`; it does
+not grant clipboard read or text-write permissions. Remote images are excluded
+from this action to avoid cross-origin canvas behavior.
+
 The workspace scanner excludes the media subtree from Markdown indexing and
 navigation. App-managed file operations prevent pages from entering that
 subtree and protect the configured folder path. When a page or folder moves,

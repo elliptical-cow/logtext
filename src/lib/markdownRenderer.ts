@@ -4,7 +4,7 @@ import {
   imageTitleWithoutLogtextWidth,
   logtextImageWidth,
 } from "./imageSizing.js";
-import { workspaceImageUrl } from "./mediaPaths.js";
+import { isWorkspaceImageTarget, workspaceImageUrl } from "./mediaPaths.js";
 
 type MarkdownRendererOptions = {
   breaks: boolean;
@@ -32,6 +32,10 @@ export function createMarkdownRenderer({ breaks, workspaceImages = false }: Mark
       token.attrSet("src", workspaceImageUrl(sourcePath, target));
       token.attrSet("loading", "lazy");
       token.attrSet("class", "workspace-image");
+      if (isWorkspaceImageTarget(sourcePath, target)) {
+        token.attrSet("data-workspace-image", "true");
+        token.attrSet("crossorigin", "anonymous");
+      }
       if (configuredWidth !== null) {
         token.attrSet("style", `width: ${configuredWidth}px`);
         const visibleTitle = imageTitleWithoutLogtextWidth(title);
