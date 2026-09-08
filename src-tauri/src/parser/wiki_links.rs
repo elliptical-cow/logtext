@@ -56,7 +56,6 @@ pub fn rewrite_wiki_link_targets(
                     } else {
                         let (open_delimiter, close_delimiter) = match link_range.syntax {
                             WikiLinkSyntax::Square => ("[[", "]]"),
-                            WikiLinkSyntax::Round => ("((", "))"),
                             WikiLinkSyntax::Compact => ("[[", "]]"),
                         };
                         rewritten.push_str(open_delimiter);
@@ -96,7 +95,6 @@ struct WikiLinkRange {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum WikiLinkSyntax {
     Square,
-    Round,
     Compact,
 }
 
@@ -127,17 +125,9 @@ fn next_wiki_link_range(text: &str, search_start: usize) -> Option<WikiLinkRange
 
 fn next_delimited_wiki_link_range(text: &str, search_start: usize) -> Option<WikiLinkRange> {
     let remaining = &text[search_start..];
-    let square_open = remaining.find("[[");
-    let round_open = remaining.find("((");
-    let (open_offset, open_delimiter, close_delimiter, syntax) = match (square_open, round_open) {
-        (Some(square), Some(round)) if square <= round => {
-            (square, "[[", "]]", WikiLinkSyntax::Square)
-        }
-        (Some(_), Some(round)) => (round, "((", "))", WikiLinkSyntax::Round),
-        (Some(square), None) => (square, "[[", "]]", WikiLinkSyntax::Square),
-        (None, Some(round)) => (round, "((", "))", WikiLinkSyntax::Round),
-        (None, None) => return None,
-    };
+    let open_offset = remaining.find("[[")?;
+    let open_delimiter = "[[";
+    let close_delimiter = "]]";
     let open = search_start + open_offset;
     let content_start = open + open_delimiter.len();
     let close_offset = text[content_start..].find(close_delimiter)?;
@@ -148,7 +138,7 @@ fn next_delimited_wiki_link_range(text: &str, search_start: usize) -> Option<Wik
         content_start,
         close,
         end: close + close_delimiter.len(),
-        syntax,
+        syntax: WikiLinkSyntax::Square,
     })
 }
 
@@ -432,14 +422,11 @@ mod tests {
     }
 
     #[test]
-    fn parses_round_delimited_wiki_links_like_square_delimited_links() {
+    fn treats_round_delimiters_as_plain_text() {
         let links = parse_wiki_links("See ((Projekte/Alpha|Alpha)) and [[Beta]]");
 
-        assert_eq!(links.len(), 2);
-        assert_eq!(links[0].raw, "((Projekte/Alpha|Alpha))");
-        assert_eq!(links[0].target, "Projekte/Alpha");
-        assert_eq!(links[0].alias.as_deref(), Some("Alpha"));
-        assert_eq!(links[1].target, "Beta");
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].target, "Beta");
     }
 
     #[test]
@@ -494,18 +481,15 @@ mod tests {
     }
 
     #[test]
-    fn rewrites_round_delimited_links_and_preserves_their_delimiters() {
+    fn leaves_round_delimited_text_unchanged_when_rewriting_links() {
         let (rewritten, replacements) = rewrite_wiki_link_targets(
-            "See ((Projects/Alpha)) and ((Projects/Alpha| Alpha ))",
+            "See ((Projects/Alpha)) and [[Projects/Alpha]]",
             |target| target == "Projects/Alpha",
             |_| Some("archive/Alpha".to_string()),
         );
 
-        assert_eq!(
-            rewritten,
-            "See ((archive/Alpha)) and ((archive/Alpha| Alpha ))"
-        );
-        assert_eq!(replacements, 2);
+        assert_eq!(rewritten, "See ((Projects/Alpha)) and [[archive/Alpha]]");
+        assert_eq!(replacements, 1);
     }
 
     #[test]

@@ -25,15 +25,9 @@
         ]
       },
       {
-        "name": "round-delimited alias target",
+        "name": "round delimiters are plain text",
         "source": "((Projects/Alpha|Alpha plan))",
-        "links": [
-          {
-            "target": "Projects/Alpha",
-            "alias": "Alpha plan",
-            "label": "Alpha plan"
-          }
-        ]
+        "links": []
       },
       {
         "name": "empty alias",

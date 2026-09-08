@@ -5,7 +5,7 @@ export type WikiLinkCompletionMatch = {
   from: number;
   replacementFrom: number;
   query: string;
-  closingDelimiter: "]]" | "))" | "";
+  closingDelimiter: "]]" | "";
 };
 
 export type WikiLinkSuggestion = {
@@ -17,26 +17,17 @@ export function matchWikiLinkCompletion(
   textBeforeCursor: string,
   cursorPosition: number,
 ): WikiLinkCompletionMatch | null {
-  const squareOpenIndex = textBeforeCursor.lastIndexOf("[[");
-  const roundOpenIndex = textBeforeCursor.lastIndexOf("((");
-  const [openIndex, openingDelimiter, closingDelimiter] =
-    squareOpenIndex >= roundOpenIndex
-      ? ([squareOpenIndex, "[[", "]]"] as const)
-      : ([roundOpenIndex, "((", "))"] as const);
+  const openIndex = textBeforeCursor.lastIndexOf("[[");
 
   if (openIndex !== -1) {
-    const query = textBeforeCursor.slice(openIndex + openingDelimiter.length);
+    const query = textBeforeCursor.slice(openIndex + 2);
 
-    if (
-      !query.includes("|") &&
-      !query.includes("\n") &&
-      !(closingDelimiter === "]]" ? query.includes("]") : query.includes(")"))
-    ) {
+    if (!query.includes("|") && !query.includes("\n") && !query.includes("]")) {
       return {
         from: cursorPosition - query.length,
         replacementFrom: cursorPosition - query.length,
         query,
-        closingDelimiter,
+        closingDelimiter: "]]",
       };
     }
   }

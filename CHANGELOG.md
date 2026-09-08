@@ -22,6 +22,8 @@ current source version is `0.7.1`.
 
 - Compact `#` link completion now offers every page and automatically switches
   to `[[target]]` syntax when the selected target contains spaces.
+- Round-delimited text such as `((target))` is no longer interpreted as a page
+  link; `[[target]]` and compact `#target` remain the supported link syntaxes.
 - Release assets now use consistent names that explicitly identify Logtext's
   version, target operating system, architecture, and Windows package variant.
 

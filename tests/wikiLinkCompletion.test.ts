@@ -22,13 +22,8 @@ test("matches text after an open wiki link marker", () => {
   });
 });
 
-test("matches text after an open round-delimited wiki link marker", () => {
-  assert.deepEqual(matchWikiLinkCompletion("- siehe ((pro", 14), {
-    from: 11,
-    replacementFrom: 11,
-    query: "pro",
-    closingDelimiter: "))",
-  });
+test("does not complete round-delimited text", () => {
+  assert.equal(matchWikiLinkCompletion("- siehe ((pro", 14), null);
 });
 
 test("matches compact link completion after a hash marker", () => {
@@ -46,7 +41,7 @@ test("does not treat headings or task priorities as compact link completion", ()
   assert.equal(matchWikiLinkCompletion("word#Alpha", 10), null);
 });
 
-test("does not match aliases or closed wiki links", () => {
+test("does not match aliases, closed wiki links, or round-delimited text", () => {
   assert.equal(matchWikiLinkCompletion("[[projects|Alias", 16), null);
   assert.equal(matchWikiLinkCompletion("[[projects]]", 12), null);
   assert.equal(matchWikiLinkCompletion("((projects|Alias", 16), null);
