@@ -42,14 +42,18 @@ test("renders inline LaTeX without applying Markdown decorations inside it", () 
   assert.match(renderLatexPreview(String.raw`\sum_{i}f_i`, false), /<mo>∑<\/mo>/);
 });
 
-test("keeps inline LaTeX separated from preceding text without clipping it", () => {
+test("anchors inline LaTeX after the width of its opening delimiter", () => {
   const source = readFileSync(join(process.cwd(), "src/lib/editorLivePreview.ts"), "utf8");
   const inlineStyle = /"\.cm-live-latex-inline":\s*\{(?<rules>[^}]*)\}/s.exec(source);
   const inlineRules = inlineStyle?.groups?.rules ?? "";
+  const anchorStyle = /"\.cm-live-latex-inline::before":\s*\{(?<rules>[^}]*)\}/s.exec(source);
+  const anchorRules = anchorStyle?.groups?.rules ?? "";
 
   assert.ok(inlineRules);
-  assert.match(inlineRules, /marginLeft: "0\.25em"/);
+  assert.equal(/marginLeft/.test(inlineRules), false);
   assert.equal(/overflow/.test(inlineRules), false);
+  assert.match(anchorRules, /content: '\"\$\"'/);
+  assert.match(anchorRules, /visibility: "hidden"/);
 });
 
 test("does not treat escaped dollars or code spans as LaTeX", () => {
