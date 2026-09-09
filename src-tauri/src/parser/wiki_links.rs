@@ -285,7 +285,7 @@ fn is_compact_link_boundary(text: &str, open: usize) -> bool {
         && !matches!(previous, '#' | '[' | '/' | '\\' | ':' | '@' | '=')
 }
 
-fn is_markdown_code_position(text: &str, position: usize) -> bool {
+pub(crate) fn is_markdown_code_position(text: &str, position: usize) -> bool {
     let line_start = text[..position].rfind('\n').map_or(0, |index| index + 1);
     let mut fence: Option<(char, usize)> = None;
 

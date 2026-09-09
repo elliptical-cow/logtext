@@ -33,6 +33,52 @@ $$`);
   assert.match(block, /class="katex-display"/);
 });
 
+test("resolves workspace images from the workspace root", () => {
+  const markdown = createMarkdownRenderer({ breaks: true, workspaceImages: true });
+
+  assert.match(
+    markdown.render("![Screenshot](media/My%20image.png)", {
+      sourcePath: "projects/Roadmap.md",
+    }),
+    /src="logtext-media:\/\/localhost\/media\/My%20image\.png"/,
+  );
+  assert.match(
+    markdown.render("![Screenshot](media/image.png)", { sourcePath: "Notes.md" }),
+    /data-workspace-image="true"/,
+  );
+  assert.match(
+    markdown.render("![Screenshot](media/image.png)", { sourcePath: "Notes.md" }),
+    /crossorigin="anonymous"/,
+  );
+  assert.equal(
+    /data-workspace-image/.test(
+      markdown.render("![Remote](https://example.test/image.png)", {
+        sourcePath: "Notes.md",
+      }),
+    ),
+    false,
+  );
+});
+
+test("applies persisted image widths while keeping images within the pane", () => {
+  const markdown = createMarkdownRenderer({ breaks: true, workspaceImages: true });
+  const rendered = markdown.render(
+    '![Diagram](media/diagram.png "Overview | logtext-width=640px")',
+    { sourcePath: "Notes.md" },
+  );
+  const styles = readFileSync(join(root, "src/styles.css"), "utf8");
+
+  assert.match(rendered, /style="width: 640px"/);
+  assert.match(rendered, /title="Overview"/);
+  assert.equal(/logtext-width/.test(rendered), false);
+  assert.match(styles, /\.workspace-image\s*\{[^}]*max-width: 100%;/s);
+  assert.match(styles, /\.cm-live-image\s*\{[^}]*max-width: 100%;[^}]*height: auto;/s);
+  assert.match(
+    styles,
+    /\.cm-live-image-controls\s*\{[^}]*top: 6px;[^}]*left: 6px;/s,
+  );
+});
+
 test("keeps rendering after malformed LaTeX and ignores formulas in Markdown code", () => {
   const markdown = createMarkdownRenderer({ breaks: true });
   const malformed = markdown.render(String.raw`Before $\notacommand{$ after **still here**.`);

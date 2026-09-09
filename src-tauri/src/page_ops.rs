@@ -14,7 +14,7 @@ use crate::workspace::paths::{
     case_insensitive_key, folder_path_from_target, markdown_path_from_page_target,
     page_key_from_link_target, page_key_from_relative_path, resolve_workspace_relative_path,
 };
-use crate::workspace::scanner::scan_workspace;
+use crate::workspace::scanner::scan_workspace_excluding;
 use crate::workspace_index::reindex_workspace;
 
 struct LinkRewrite {
@@ -32,6 +32,7 @@ pub(crate) fn create_page_in_workspace(
         markdown_path_from_page_target(&path).ok_or_else(|| invalid_page_path(&path))?;
     let markdown_path = lowercase_markdown_file_name(&markdown_path);
     ensure_valid_journal_page_target(workspace, &markdown_path)?;
+    ensure_page_outside_media_folder(workspace, &markdown_path)?;
     let key =
         page_key_from_relative_path(&markdown_path).ok_or_else(|| invalid_page_path(&path))?;
 
@@ -94,6 +95,7 @@ pub(crate) fn create_folder_in_workspace(
 ) -> AppResult<CreateFolderResultDto> {
     let folder_path = folder_path_from_target(&path).ok_or_else(|| invalid_folder_path(&path))?;
     ensure_valid_journal_folder_target(workspace, &folder_path)?;
+    ensure_folder_outside_media_folder(workspace, &folder_path)?;
     let absolute_path = resolve_workspace_relative_path(&workspace.root, &folder_path)
         .ok_or_else(|| invalid_folder_path(&path))?;
 
@@ -168,6 +170,7 @@ pub(crate) fn delete_folder_in_workspace(
     path: String,
 ) -> AppResult<DeleteFolderResultDto> {
     let folder = normalize_folder_path(&path)?;
+    ensure_folder_does_not_control_media(workspace, &folder)?;
     let absolute_path = resolve_workspace_relative_path(&workspace.root, &folder)
         .ok_or_else(|| invalid_folder_path(&path))?;
 
@@ -247,6 +250,7 @@ pub(crate) fn move_page_in_workspace(
     }
 
     ensure_valid_journal_page_target(workspace, &target_path)?;
+    ensure_page_outside_media_folder(workspace, &target_path)?;
 
     let source_key = page_key_from_relative_path(&resolved_path)
         .ok_or_else(|| invalid_page_path(&resolved_path))?;
@@ -267,7 +271,6 @@ pub(crate) fn move_page_in_workspace(
             format!("Failed to read page '{}': {error}", resolved_path),
         )
     })?;
-
     if let Some(parent) = target_absolute_path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
             AppError::io(
@@ -371,6 +374,7 @@ pub(crate) fn rename_page_in_workspace(
     }
 
     ensure_valid_journal_page_target(workspace, &target_path)?;
+    ensure_page_outside_media_folder(workspace, &target_path)?;
 
     let source_key = page_key_from_relative_path(&resolved_path)
         .ok_or_else(|| invalid_page_path(&resolved_path))?;
@@ -391,7 +395,6 @@ pub(crate) fn rename_page_in_workspace(
             format!("Failed to read page '{}': {error}", resolved_path),
         )
     })?;
-
     fs::rename(&source_absolute_path, &target_absolute_path).map_err(|error| {
         AppError::io(
             "The page could not be renamed. Check the folder permissions and try again.",
@@ -451,7 +454,9 @@ fn move_folder_to_path(
         });
     }
 
+    ensure_folder_does_not_control_media(workspace, &old_folder)?;
     ensure_valid_journal_folder_target(workspace, &new_folder)?;
+    ensure_folder_outside_media_folder(workspace, &new_folder)?;
 
     let old_folder_prefix = format!("{old_folder}/");
     let pages_to_rename: Vec<Page> = workspace
@@ -525,7 +530,10 @@ fn move_folder_to_path(
 }
 
 fn refresh_workspace_folders(workspace: &mut WorkspaceState) -> AppResult<()> {
-    workspace.folders = scan_workspace(&workspace.root)
+    workspace.folders = scan_workspace_excluding(
+        &workspace.root,
+        Some(&workspace.config.media_folder),
+    )
         .map_err(|detail| {
             AppError::io(
                 "The file operation completed, but the folder list could not be refreshed. Refresh the workspace.",
@@ -680,6 +688,44 @@ fn ensure_valid_journal_folder_target(
 fn journal_subfolder_error(journal_folder: &str) -> AppError {
     AppError::invalid_path(format!(
         "The journal folder '{journal_folder}' cannot contain subfolders. Choose another location."
+    ))
+}
+
+fn ensure_page_outside_media_folder(workspace: &WorkspaceState, page_path: &str) -> AppResult<()> {
+    let media_prefix = format!("{}/", workspace.config.media_folder.to_ascii_lowercase());
+    if page_path.to_ascii_lowercase().starts_with(&media_prefix) {
+        return Err(media_folder_error(&workspace.config.media_folder));
+    }
+    Ok(())
+}
+
+fn ensure_folder_outside_media_folder(
+    workspace: &WorkspaceState,
+    folder_path: &str,
+) -> AppResult<()> {
+    let folder = folder_path.to_ascii_lowercase();
+    let media = workspace.config.media_folder.to_ascii_lowercase();
+    if folder == media || folder.starts_with(&format!("{media}/")) {
+        return Err(media_folder_error(&workspace.config.media_folder));
+    }
+    Ok(())
+}
+
+fn ensure_folder_does_not_control_media(
+    workspace: &WorkspaceState,
+    folder_path: &str,
+) -> AppResult<()> {
+    let folder = folder_path.to_ascii_lowercase();
+    let media = workspace.config.media_folder.to_ascii_lowercase();
+    if folder == media || media.starts_with(&format!("{folder}/")) {
+        return Err(media_folder_error(&workspace.config.media_folder));
+    }
+    Ok(())
+}
+
+fn media_folder_error(media_folder: &str) -> AppError {
+    AppError::invalid_path(format!(
+        "The configured media folder '{media_folder}' is managed by Logtext and cannot contain pages or be moved through the file tree."
     ))
 }
 
@@ -1112,6 +1158,106 @@ mod tests {
         assert!(root.join("projects").exists());
         assert!(root.join("projects/Alpha.md").exists());
         assert_eq!(workspace.pages.pages().len(), 1);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn media_folder_is_hidden_from_page_and_folder_operations() {
+        let root = temp_workspace();
+        fs::create_dir_all(root.join("assets/media")).unwrap();
+        fs::create_dir_all(root.join("projects")).unwrap();
+        let mut config = WorkspaceConfig::default();
+        config.media_folder = "assets/media".to_string();
+        let mut workspace = WorkspaceState {
+            root: root.clone(),
+            config,
+            folders: vec!["assets".to_string(), "projects".to_string()],
+            pages: PageIndex::default(),
+            backlinks: BacklinkIndex::default(),
+            contents: ContentSnapshot::default(),
+        };
+
+        let page_error =
+            create_page_in_workspace(&mut workspace, "assets/media/hidden-page".to_string())
+                .expect_err("pages inside the media folder must be rejected");
+        let folder_error =
+            create_folder_in_workspace(&mut workspace, "assets/media/nested".to_string())
+                .expect_err("managed media subfolders must be rejected");
+        let rename_error = rename_folder_in_workspace(
+            &mut workspace,
+            "assets".to_string(),
+            "renamed-assets".to_string(),
+        )
+        .expect_err("renaming an ancestor of the media folder must be rejected");
+
+        assert_eq!(page_error.code, crate::app_error::AppErrorCode::InvalidPath);
+        assert_eq!(
+            folder_error.code,
+            crate::app_error::AppErrorCode::InvalidPath
+        );
+        assert_eq!(
+            rename_error.code,
+            crate::app_error::AppErrorCode::InvalidPath
+        );
+        assert!(root.join("assets/media").is_dir());
+        assert!(!root.join("assets/media/hidden-page.md").exists());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn moving_pages_and_folders_preserves_workspace_root_image_targets() {
+        let root = temp_workspace();
+        fs::create_dir_all(root.join("projects")).unwrap();
+        fs::create_dir_all(root.join("media")).unwrap();
+        fs::write(root.join("media/chart.png"), b"image").unwrap();
+        fs::write(
+            root.join("projects/Roadmap.md"),
+            "# Roadmap\n\n![Chart](media/chart.png)",
+        )
+        .unwrap();
+        let mut workspace = WorkspaceState {
+            root: root.clone(),
+            config: WorkspaceConfig::default(),
+            folders: Vec::new(),
+            pages: PageIndex::default(),
+            backlinks: BacklinkIndex::default(),
+            contents: ContentSnapshot::default(),
+        };
+        reindex_workspace(&mut workspace).unwrap();
+
+        let page_result = move_page_in_workspace(
+            &mut workspace,
+            "projects/Roadmap.md".to_string(),
+            "archive/2026".to_string(),
+        )
+        .unwrap();
+        assert_eq!(page_result.updated_link_count, 0);
+        assert_eq!(
+            fs::read_to_string(root.join("archive/2026/Roadmap.md")).unwrap(),
+            "# Roadmap\n\n![Chart](media/chart.png)"
+        );
+
+        fs::create_dir_all(root.join("projects")).unwrap();
+        fs::write(
+            root.join("projects/Notes.md"),
+            "# Notes\n\n![Chart](media/chart.png)",
+        )
+        .unwrap();
+        reindex_workspace(&mut workspace).unwrap();
+        let folder_result = move_folder_in_workspace(
+            &mut workspace,
+            "projects".to_string(),
+            "archive".to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(folder_result.updated_link_count, 0);
+        assert_eq!(
+            fs::read_to_string(root.join("archive/projects/Notes.md")).unwrap(),
+            "# Notes\n\n![Chart](media/chart.png)"
+        );
 
         fs::remove_dir_all(root).unwrap();
     }

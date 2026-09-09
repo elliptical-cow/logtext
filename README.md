@@ -162,6 +162,41 @@ Logtext shows enough path context to distinguish them.
 
 Missing target pages are marked in rendered views and can be created explicitly.
 
+### Images
+
+Paste a screenshot or raster image from the clipboard directly into an open
+page. Logtext stores PNG, JPEG, WebP, and GIF images of up to 20 MiB in the
+configured workspace media folder and inserts a Markdown reference rooted at
+the workspace at the current editor selection:
+
+```md
+![Pasted image](media/projects-roadmap--1788890400000--a1b2c3d4.png)
+```
+
+The filename contains a normalized form of the source page path, a timestamp,
+and a short content fingerprint. Images are rendered in the editor's live
+preview and in all rendered Markdown views, including the right pane, journal
+feed, linked references, and Task Overview. Every local Markdown image target is
+resolved relative to the workspace root, so the same target remains valid when
+copied to another page. Leading `/`, operating-system absolute paths, and `..`
+segments are not supported.
+
+Hover over an image in the editor live preview to reveal `−` and `+` controls.
+They change the displayed width in 20–25 percent steps and persist it in the
+optional Markdown image title, while preserving an existing title. Image height
+always follows the original aspect ratio. Images wider than the available pane
+remain limited to the pane width.
+
+Right-click a workspace image in the editor live preview or a rendered view and
+choose `Copy image` to place the image itself on the system clipboard. This
+action is available for workspace images only; Logtext does not request
+clipboard read access.
+
+The media folder is application-managed and omitted from page navigation and
+Markdown indexing. Workspace-relative image targets remain stable when their
+page moves. Logtext does not delete image files automatically when a reference
+is removed.
+
 ### Backlinks
 
 When a block contains a link to another page, that block becomes a linked
@@ -283,7 +318,7 @@ Useful navigation and file actions:
 - open yesterday, today, or tomorrow from the journal shortcuts
 
 When pages or folders are renamed or moved, Logtext updates matching wiki links
-to the affected pages.
+to the affected pages. Workspace-relative local image targets remain unchanged.
 
 Folder colors are stored in `.config`. They color the folder icon and wiki-link
 chips that point to pages in that folder. The default wiki-link style remains a
@@ -334,6 +369,7 @@ Example:
 ```json
 {
   "journalFolder": "journal",
+  "mediaFolder": "media",
   "journalEditorContinuousScrolling": true,
   "journalRightPaneContinuousScrolling": true,
   "taskStates": ["TODO", "INPROGRESS", "WAITING", "DONE"],
@@ -359,6 +395,13 @@ Example:
 Journal navigation considers only valid calendar-date files named
 `YYYY-MM-DD.md` directly inside this folder. Logtext does not allow subfolders
 to be created or moved into the journal folder.
+
+`mediaFolder` is a workspace-relative folder path and defaults to `media`.
+It must not overlap the configured journal folder. Logtext creates it on the
+first image paste, excludes it from page navigation and indexing, and reserves
+it for stored media rather than Markdown pages. `File > Clean Media...` scans
+the workspace for unreferenced supported images, lists the candidates before
+making changes, and moves confirmed files to the operating system trash.
 
 `journalEditorContinuousScrolling` controls boundary navigation between journal
 files in the editor, including mouse-wheel and Page Up/Page Down navigation.

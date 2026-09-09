@@ -71,6 +71,7 @@ function workspaceError(error: unknown) {
 type WorkspaceStoreState = {
   root: string | null;
   journalFolder: string;
+  mediaFolder: string;
   journalEditorContinuousScrolling: boolean;
   journalRightPaneContinuousScrolling: boolean;
   pages: PageSummary[];
@@ -100,6 +101,7 @@ type WorkspaceStoreState = {
 const initialState: WorkspaceStoreState = {
   root: null,
   journalFolder: DEFAULT_JOURNAL_FOLDER,
+  mediaFolder: "media",
   journalEditorContinuousScrolling: true,
   journalRightPaneContinuousScrolling: true,
   pages: [],
@@ -155,6 +157,7 @@ function createWorkspaceStore() {
         set({
           root: workspace.root,
           journalFolder: workspace.journalFolder ?? DEFAULT_JOURNAL_FOLDER,
+          mediaFolder: workspace.mediaFolder ?? "media",
           journalEditorContinuousScrolling:
             workspace.journalEditorContinuousScrolling ?? true,
           journalRightPaneContinuousScrolling:

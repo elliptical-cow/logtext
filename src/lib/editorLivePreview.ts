@@ -1,4 +1,5 @@
 import { EditorState, RangeSetBuilder, StateField } from "@codemirror/state";
+import { syntaxTree } from "@codemirror/language";
 import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
 import {
   DEFAULT_TASK_STATES,
@@ -9,6 +10,13 @@ import { taskColorStyle } from "./taskColors.js";
 import { wikiLinkColorStyle } from "./folderColors.js";
 import { parseCheckboxListItem } from "./markdownPatterns.js";
 import { wikiLinkDisplayLabel, wikiLinksInText } from "./wikiLinks.js";
+import { isWorkspaceImageTarget, workspaceImageUrl } from "./mediaPaths.js";
+import {
+  imageTitleWithLogtextWidth,
+  logtextImageWidth,
+  nextImageWidth,
+  type ImageResizeDirection,
+} from "./imageSizing.js";
 import type { FolderColors, PageSummary, TaskStateColors } from "./types.js";
 
 export type EditorMode = "source" | "live-preview";
@@ -37,6 +45,16 @@ export type LatexSourceSpan = {
   end: number;
 };
 
+export type MarkdownImageMatch = {
+  from: number;
+  to: number;
+  alt: string;
+  target: string;
+  title: string | null;
+  titleFrom: number | null;
+  titleTo: number | null;
+};
+
 type CheckboxAtPosition = {
   from: number;
   to: number;
@@ -55,8 +73,18 @@ export function livePreviewExtension(
   taskStateColors: TaskStateColors = {},
   pages: PageSummary[] = [],
   folderColors: FolderColors = {},
+  onImageContextMenu: (event: MouseEvent, image: HTMLImageElement) => void = () => {},
 ) {
-  return [livePreviewField(taskStates, taskStateColors, pages, folderColors), livePreviewTheme];
+  return [
+    livePreviewField(
+      taskStates,
+      taskStateColors,
+      pages,
+      folderColors,
+      onImageContextMenu,
+    ),
+    livePreviewTheme,
+  ];
 }
 
 export function previewDecorationsForLine(
@@ -202,10 +230,18 @@ function livePreviewField(
   taskStateColors: TaskStateColors,
   pages: PageSummary[],
   folderColors: FolderColors,
+  onImageContextMenu: (event: MouseEvent, image: HTMLImageElement) => void,
 ) {
   return StateField.define<DecorationSet>({
     create(state) {
-      return buildLivePreviewDecorations(state, taskStates, taskStateColors, pages, folderColors);
+      return buildLivePreviewDecorations(
+        state,
+        taskStates,
+        taskStateColors,
+        pages,
+        folderColors,
+        onImageContextMenu,
+      );
     },
     update(decorations, transaction) {
       if (transaction.docChanged || transaction.selection) {
@@ -215,6 +251,7 @@ function livePreviewField(
           taskStateColors,
           pages,
           folderColors,
+          onImageContextMenu,
         );
       }
 
@@ -322,10 +359,12 @@ function buildLivePreviewDecorations(
   taskStateColors: TaskStateColors,
   pages: PageSummary[],
   folderColors: FolderColors,
+  onImageContextMenu: (event: MouseEvent, image: HTMLImageElement) => void,
 ) {
   const builder = new RangeSetBuilder<Decoration>();
   const activeLines = activeBlockLineNumbers(state);
   const latexBlockLines = latexBlockLineNumbers(state.doc.toString());
+  const imageMatches = markdownImagesInState(state);
   let inFencedCode = false;
 
   for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber += 1) {
@@ -357,6 +396,28 @@ function buildLivePreviewDecorations(
       continue;
     }
 
+    const latexSpans = inlineLatexSourceSpans(line.text);
+    const lineImages = imageMatches.filter((image) => {
+      if (image.from < line.from || image.to > line.to) {
+        return false;
+      }
+      return !latexSpans.some(
+        ({ start, end }) => image.from < line.from + end && image.to > line.from + start,
+      );
+    });
+    const imageDecorations = lineImages.map((image) => ({
+      from: image.from,
+      to: image.to,
+      decoration: Decoration.replace({
+        widget: new MarkdownImageWidget(
+          workspaceImageUrl(image.target),
+          image.alt,
+          logtextImageWidth(image.title),
+          image.from,
+          isWorkspaceImageTarget(image.target) ? onImageContextMenu : null,
+        ),
+      }),
+    }));
     const lineDecorations = previewDecorationsForLine(
       line.text,
       line.from,
@@ -364,13 +425,47 @@ function buildLivePreviewDecorations(
       taskStateColors,
       pages,
       folderColors,
+    ).filter(
+      (decoration) =>
+        !lineImages.some((image) => decoration.from < image.to && decoration.to > image.from),
     );
-    for (const { from, to, decoration } of lineDecorations) {
+    for (const { from, to, decoration } of [...imageDecorations, ...lineDecorations].sort(
+      (left, right) => left.from - right.from || left.to - right.to,
+    )) {
       builder.add(from, to, decoration);
     }
   }
 
   return builder.finish();
+}
+
+export function markdownImagesInState(state: EditorState): MarkdownImageMatch[] {
+  const matches: MarkdownImageMatch[] = [];
+  syntaxTree(state).iterate({
+    enter(node) {
+      if (node.name !== "Image") {
+        return;
+      }
+      const imageNode = node.node;
+      const urlNode = imageNode.getChild("URL");
+      if (!urlNode) {
+        return;
+      }
+      const prefix = state.sliceDoc(imageNode.from, urlNode.from);
+      const altEnd = prefix.lastIndexOf("](");
+      const titleNode = imageNode.getChild("LinkTitle");
+      matches.push({
+        from: imageNode.from,
+        to: imageNode.to,
+        alt: altEnd >= 2 ? prefix.slice(2, altEnd) : "",
+        target: state.sliceDoc(urlNode.from, urlNode.to),
+        title: titleNode ? markdownLinkTitle(state.sliceDoc(titleNode.from, titleNode.to)) : null,
+        titleFrom: titleNode?.from ?? null,
+        titleTo: titleNode?.to ?? null,
+      });
+    },
+  });
+  return matches;
 }
 
 export function latexBlockLineNumbers(source: string) {
@@ -866,4 +961,113 @@ class WikiLinkLabelWidget extends WidgetType {
     span.textContent = this.label;
     return span;
   }
+}
+
+class MarkdownImageWidget extends WidgetType {
+  constructor(
+    private readonly source: string,
+    private readonly alt: string,
+    private readonly configuredWidth: number | null,
+    private readonly imageFrom: number,
+    private readonly onContextMenu: ((event: MouseEvent, image: HTMLImageElement) => void) | null,
+  ) {
+    super();
+  }
+
+  eq(other: MarkdownImageWidget) {
+    return (
+      this.source === other.source &&
+      this.alt === other.alt &&
+      this.configuredWidth === other.configuredWidth &&
+      this.imageFrom === other.imageFrom &&
+      this.onContextMenu === other.onContextMenu
+    );
+  }
+
+  ignoreEvent(event: Event) {
+    return event.target instanceof HTMLButtonElement;
+  }
+
+  toDOM(view: EditorView) {
+    const container = document.createElement("span");
+    container.className = "cm-live-image-widget";
+    container.setAttribute("contenteditable", "false");
+    const image = document.createElement("img");
+    image.className = "cm-live-image";
+    if (this.onContextMenu) {
+      image.crossOrigin = "anonymous";
+    }
+    image.src = this.source;
+    image.alt = this.alt;
+    image.loading = "lazy";
+    if (this.onContextMenu) {
+      image.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.onContextMenu?.(event, image);
+      });
+    }
+    if (this.configuredWidth !== null) {
+      image.style.width = `${this.configuredWidth}px`;
+    }
+    container.append(image);
+
+    const controls = document.createElement("span");
+    controls.className = "cm-live-image-controls";
+    controls.setAttribute("aria-label", "Image size");
+    controls.append(
+      this.resizeButton(view, image, "smaller", "−", "Make image smaller"),
+      this.resizeButton(view, image, "larger", "+", "Make image larger"),
+    );
+    container.append(controls);
+    return container;
+  }
+
+  private resizeButton(
+    view: EditorView,
+    image: HTMLImageElement,
+    direction: ImageResizeDirection,
+    label: string,
+    title: string,
+  ) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "cm-live-image-resize";
+    button.textContent = label;
+    button.title = title;
+    button.setAttribute("aria-label", title);
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const renderedWidth = image.getBoundingClientRect().width || image.naturalWidth;
+      const width = nextImageWidth(this.configuredWidth, renderedWidth, direction);
+      resizeMarkdownImage(view, this.imageFrom, width);
+    });
+    return button;
+  }
+}
+
+function resizeMarkdownImage(view: EditorView, imageFrom: number, width: number) {
+  const image = markdownImagesInState(view.state).find((candidate) => candidate.from === imageFrom);
+  if (!image) {
+    return;
+  }
+  const title = `"${escapeMarkdownLinkTitle(imageTitleWithLogtextWidth(image.title, width))}"`;
+  const changes =
+    image.titleFrom !== null && image.titleTo !== null
+      ? { from: image.titleFrom, to: image.titleTo, insert: title }
+      : { from: image.to - 1, to: image.to - 1, insert: ` ${title}` };
+  view.dispatch({ changes, userEvent: "input" });
+}
+
+function markdownLinkTitle(source: string) {
+  if (source.length < 2) {
+    return source;
+  }
+  return source.slice(1, -1).replace(/\\([\\"'])/g, "$1");
+}
+
+function escapeMarkdownLinkTitle(title: string) {
+  return title.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }

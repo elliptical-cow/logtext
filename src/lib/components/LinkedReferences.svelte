@@ -159,6 +159,7 @@
             <div class="backlink-content">
               <MarkdownView
                 content={backlink.blockMarkdown}
+                sourcePath={backlink.sourcePath}
                 {pages}
                 {taskStates}
                 {taskStateColors}

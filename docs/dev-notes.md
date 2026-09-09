@@ -301,8 +301,8 @@ Workspace-level config:
 - Managed by `src-tauri/src/workspace_config.rs`
 - Stores derived UI and workspace preferences such as task states, task colors,
   folder colors, expanded folders, favorites, recent pages, task overview
-  filters, backlink view options, sort configuration, the journal folder, pane
-  session state, and navigation layout values
+  filters, backlink view options, sort configuration, the journal and media
+  folders, pane session state, and navigation layout values
 
 The workspace config is normalized when loaded. Invalid or unknown values are
 discarded or replaced with defaults where practical.
@@ -333,6 +333,56 @@ new page mode with stale content from the previous page.
 App-managed page operations enforce valid calendar filenames in the configured
 journal folder and prevent journal subfolders. External files remain preserved
 and are excluded from the journal sequence.
+
+## Workspace Images
+
+Clipboard image paste crosses the frontend/backend boundary once. The editor
+sends raw image bytes plus the active Markdown path and clipboard MIME type to
+`src-tauri/src/media.rs`. The backend validates both the MIME type and file
+signature, enforces the size limit, creates a collision-safe flat filename, and
+writes it beneath the configured `mediaFolder`. No media database or lifecycle
+index is maintained.
+
+Newly pasted images use standard Markdown image syntax with a local target
+relative to the workspace root, such as `media/image.png`. All local image
+targets use this same rule; leading `/`, operating-system absolute paths, and
+parent segments are rejected. `src/lib/mediaPaths.ts` maps validated targets to
+the workspace-scoped `logtext-media` protocol. The protocol canonicalizes
+paths, keeps reads inside the open workspace, and serves only validated PNG,
+JPEG, WebP, or GIF content. `MarkdownView` and the CodeMirror live-preview
+widget use the same URL helper. Optional editor resizing stores a validated
+pixel width as `logtext-width=<n>px` in the standard Markdown image title. Both
+renderers share the parsing helper, retain any user-authored title, use
+automatic height, and cap the result at the pane width.
+
+Image copy uses one shared context-menu component across CodeMirror and rendered
+Markdown. The browser canvas converts an already displayed workspace image to
+RGBA data, then the official Tauri clipboard plugin writes it to the native
+clipboard. The application capability grants only `allow-write-image`; it does
+not grant clipboard read or text-write permissions. Remote images are excluded
+from this action to avoid cross-origin canvas behavior.
+
+The workspace scanner excludes the media subtree from Markdown indexing and
+navigation. App-managed file operations prevent pages from entering that
+subtree and protect the configured folder path. Page and folder moves leave
+workspace-relative image paths unchanged.
+
+`File > Clean Media...` performs a fresh scan of Markdown files and shows every
+unreferenced supported image in a scrollable confirmation dialog. Before acting,
+Logtext saves a dirty editor page; immediately before moving the displayed files
+it scans again and skips anything that has since become referenced. Confirmed
+files go to the operating system trash so they remain recoverable through the
+normal system restore workflow. If the system trash is unavailable, Logtext
+reports the affected file and does not fall back to permanent deletion.
+
+Media cleanup is implemented in `src-tauri/src/media_cleanup.rs`. It enumerates
+supported image files below the configured media folder, skips links, and reads
+Markdown directly from disk rather than relying on an eventually consistent
+index. Reference matching is deliberately conservative: Markdown is
+percent-decoded, path separators and case are normalized, and any occurrence of
+the workspace-relative media path retains the file. The backend recomputes the
+unused set immediately before moving requested candidates with the cross-platform
+system-trash API. Failures are reported per file.
 
 Primary components:
 

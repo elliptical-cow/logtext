@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { EditorState } from "@codemirror/state";
+import { markdown } from "@codemirror/lang-markdown";
 import test from "node:test";
 import {
   activeBlockLineNumbers,
@@ -9,6 +10,7 @@ import {
   latexBlockLineNumbers,
   livePreviewExtension,
   liveCheckboxCheckClass,
+  markdownImagesInState,
   previewDecorationsForLine,
   taskKeywordAtDocumentPosition,
   wikiLinkAtDocumentPosition,
@@ -62,6 +64,58 @@ test("builds live preview decorations for multiline block LaTeX", () => {
   });
 
   assert.equal(state.doc.lines, 5);
+});
+
+test("recognizes Markdown images through the editor syntax tree", () => {
+  const source = "Before ![Screenshot](media/image.png) after";
+  const state = EditorState.create({
+    doc: source,
+    extensions: [markdown(), livePreviewExtension()],
+  });
+
+  assert.deepEqual(markdownImagesInState(state), [
+    {
+      from: 7,
+      to: 37,
+      alt: "Screenshot",
+      target: "media/image.png",
+      title: null,
+      titleFrom: null,
+      titleTo: null,
+    },
+  ]);
+});
+
+test("reads persistent image width metadata from Markdown titles", () => {
+  const source = '![Diagram](media/diagram.png "Overview | logtext-width=640px")';
+  const state = EditorState.create({
+    doc: source,
+    extensions: [markdown()],
+  });
+
+  assert.deepEqual(markdownImagesInState(state), [
+    {
+      from: 0,
+      to: source.length,
+      alt: "Diagram",
+      target: "media/diagram.png",
+      title: "Overview | logtext-width=640px",
+      titleFrom: 29,
+      titleTo: 61,
+    },
+  ]);
+});
+
+test("keeps image syntax parseable inside inline LaTeX source", () => {
+  const source = String.raw`Formula $![not an image](media/image.png)$`;
+  const state = EditorState.create({
+    doc: source,
+    extensions: [markdown(), livePreviewExtension()],
+  });
+
+  // Constructing the state builds the decoration set. Markdown-looking formula
+  // content must not create overlapping image and LaTeX decorations.
+  assert.equal(state.doc.toString(), source);
 });
 
 test("does not activate wiki links contained in block LaTeX", () => {

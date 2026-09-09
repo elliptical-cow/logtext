@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from "svelte";
   import ContextMenuShell from "./ContextMenuShell.svelte";
+  import ImageContextMenu from "./ImageContextMenu.svelte";
   import { createMarkdownRenderer } from "../markdownRenderer";
   import { renderCheckboxItems } from "../markdownRendering";
   import {
@@ -19,8 +20,10 @@
   import { applyWikiLinkColorStyles, renderWikiLinks } from "../wikiLinks";
   import type { LinkTargetPane } from "../stores/linkOperations";
   import type { FolderColors, PageSummary, TaskStateColors } from "../types";
+  import type { ImageContextMenuTarget } from "../imageClipboard";
 
   export let content = "";
+  export let sourcePath = "";
   export let pages: PageSummary[] = [];
   export let taskStates: string[] = DEFAULT_TASK_STATES;
   export let taskStateColors: TaskStateColors = {};
@@ -66,13 +69,14 @@
     y: number;
     line: number;
   } | null = null;
+  let imageContextMenu: ImageContextMenuTarget | null = null;
   let markdownElement: HTMLElement | null = null;
   let lastHighlightKey = "";
   let lastObservedWidth: number | null = null;
   let highlightTimer: ReturnType<typeof setTimeout> | null = null;
   const taskPriorityOptions = ["A", "B", "C"];
 
-  const markdown = createMarkdownRenderer({ breaks: true });
+  const markdown = createMarkdownRenderer({ breaks: true, workspaceImages: true });
   const markdownWithSourceLines = markdown as unknown as MarkdownItWithSourceLines;
 
   $: taskRender = markTaskKeywordsForRendering(content, taskStates, sourceLineNumbers);
@@ -159,7 +163,7 @@
   }
 
   function renderMarkdownWithSourceLines(markdownContent: string) {
-    return markdownWithSourceLines.render(markdownContent, { sourceLineNumbers });
+    return markdownWithSourceLines.render(markdownContent, { sourceLineNumbers, sourcePath });
   }
 
   function renderTaskKeywordMarkers(html: string, tokens: TaskKeywordToken[]) {
@@ -245,6 +249,7 @@
     linkContextMenu = null;
     taskContextMenu = null;
     sourceLineContextMenu = null;
+    imageContextMenu = null;
 
     const checkbox = (event.target as HTMLElement).closest<HTMLInputElement>(
       "input.task-list-checkbox",
@@ -276,6 +281,20 @@
   }
 
   function handleContextMenu(event: MouseEvent) {
+    const image = (event.target as HTMLElement).closest<HTMLImageElement>(
+      'img.workspace-image[data-workspace-image="true"]',
+    );
+    if (image) {
+      event.preventDefault();
+      event.stopPropagation();
+      linkContextMenu = null;
+      taskContextMenu = null;
+      sourceLineContextMenu = null;
+      imageContextMenu = { x: event.clientX, y: event.clientY, image };
+      return;
+    }
+    imageContextMenu = null;
+
     if (enableTaskContextMenu) {
       const taskKeyword = (event.target as HTMLElement).closest<HTMLElement>(
         ".task-keyword, .task-priority",
@@ -381,6 +400,7 @@
     linkContextMenu = null;
     taskContextMenu = null;
     sourceLineContextMenu = null;
+    imageContextMenu = null;
   }
 
   function handleWindowKeydown(event: KeyboardEvent) {
@@ -504,6 +524,7 @@
 
   type MarkdownRenderEnv = {
     sourceLineNumbers: number[];
+    sourcePath: string;
   };
 
   type MarkdownRenderer = {
@@ -530,6 +551,15 @@
 >
   {@html rendered}
 </div>
+
+{#if imageContextMenu}
+  <ImageContextMenu
+    x={imageContextMenu.x}
+    y={imageContextMenu.y}
+    image={imageContextMenu.image}
+    onClose={closeContextMenu}
+  />
+{/if}
 
 {#if linkContextMenu}
   <ContextMenuShell

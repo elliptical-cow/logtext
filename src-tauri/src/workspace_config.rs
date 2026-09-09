@@ -8,12 +8,15 @@ pub const DEFAULT_TASK_STATES: [&str; 4] = ["TODO", "INPROGRESS", "WAITING", "DO
 pub const DEFAULT_PAGE_SORT: &str = "name-desc";
 pub const DEFAULT_THEME_MODE: &str = "light";
 pub const DEFAULT_JOURNAL_FOLDER: &str = "journal";
+pub const DEFAULT_MEDIA_FOLDER: &str = "media";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceConfig {
     #[serde(default = "default_journal_folder")]
     pub journal_folder: String,
+    #[serde(default = "default_media_folder")]
+    pub media_folder: String,
     #[serde(default = "default_journal_continuous_scrolling")]
     pub journal_editor_continuous_scrolling: bool,
     #[serde(default = "default_journal_continuous_scrolling")]
@@ -113,6 +116,7 @@ impl Default for WorkspaceConfig {
             .collect();
         Self {
             journal_folder: default_journal_folder(),
+            media_folder: default_media_folder(),
             journal_editor_continuous_scrolling: default_journal_continuous_scrolling(),
             journal_right_pane_continuous_scrolling: default_journal_continuous_scrolling(),
             task_state_colors: default_task_state_colors(&task_states),
@@ -163,8 +167,13 @@ pub fn load_or_create_workspace_config(root: &Path) -> Result<WorkspaceConfig, S
     let task_state_colors = normalize_task_state_colors(config.task_state_colors, &task_states);
     let default_page_sort = normalize_page_sort(config.default_page_sort, DEFAULT_PAGE_SORT);
 
+    let journal_folder = normalize_journal_folder(config.journal_folder)?;
+    let media_folder = normalize_media_folder(config.media_folder)?;
+    validate_workspace_folder_separation(&journal_folder, &media_folder)?;
+
     Ok(WorkspaceConfig {
-        journal_folder: normalize_journal_folder(config.journal_folder)?,
+        journal_folder,
+        media_folder,
         journal_editor_continuous_scrolling: config.journal_editor_continuous_scrolling,
         journal_right_pane_continuous_scrolling: config.journal_right_pane_continuous_scrolling,
         task_states,
@@ -353,6 +362,47 @@ pub fn normalize_journal_folder(journal_folder: String) -> Result<String, String
     Ok(normalized)
 }
 
+pub fn normalize_media_folder(media_folder: String) -> Result<String, String> {
+    let normalized = media_folder.trim().trim_matches('/').replace('\\', "/");
+    if normalized.is_empty() {
+        return Ok(default_media_folder());
+    }
+
+    if normalized.split('/').any(|segment| {
+        segment.is_empty()
+            || segment == "."
+            || segment == ".."
+            || segment.trim() != segment
+            || matches!(segment, ".git" | "node_modules" | "target")
+    }) {
+        return Err(format!(
+            "Invalid mediaFolder '{media_folder}'. Use a workspace-relative folder path without '.', '..', or build directories."
+        ));
+    }
+
+    Ok(normalized)
+}
+
+fn validate_workspace_folder_separation(
+    journal_folder: &str,
+    media_folder: &str,
+) -> Result<(), String> {
+    let journal_prefix = format!("{journal_folder}/");
+    let media_prefix = format!("{media_folder}/");
+    if journal_folder.eq_ignore_ascii_case(media_folder)
+        || journal_prefix
+            .to_lowercase()
+            .starts_with(&media_prefix.to_lowercase())
+        || media_prefix
+            .to_lowercase()
+            .starts_with(&journal_prefix.to_lowercase())
+    {
+        return Err("journalFolder and mediaFolder must not overlap".to_string());
+    }
+
+    Ok(())
+}
+
 fn default_quick_access_height() -> u32 {
     220
 }
@@ -521,6 +571,10 @@ fn default_journal_folder() -> String {
     DEFAULT_JOURNAL_FOLDER.to_string()
 }
 
+fn default_media_folder() -> String {
+    DEFAULT_MEDIA_FOLDER.to_string()
+}
+
 fn default_folder_page_sort() -> HashMap<String, String> {
     HashMap::from([("journal".to_string(), "name-desc".to_string())])
 }
@@ -544,6 +598,7 @@ mod tests {
             vec!["TODO", "INPROGRESS", "WAITING", "DONE"]
         );
         assert_eq!(config.journal_folder, "journal");
+        assert_eq!(config.media_folder, "media");
         assert_eq!(
             config.task_state_colors.get("TODO"),
             Some(&"red".to_string())
@@ -590,6 +645,7 @@ mod tests {
 
         assert_eq!(config.task_states, vec!["TODO", "BLOCKED", "DONE"]);
         assert_eq!(config.journal_folder, "journal");
+        assert_eq!(config.media_folder, "media");
         assert!(config.journal_editor_continuous_scrolling);
         assert!(config.journal_right_pane_continuous_scrolling);
         assert_eq!(
@@ -630,6 +686,36 @@ mod tests {
 
         assert_eq!(config.journal_folder, "daily/logs");
 
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn loads_and_normalizes_custom_media_folder() {
+        let root = temp_workspace();
+        fs::write(
+            root.join(".config"),
+            r#"{"taskStates":["TODO","DONE"],"mediaFolder":" attachments\\images/ "}"#,
+        )
+        .unwrap();
+
+        let config = load_or_create_workspace_config(&root).unwrap();
+
+        assert_eq!(config.media_folder, "attachments/images");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_overlapping_journal_and_media_folders() {
+        let root = temp_workspace();
+        fs::write(
+            root.join(".config"),
+            r#"{"taskStates":["TODO","DONE"],"journalFolder":"daily","mediaFolder":"daily/media"}"#,
+        )
+        .unwrap();
+
+        let error = load_or_create_workspace_config(&root).unwrap_err();
+
+        assert!(error.contains("must not overlap"));
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -906,6 +992,7 @@ mod tests {
         let root = temp_workspace();
         let config = WorkspaceConfig {
             journal_folder: default_journal_folder(),
+            media_folder: default_media_folder(),
             journal_editor_continuous_scrolling: true,
             journal_right_pane_continuous_scrolling: true,
             task_states: vec!["TODO".to_string(), "DONE".to_string()],
@@ -940,6 +1027,7 @@ mod tests {
         let root = temp_workspace();
         let config = WorkspaceConfig {
             journal_folder: default_journal_folder(),
+            media_folder: default_media_folder(),
             journal_editor_continuous_scrolling: false,
             journal_right_pane_continuous_scrolling: true,
             task_states: vec!["TODO".to_string(), "DONE".to_string()],

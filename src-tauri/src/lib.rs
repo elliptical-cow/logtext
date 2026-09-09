@@ -5,6 +5,8 @@ pub mod config_commands;
 pub mod content_snapshot;
 pub mod dto;
 pub mod index;
+pub mod media;
+pub mod media_cleanup;
 pub mod navigation_order;
 pub mod page_io;
 pub mod page_ops;
@@ -27,6 +29,7 @@ const MENU_OPEN_WORKSPACE: &str = "file.open_workspace";
 const MENU_NEW_FILE: &str = "file.new_file";
 const MENU_CLOSE_WORKSPACE: &str = "file.close_workspace";
 const MENU_SAVE: &str = "file.save";
+const MENU_CLEAN_MEDIA: &str = "file.clean_media";
 const MENU_UNDO: &str = "edit.undo";
 const MENU_REDO: &str = "edit.redo";
 const MENU_TOGGLE_DARK_MODE: &str = "view.toggle_dark_mode";
@@ -139,6 +142,10 @@ fn update_editor_mode_menu_label(app: AppHandle, is_live_preview: bool) -> Resul
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .register_uri_scheme_protocol("logtext-media", |context, request| {
+            media::workspace_media_response(context.app_handle(), request)
+        })
         .menu(build_app_menu)
         .on_menu_event(|app, event| {
             let event_name = match event.id().as_ref() {
@@ -146,6 +153,7 @@ pub fn run() {
                 MENU_NEW_FILE => Some("menu-new-file"),
                 MENU_CLOSE_WORKSPACE => Some("menu-close-workspace"),
                 MENU_SAVE => Some("menu-save"),
+                MENU_CLEAN_MEDIA => Some("menu-clean-media"),
                 MENU_UNDO => Some("menu-undo"),
                 MENU_REDO => Some("menu-redo"),
                 MENU_TOGGLE_DARK_MODE => Some("menu-toggle-dark-mode"),
@@ -205,7 +213,10 @@ pub fn run() {
             commands::list_tasks,
             commands::update_task_status,
             commands::update_task_priority,
-            commands::toggle_checkbox
+            commands::toggle_checkbox,
+            media::save_pasted_image,
+            media_cleanup::list_unused_media,
+            media_cleanup::move_unused_media_to_trash
         ])
         .run(tauri::generate_context!())
         .expect("error while running Logtext");
@@ -233,7 +244,9 @@ fn ensure_file_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
     let save = MenuItemBuilder::with_id(MENU_SAVE, "Save")
         .accelerator("CmdOrCtrl+S")
         .build(handle)?;
-    let separator = PredefinedMenuItem::separator(handle)?;
+    let clean_media = MenuItemBuilder::with_id(MENU_CLEAN_MEDIA, "Clean Media...").build(handle)?;
+    let separator_after_save = PredefinedMenuItem::separator(handle)?;
+    let separator_after_clean_media = PredefinedMenuItem::separator(handle)?;
     let separator_after_workspace = PredefinedMenuItem::separator(handle)?;
 
     if let Some(file_menu) = find_submenu(menu, "File")? {
@@ -244,7 +257,9 @@ fn ensure_file_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
                 &close_workspace,
                 &separator_after_workspace,
                 &save,
-                &separator,
+                &separator_after_save,
+                &clean_media,
+                &separator_after_clean_media,
             ],
             0,
         )?;
@@ -255,6 +270,8 @@ fn ensure_file_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
             .item(&close_workspace)
             .separator()
             .item(&save)
+            .separator()
+            .item(&clean_media)
             .separator()
             .build()?;
         menu.prepend(&file_menu)?;

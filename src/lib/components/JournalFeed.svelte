@@ -322,6 +322,7 @@
       <article class="preview-content">
         <MarkdownView
           content={pageView.content}
+          sourcePath={pageView.page.path}
           {pages}
           {taskStates}
           {taskStateColors}

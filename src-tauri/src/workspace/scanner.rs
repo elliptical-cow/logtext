@@ -15,9 +15,16 @@ pub fn scan_markdown_files(root: &Path) -> Result<Vec<String>, String> {
 }
 
 pub fn scan_workspace(root: &Path) -> Result<WorkspaceScan, String> {
+    scan_workspace_excluding(root, None)
+}
+
+pub fn scan_workspace_excluding(
+    root: &Path,
+    excluded_folder: Option<&str>,
+) -> Result<WorkspaceScan, String> {
     let mut files = Vec::new();
     let mut folders = Vec::new();
-    scan_dir(root, root, &mut files, &mut folders)?;
+    scan_dir(root, root, excluded_folder, &mut files, &mut folders)?;
     files.sort();
     sort_folder_paths(&mut folders);
     Ok(WorkspaceScan {
@@ -33,6 +40,7 @@ fn sort_folder_paths(folders: &mut [String]) {
 fn scan_dir(
     root: &Path,
     current: &Path,
+    excluded_folder: Option<&str>,
     files: &mut Vec<String>,
     folders: &mut Vec<String>,
 ) -> Result<(), String> {
@@ -53,8 +61,12 @@ fn scan_dir(
         }
 
         if path.is_dir() {
-            folders.push(relative_path(root, &path)?);
-            scan_dir(root, &path, files, folders)?;
+            let relative = relative_path(root, &path)?;
+            if excluded_folder.is_some_and(|excluded| relative.eq_ignore_ascii_case(excluded)) {
+                continue;
+            }
+            folders.push(relative);
+            scan_dir(root, &path, excluded_folder, files, folders)?;
         } else if is_markdown_file(&path) {
             files.push(relative_path(root, &path)?);
         }
@@ -152,6 +164,20 @@ mod tests {
             vec!["Inbox.md".to_string(), "Projekte/Alpha.md".to_string()]
         );
 
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn excludes_a_configured_media_folder_from_pages_and_navigation() {
+        let root = temp_workspace();
+        fs::create_dir_all(root.join("media/nested")).unwrap();
+        fs::write(root.join("media/nested/Hidden.md"), "# Hidden").unwrap();
+        fs::write(root.join("Visible.md"), "# Visible").unwrap();
+
+        let scan = scan_workspace_excluding(&root, Some("media")).unwrap();
+
+        assert_eq!(scan.markdown_files, vec!["Visible.md"]);
+        assert!(scan.folders.is_empty());
         fs::remove_dir_all(root).unwrap();
     }
 

@@ -26,6 +26,8 @@ import type {
   ToggleCheckboxResult,
   UpdateTaskStatusResult,
   WorkspaceState,
+  MediaCleanupCandidate,
+  MediaTrashResult,
 } from "./types.js";
 
 const TAURI_REQUIRED_MESSAGE =
@@ -100,6 +102,14 @@ export function getLastWorkspace(): Promise<string | null> {
 
 export function closeWorkspace(): Promise<void> {
   return invokeTauri<void>("close_workspace");
+}
+
+export function listUnusedMedia(): Promise<MediaCleanupCandidate[]> {
+  return invokeTauri<MediaCleanupCandidate[]>("list_unused_media");
+}
+
+export function moveUnusedMediaToTrash(paths: string[]): Promise<MediaTrashResult> {
+  return invokeTauri<MediaTrashResult>("move_unused_media_to_trash", { paths });
 }
 
 export function saveExpandedFolders(expandedFolders: string[]): Promise<void> {
@@ -221,6 +231,23 @@ export function savePage(
     content,
     expectedModifiedAt,
     expectedContentHash,
+  });
+}
+
+export function savePastedImage(
+  documentPath: string,
+  mimeType: string,
+  bytes: Uint8Array,
+): Promise<string> {
+  if (!isTauriRuntime()) {
+    return Promise.reject(new Error(TAURI_REQUIRED_MESSAGE));
+  }
+
+  return invoke<string>("save_pasted_image", bytes, {
+    headers: {
+      "document-path": encodeURIComponent(documentPath),
+      "mime-type": mimeType,
+    },
   });
 }
 

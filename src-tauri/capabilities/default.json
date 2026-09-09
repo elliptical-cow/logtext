@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "core:window:allow-set-title",
+    "clipboard-manager:allow-write-image",
     "dialog:allow-open",
     "dialog:allow-message"
   ]

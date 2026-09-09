@@ -3,12 +3,12 @@ use crate::content_snapshot::ContentSnapshot;
 use crate::index::backlink_index::BacklinkIndex;
 use crate::index::page_index::PageIndex;
 use crate::workspace::paths::resolve_workspace_relative_path;
-use crate::workspace::scanner::scan_workspace;
+use crate::workspace::scanner::scan_workspace_excluding;
 use std::collections::HashSet;
 use std::fs;
 
 pub fn reindex_workspace(workspace: &mut WorkspaceState) -> Result<(), String> {
-    let scan = scan_workspace(&workspace.root)?;
+    let scan = scan_workspace_excluding(&workspace.root, Some(&workspace.config.media_folder))?;
     let mut pages = PageIndex::default();
     let mut backlinks = BacklinkIndex::default();
     let mut contents = ContentSnapshot::default();
@@ -35,7 +35,7 @@ pub fn reindex_workspace_paths(
     workspace: &mut WorkspaceState,
     changed_paths: impl IntoIterator<Item = String>,
 ) -> Result<(), String> {
-    let scan = scan_workspace(&workspace.root)?;
+    let scan = scan_workspace_excluding(&workspace.root, Some(&workspace.config.media_folder))?;
     let indexed_paths: HashSet<&str> = scan.markdown_files.iter().map(String::as_str).collect();
 
     for path in changed_paths {
