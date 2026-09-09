@@ -311,8 +311,6 @@ const livePreviewTheme = EditorView.baseTheme({
   ".cm-live-latex-inline": {
     display: "inline-block",
     maxWidth: "100%",
-    overflowX: "auto",
-    overflowY: "hidden",
     verticalAlign: "middle",
   },
   ".cm-live-latex-block": {

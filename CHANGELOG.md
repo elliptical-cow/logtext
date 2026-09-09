@@ -40,6 +40,11 @@ current source version is `0.7.1`.
 - Release assets now use consistent names that explicitly identify Logtext's
   version, target operating system, architecture, and Windows package variant.
 
+### Fixed
+
+- Inline LaTeX formulas with tall operators, limits, fractions, or roots are no
+  longer vertically clipped by the editor live preview.
+
 ## 0.7.1
 
 Changes since `v0.6.7`.

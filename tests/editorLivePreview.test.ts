@@ -37,6 +37,7 @@ test("renders inline LaTeX without applying Markdown decorations inside it", () 
   );
   assert.ok(decorations[0].decoration.spec.widget);
   assert.match(renderLatexPreview(String.raw`x_i * y_i`, false), /class="katex"/);
+  assert.match(renderLatexPreview(String.raw`\sum_{i}f_i`, false), /<mo>∑<\/mo>/);
 });
 
 test("does not treat escaped dollars or code spans as LaTeX", () => {
