@@ -44,20 +44,28 @@ test("renders inline LaTeX without applying Markdown decorations inside it", () 
   assert.match(renderLatexPreview(String.raw`\sum_{i}f_i`, false), /<mo>∑<\/mo>/);
 });
 
-test("anchors inline LaTeX after the width of its opening delimiter", () => {
+test("anchors inline LaTeX in an isolated left-to-right flex box", () => {
   const source = readFileSync(join(process.cwd(), "src/lib/editorLivePreview.ts"), "utf8");
   const inlineStyle = /"\.cm-live-latex-inline":\s*\{(?<rules>[^}]*)\}/s.exec(source);
   const inlineRules = inlineStyle?.groups?.rules ?? "";
-  const anchorStyle = /"\.cm-live-latex-inline::before":\s*\{(?<rules>[^}]*)\}/s.exec(source);
+  const anchorStyle = /"\.cm-live-latex-anchor":\s*\{(?<rules>[^}]*)\}/s.exec(source);
   const anchorRules = anchorStyle?.groups?.rules ?? "";
+  const outputStyle = /"\.cm-live-latex-output":\s*\{(?<rules>[^}]*)\}/s.exec(source);
+  const outputRules = outputStyle?.groups?.rules ?? "";
 
   assert.ok(inlineRules);
+  assert.match(inlineRules, /alignItems: "baseline"/);
   assert.match(inlineRules, /direction: "ltr"/);
+  assert.match(inlineRules, /display: "inline-flex"/);
   assert.equal(/marginLeft/.test(inlineRules), false);
   assert.equal(/overflow/.test(inlineRules), false);
   assert.match(inlineRules, /unicodeBidi: "isolate"/);
-  assert.match(anchorRules, /content: '\"\$\"'/);
+  assert.match(anchorRules, /flex: "0 0 auto"/);
   assert.match(anchorRules, /visibility: "hidden"/);
+  assert.match(outputRules, /display: "inline-block"/);
+  assert.match(outputRules, /flex: "0 0 auto"/);
+  assert.match(source, /anchor\.textContent = "\$"/);
+  assert.match(source, /container\.append\(anchor, output\)/);
 });
 
 test("does not treat escaped dollars or code spans as LaTeX", () => {

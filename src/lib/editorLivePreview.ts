@@ -309,15 +309,20 @@ const livePreviewTheme = EditorView.baseTheme({
     fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
   },
   ".cm-live-latex-inline": {
+    alignItems: "baseline",
     direction: "ltr",
-    display: "inline-block",
+    display: "inline-flex",
     maxWidth: "100%",
     unicodeBidi: "isolate",
     verticalAlign: "middle",
   },
-  ".cm-live-latex-inline::before": {
-    content: '"$"',
+  ".cm-live-latex-anchor": {
+    flex: "0 0 auto",
     visibility: "hidden",
+  },
+  ".cm-live-latex-output": {
+    display: "inline-block",
+    flex: "0 0 auto",
   },
   ".cm-live-latex-block": {
     display: "block",
@@ -1101,7 +1106,20 @@ class LatexWidget extends WidgetType {
       ? "cm-live-latex cm-live-latex-block"
       : "cm-live-latex cm-live-latex-inline";
     container.setAttribute("contenteditable", "false");
-    container.innerHTML = renderLatexPreview(this.source, this.displayMode);
+    const renderedLatex = renderLatexPreview(this.source, this.displayMode);
+    if (this.displayMode) {
+      container.innerHTML = renderedLatex;
+    } else {
+      const anchor = document.createElement("span");
+      anchor.className = "cm-live-latex-anchor";
+      anchor.setAttribute("aria-hidden", "true");
+      anchor.textContent = "$";
+
+      const output = document.createElement("span");
+      output.className = "cm-live-latex-output";
+      output.innerHTML = renderedLatex;
+      container.append(anchor, output);
+    }
     return container;
   }
 }

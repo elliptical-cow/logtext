@@ -460,8 +460,9 @@ lines are visually rendered while the active line remains editable Markdown
 source. Inline LaTeX follows the same rule. Its Markdown range is hidden
 separately from a right-sided point widget at the opening delimiter, which
 keeps the widget's left edge anchored after preceding text. The widget is an
-LTR isolate and reserves the opening delimiter's font-relative width before
-the KaTeX output. Multiline LaTeX is represented by one block widget while
+atomic LTR inline-flex container: a hidden opening-delimiter element reserves
+its font-relative width before a separate, non-shrinking KaTeX output element.
+Multiline LaTeX is represented by one block widget while
 inactive and restores the complete `$$...$$` source range when the selection
 enters any line of the block. KaTeX widgets reuse
 unchanged DOM through `WidgetType.eq()` so selection updates do not rerender
