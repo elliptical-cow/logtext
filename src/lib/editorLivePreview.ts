@@ -1,6 +1,7 @@
 import { EditorState, RangeSetBuilder, StateField } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
+import { renderToString } from "katex";
 import {
   DEFAULT_TASK_STATES,
   priorityCookieMatch,
@@ -45,6 +46,14 @@ export type LatexSourceSpan = {
   end: number;
 };
 
+export type LatexBlockRange = {
+  from: number;
+  to: number;
+  startLine: number;
+  endLine: number;
+  content: string;
+};
+
 export type MarkdownImageMatch = {
   from: number;
   to: number;
@@ -66,7 +75,7 @@ const strongText = Decoration.mark({ class: "cm-live-strong" });
 const emphasisText = Decoration.mark({ class: "cm-live-emphasis" });
 const taskPriority = Decoration.mark({ class: "cm-live-priority" });
 const latexSource = Decoration.mark({ class: "cm-live-latex-source" });
-const latexBlockLine = Decoration.line({ class: "cm-live-latex-block" });
+const latexBlockSourceLine = Decoration.line({ class: "cm-live-latex-block-source" });
 
 export function livePreviewExtension(
   taskStates = DEFAULT_TASK_STATES,
@@ -115,7 +124,7 @@ export function previewDecorationsForLine(
         ({ start, end }) => from < lineFrom + end && to > lineFrom + start,
       ),
   );
-  addLatexSourceDecorations(lineFrom, latexSpans, markdownDecorations);
+  addLatexPreviewDecorations(lineText, lineFrom, latexSpans, markdownDecorations);
 
   return markdownDecorations.sort((left, right) => left.from - right.from || left.to - right.to);
 }
@@ -295,9 +304,27 @@ const livePreviewTheme = EditorView.baseTheme({
     backgroundColor: "var(--code-bg)",
     fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
   },
-  ".cm-live-latex-block": {
+  ".cm-live-latex-block-source": {
     backgroundColor: "var(--code-bg)",
     fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+  },
+  ".cm-live-latex-inline": {
+    display: "inline-block",
+    maxWidth: "100%",
+    overflowX: "auto",
+    overflowY: "hidden",
+    verticalAlign: "middle",
+  },
+  ".cm-live-latex-block": {
+    display: "block",
+    boxSizing: "border-box",
+    width: "100%",
+    overflowX: "auto",
+    overflowY: "hidden",
+    padding: "0.45em 0",
+  },
+  ".cm-live-latex-block .katex-display": {
+    margin: "0",
   },
   ".cm-live-checkbox": {
     display: "inline-flex",
@@ -363,7 +390,17 @@ function buildLivePreviewDecorations(
 ) {
   const builder = new RangeSetBuilder<Decoration>();
   const activeLines = activeBlockLineNumbers(state);
-  const latexBlockLines = latexBlockLineNumbers(state.doc.toString());
+  const latexBlocks = latexBlockRanges(state.doc.toString());
+  const latexBlockByLine = new Map<number, LatexBlockRange>();
+  const activeLatexBlocks = new Set<LatexBlockRange>();
+  for (const block of latexBlocks) {
+    for (let lineNumber = block.startLine; lineNumber <= block.endLine; lineNumber += 1) {
+      latexBlockByLine.set(lineNumber, block);
+      if (activeLines.has(lineNumber)) {
+        activeLatexBlocks.add(block);
+      }
+    }
+  }
   const imageMatches = markdownImagesInState(state);
   let inFencedCode = false;
 
@@ -372,8 +409,21 @@ function buildLivePreviewDecorations(
     const trimmed = line.text.trimStart();
     const startsFence = trimmed.startsWith("```") || trimmed.startsWith("~~~");
 
-    if (latexBlockLines.has(lineNumber)) {
-      addLatexBlockLine(builder, line.from, line.to);
+    const latexBlock = latexBlockByLine.get(lineNumber);
+    if (latexBlock) {
+      if (activeLatexBlocks.has(latexBlock)) {
+        addLatexBlockSourceLine(builder, line.from, line.to);
+      } else if (lineNumber === latexBlock.startLine) {
+        builder.add(
+          latexBlock.from,
+          latexBlock.to,
+          Decoration.replace({
+            widget: new LatexWidget(latexBlock.content, true),
+            block: true,
+            inclusive: false,
+          }),
+        );
+      }
       continue;
     }
 
@@ -470,47 +520,123 @@ export function markdownImagesInState(state: EditorState): MarkdownImageMatch[] 
 
 export function latexBlockLineNumbers(source: string) {
   const blockLines = new Set<number>();
-  const lines = source.split(/\r?\n/);
-  let inFencedCode = false;
-  let inLatexBlock = false;
-
-  for (const [index, lineText] of lines.entries()) {
-    const lineNumber = index + 1;
-    const trimmed = lineText.trimStart();
-
-    if (inLatexBlock) {
+  for (const block of latexBlockRanges(source)) {
+    for (let lineNumber = block.startLine; lineNumber <= block.endLine; lineNumber += 1) {
       blockLines.add(lineNumber);
-      if (trimmed.trimEnd().endsWith("$$")) {
-        inLatexBlock = false;
-      }
-      continue;
     }
+  }
+  return blockLines;
+}
+
+export function latexBlockRanges(source: string): LatexBlockRange[] {
+  const blocks: LatexBlockRange[] = [];
+  const lines = sourceLines(source);
+  let inFencedCode = false;
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.text.trimStart();
 
     if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
       inFencedCode = !inFencedCode;
+      index += 1;
       continue;
     }
 
     if (inFencedCode || !trimmed.startsWith("$$")) {
+      index += 1;
       continue;
     }
 
-    blockLines.add(lineNumber);
-    inLatexBlock = !trimmed.slice(2).trimEnd().endsWith("$$");
+    const indent = line.text.length - trimmed.length;
+    const openingContent = trimmed.slice(2);
+    const sameLineContent = contentBeforeClosingDelimiter(openingContent);
+    if (sameLineContent !== null) {
+      blocks.push({
+        from: line.from,
+        to: line.to,
+        startLine: line.number,
+        endLine: line.number,
+        content: sameLineContent,
+      });
+      index += 1;
+      continue;
+    }
+
+    const contentLines = openingContent ? [openingContent] : [];
+    let endIndex = index;
+    let closed = false;
+    while (endIndex + 1 < lines.length) {
+      endIndex += 1;
+      const contentLine = stripIndent(lines[endIndex].text, indent);
+      const closingContent = contentBeforeClosingDelimiter(contentLine);
+      if (closingContent !== null) {
+        if (closingContent) {
+          contentLines.push(closingContent);
+        }
+        closed = true;
+        break;
+      }
+      contentLines.push(contentLine);
+    }
+
+    const endLine = lines[endIndex];
+    blocks.push({
+      from: line.from,
+      to: endLine.to,
+      startLine: line.number,
+      endLine: endLine.number,
+      content: contentLines.join("\n"),
+    });
+    index = closed ? endIndex + 1 : lines.length;
   }
 
-  return blockLines;
+  return blocks;
 }
 
-function addLatexBlockLine(
+function addLatexBlockSourceLine(
   builder: RangeSetBuilder<Decoration>,
   lineFrom: number,
   lineTo: number,
 ) {
-  builder.add(lineFrom, lineFrom, latexBlockLine);
+  builder.add(lineFrom, lineFrom, latexBlockSourceLine);
   if (lineTo > lineFrom) {
     builder.add(lineFrom, lineTo, latexSource);
   }
+}
+
+function sourceLines(source: string) {
+  const lines: Array<{ number: number; from: number; to: number; text: string }> = [];
+  let from = 0;
+  let number = 1;
+
+  while (from <= source.length) {
+    const newline = source.indexOf("\n", from);
+    const rawTo = newline === -1 ? source.length : newline;
+    const to = rawTo > from && source[rawTo - 1] === "\r" ? rawTo - 1 : rawTo;
+    lines.push({ number, from, to, text: source.slice(from, to) });
+    if (newline === -1) {
+      break;
+    }
+    from = newline + 1;
+    number += 1;
+  }
+
+  return lines;
+}
+
+function contentBeforeClosingDelimiter(source: string) {
+  const trimmedEnd = source.trimEnd();
+  return trimmedEnd.endsWith("$$") ? trimmedEnd.slice(0, -2) : null;
+}
+
+function stripIndent(source: string, indent: number) {
+  let offset = 0;
+  while (offset < indent && (source[offset] === " " || source[offset] === "\t")) {
+    offset += 1;
+  }
+  return source.slice(offset);
 }
 
 function latexSourceDecorationsForLine(lineText: string, lineFrom: number) {
@@ -529,6 +655,23 @@ function addLatexSourceDecorations(
       from: lineFrom + start,
       to: lineFrom + end,
       decoration: latexSource,
+    });
+  }
+}
+
+function addLatexPreviewDecorations(
+  lineText: string,
+  lineFrom: number,
+  spans: LatexSourceSpan[],
+  decorations: PreviewDecoration[],
+) {
+  for (const { start, end } of spans) {
+    decorations.push({
+      from: lineFrom + start,
+      to: lineFrom + end,
+      decoration: Decoration.replace({
+        widget: new LatexWidget(lineText.slice(start + 1, end - 1), false),
+      }),
     });
   }
 }
@@ -916,6 +1059,41 @@ function isPartOfStrongDelimiter(lineText: string, index: number, marker: string
 
 function isWhitespace(char: string | undefined) {
   return char === undefined || /\s/.test(char);
+}
+
+export function renderLatexPreview(source: string, displayMode: boolean) {
+  return renderToString(source, {
+    displayMode,
+    throwOnError: false,
+    trust: false,
+  });
+}
+
+class LatexWidget extends WidgetType {
+  constructor(
+    private readonly source: string,
+    private readonly displayMode: boolean,
+  ) {
+    super();
+  }
+
+  eq(other: LatexWidget) {
+    return this.source === other.source && this.displayMode === other.displayMode;
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+
+  toDOM() {
+    const container = document.createElement(this.displayMode ? "div" : "span");
+    container.className = this.displayMode
+      ? "cm-live-latex cm-live-latex-block"
+      : "cm-live-latex cm-live-latex-inline";
+    container.setAttribute("contenteditable", "false");
+    container.innerHTML = renderLatexPreview(this.source, this.displayMode);
+    return container;
+  }
 }
 
 class CheckboxWidget extends WidgetType {

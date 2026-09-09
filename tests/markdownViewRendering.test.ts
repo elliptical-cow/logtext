@@ -112,12 +112,21 @@ test("keeps rendered formulas readable in light and dark themes", () => {
   const styles = readFileSync(join(root, "src/styles.css"), "utf8");
 
   assert.match(styles, /\.markdown-view \.katex,[\s\S]*?color: inherit;/);
+  assert.match(styles, /\.cm-live-latex \.katex[\s\S]*?color: inherit;/);
   assert.match(
     styles,
     /\.markdown-view \.katex \.katex-mathml,[\s\S]*?clip-path: inset\(50%\);/,
   );
   assert.match(
     styles,
+    /\.cm-live-latex \.katex-mathml[\s\S]*?clip-path: inset\(50%\);/,
+  );
+  assert.match(
+    styles,
     /:root\[data-theme="dark"\] \.markdown-view \.katex-error,[\s\S]*?color: #ffb4b4 !important;/,
+  );
+  assert.match(
+    styles,
+    /:root\[data-theme="dark"\] \.cm-live-latex \.katex-error[\s\S]*?color: #ffb4b4 !important;/,
   );
 });

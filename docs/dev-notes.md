@@ -457,7 +457,11 @@ The middle editor is CodeMirror-based.
 
 In source mode, CodeMirror shows plain Markdown text. In live mode, inactive
 lines are visually rendered while the active line remains editable Markdown
-source. This hybrid behavior is implemented mostly in:
+source. Inline LaTeX follows the same rule. Multiline LaTeX is represented by
+one block widget while inactive and restores the complete `$$...$$` source
+range when the selection enters any line of the block. KaTeX widgets reuse
+unchanged DOM through `WidgetType.eq()` so selection updates do not rerender
+every formula. This hybrid behavior is implemented mostly in:
 
 - `src/lib/editorLivePreview.ts`
 - `src/lib/markdownRendering.ts`

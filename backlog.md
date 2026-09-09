@@ -2,6 +2,10 @@
 
 ## Recently implemented
 
+- [x] Render inline and block LaTeX formulas in the CodeMirror live preview.
+  Inactive formulas use reusable KaTeX widgets, while the active inline line or
+  complete block source remains directly editable. Fenced code, invalid LaTeX,
+  multiple selections, and large-page widget reuse retain predictable behavior.
 - [x] Paste supported clipboard images into the editor, store them in a
   configurable workspace media folder, render standard local Markdown images
   in live preview and rendered views, and use stable `media-folder/file` targets
@@ -12,9 +16,3 @@
   unreferenced supported images in a scrollable confirmation dialog and moves
   confirmed candidates to the operating system trash after a fresh safety
   check, without a permanent-delete fallback.
-
-## Long term
-
-- [ ] Render inline and block LaTeX formulas in the CodeMirror live preview
-  while preserving editable Markdown source, predictable cursor behavior, and
-  acceptable performance on large pages.
