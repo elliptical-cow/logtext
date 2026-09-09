@@ -309,8 +309,10 @@ const livePreviewTheme = EditorView.baseTheme({
     fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
   },
   ".cm-live-latex-inline": {
+    direction: "ltr",
     display: "inline-block",
     maxWidth: "100%",
+    unicodeBidi: "isolate",
     verticalAlign: "middle",
   },
   ".cm-live-latex-inline::before": {
@@ -670,10 +672,16 @@ function addLatexPreviewDecorations(
   for (const { start, end } of spans) {
     decorations.push({
       from: lineFrom + start,
-      to: lineFrom + end,
-      decoration: Decoration.replace({
+      to: lineFrom + start,
+      decoration: Decoration.widget({
         widget: new LatexWidget(lineText.slice(start + 1, end - 1), false),
+        side: 1,
       }),
+    });
+    decorations.push({
+      from: lineFrom + start,
+      to: lineFrom + end,
+      decoration: hiddenMarkdown,
     });
   }
 }

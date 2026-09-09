@@ -31,6 +31,7 @@ test("renders inline LaTeX without applying Markdown decorations inside it", () 
   assert.deepEqual(
     decorations.map(({ from, to }) => ({ from, to })),
     [
+      { from: 8, to: 8 },
       { from: 8, to: 19 },
       { from: 24, to: 26 },
       { from: 26, to: 30 },
@@ -38,6 +39,7 @@ test("renders inline LaTeX without applying Markdown decorations inside it", () 
     ],
   );
   assert.ok(decorations[0].decoration.spec.widget);
+  assert.equal(decorations[0].decoration.spec.side, 1);
   assert.match(renderLatexPreview(String.raw`x_i * y_i`, false), /class="katex"/);
   assert.match(renderLatexPreview(String.raw`\sum_{i}f_i`, false), /<mo>∑<\/mo>/);
 });
@@ -50,8 +52,10 @@ test("anchors inline LaTeX after the width of its opening delimiter", () => {
   const anchorRules = anchorStyle?.groups?.rules ?? "";
 
   assert.ok(inlineRules);
+  assert.match(inlineRules, /direction: "ltr"/);
   assert.equal(/marginLeft/.test(inlineRules), false);
   assert.equal(/overflow/.test(inlineRules), false);
+  assert.match(inlineRules, /unicodeBidi: "isolate"/);
   assert.match(anchorRules, /content: '\"\$\"'/);
   assert.match(anchorRules, /visibility: "hidden"/);
 });
@@ -133,14 +137,14 @@ test("renders inactive formulas and restores source for the active formula", () 
   const blockTo = source.lastIndexOf("$$") + 2;
 
   assert.deepEqual(latexWidgetRanges(source, 0), [
-    { from: inlineFrom, to: inlineFrom + "$x_i$".length, block: false },
+    { from: inlineFrom, to: inlineFrom, block: false },
     { from: blockFrom, to: blockTo, block: true },
   ]);
   assert.deepEqual(latexWidgetRanges(source, inlineFrom + 2), [
     { from: blockFrom, to: blockTo, block: true },
   ]);
   assert.deepEqual(latexWidgetRanges(source, blockFrom + 3), [
-    { from: inlineFrom, to: inlineFrom + "$x_i$".length, block: false },
+    { from: inlineFrom, to: inlineFrom, block: false },
   ]);
 });
 
