@@ -48,7 +48,7 @@ test("keeps inline LaTeX separated from preceding text without clipping it", () 
   const inlineRules = inlineStyle?.groups?.rules ?? "";
 
   assert.ok(inlineRules);
-  assert.match(inlineRules, /marginLeft: "0\.12em"/);
+  assert.match(inlineRules, /marginLeft: "0\.25em"/);
   assert.equal(/overflow/.test(inlineRules), false);
 });
 
