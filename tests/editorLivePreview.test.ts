@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { EditorState, StateField } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import type { DecorationSet } from "@codemirror/view";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 import {
   activeBlockLineNumbers,
@@ -38,6 +40,16 @@ test("renders inline LaTeX without applying Markdown decorations inside it", () 
   assert.ok(decorations[0].decoration.spec.widget);
   assert.match(renderLatexPreview(String.raw`x_i * y_i`, false), /class="katex"/);
   assert.match(renderLatexPreview(String.raw`\sum_{i}f_i`, false), /<mo>∑<\/mo>/);
+});
+
+test("keeps inline LaTeX separated from preceding text without clipping it", () => {
+  const source = readFileSync(join(process.cwd(), "src/lib/editorLivePreview.ts"), "utf8");
+  const inlineStyle = /"\.cm-live-latex-inline":\s*\{(?<rules>[^}]*)\}/s.exec(source);
+  const inlineRules = inlineStyle?.groups?.rules ?? "";
+
+  assert.ok(inlineRules);
+  assert.match(inlineRules, /marginLeft: "0\.12em"/);
+  assert.equal(/overflow/.test(inlineRules), false);
 });
 
 test("does not treat escaped dollars or code spans as LaTeX", () => {

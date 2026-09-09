@@ -42,8 +42,9 @@ current source version is `0.7.1`.
 
 ### Fixed
 
-- Inline LaTeX formulas with tall operators, limits, fractions, or roots are no
-  longer vertically clipped by the editor live preview.
+- Inline LaTeX formulas no longer overlap preceding text, and tall operators,
+  limits, fractions, or roots are no longer vertically clipped by the editor
+  live preview.
 
 ## 0.7.1
 
