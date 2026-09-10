@@ -51,8 +51,6 @@ test("anchors inline LaTeX without inheriting list text indentation", () => {
   const source = readFileSync(join(process.cwd(), "src/lib/editorLivePreview.ts"), "utf8");
   const inlineStyle = /"\.cm-live-latex-inline":\s*\{(?<rules>[^}]*)\}/s.exec(source);
   const inlineRules = inlineStyle?.groups?.rules ?? "";
-  const anchorStyle = /"\.cm-live-latex-anchor":\s*\{(?<rules>[^}]*)\}/s.exec(source);
-  const anchorRules = anchorStyle?.groups?.rules ?? "";
   const outputStyle = /"\.cm-live-latex-output":\s*\{(?<rules>[^}]*)\}/s.exec(source);
   const outputRules = outputStyle?.groups?.rules ?? "";
 
@@ -64,12 +62,10 @@ test("anchors inline LaTeX without inheriting list text indentation", () => {
   assert.equal(/overflow/.test(inlineRules), false);
   assert.match(inlineRules, /textIndent: "0"/);
   assert.match(inlineRules, /unicodeBidi: "isolate"/);
-  assert.match(anchorRules, /flex: "0 0 auto"/);
-  assert.match(anchorRules, /visibility: "hidden"/);
   assert.match(outputRules, /display: "inline-block"/);
   assert.match(outputRules, /flex: "0 0 auto"/);
-  assert.match(source, /anchor\.textContent = "\$"/);
-  assert.match(source, /container\.append\(anchor, output\)/);
+  assert.equal(source.includes("cm-live-latex-anchor"), false);
+  assert.match(source, /container\.append\(output\)/);
   assert.match(source, /output: "html"/);
   assert.match(source, /container\.setAttribute\("role", "math"\)/);
   assert.match(source, /container\.setAttribute\("aria-label", this\.source\)/);

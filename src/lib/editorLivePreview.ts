@@ -317,10 +317,6 @@ const livePreviewTheme = EditorView.baseTheme({
     unicodeBidi: "isolate",
     verticalAlign: "middle",
   },
-  ".cm-live-latex-anchor": {
-    flex: "0 0 auto",
-    visibility: "hidden",
-  },
   ".cm-live-latex-output": {
     display: "inline-block",
     flex: "0 0 auto",
@@ -1114,15 +1110,10 @@ class LatexWidget extends WidgetType {
     if (this.displayMode) {
       container.innerHTML = renderedLatex;
     } else {
-      const anchor = document.createElement("span");
-      anchor.className = "cm-live-latex-anchor";
-      anchor.setAttribute("aria-hidden", "true");
-      anchor.textContent = "$";
-
       const output = document.createElement("span");
       output.className = "cm-live-latex-output";
       output.innerHTML = renderedLatex;
-      container.append(anchor, output);
+      container.append(output);
     }
     return container;
   }
