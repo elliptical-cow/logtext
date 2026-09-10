@@ -59,6 +59,7 @@ test("anchors inline LaTeX without inheriting list text indentation", () => {
   assert.match(inlineRules, /direction: "ltr"/);
   assert.match(inlineRules, /display: "inline-flex"/);
   assert.equal(/marginLeft/.test(inlineRules), false);
+  assert.match(inlineRules, /marginInline: "-0\.333ch"/);
   assert.equal(/overflow/.test(inlineRules), false);
   assert.match(inlineRules, /textIndent: "0"/);
   assert.match(inlineRules, /unicodeBidi: "isolate"/);

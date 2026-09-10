@@ -45,7 +45,8 @@ current source version is `0.7.1`.
 - Inline LaTeX formulas no longer paint an extra MathML layer over preceding
   editor text. Live-preview widgets use KaTeX's HTML output with an accessible
   source label and reset inherited list indentation so nested formulas remain
-  anchored after their preceding text without artificial delimiter spacing.
+  anchored after their preceding text. Symmetric font-relative margins tighten
+  the optical spacing between inline math and adjacent editor text.
   Inline math uses its natural baseline with surrounding editor text, while
   tall operators, limits, fractions, or roots are no longer vertically clipped.
 

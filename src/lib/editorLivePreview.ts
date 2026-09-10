@@ -312,6 +312,7 @@ const livePreviewTheme = EditorView.baseTheme({
     alignItems: "baseline",
     direction: "ltr",
     display: "inline-flex",
+    marginInline: "-0.333ch",
     maxWidth: "100%",
     textIndent: "0",
     unicodeBidi: "isolate",

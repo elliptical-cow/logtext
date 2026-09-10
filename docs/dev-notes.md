@@ -461,7 +461,8 @@ source. Inline LaTeX follows the same rule. Its Markdown range is hidden
 separately from a right-sided point widget at the opening delimiter, which
 keeps the widget's left edge anchored after preceding text. The widget is an
 atomic LTR inline-flex container around a non-shrinking KaTeX output element;
-the hidden Markdown range and the widget itself add no artificial outer spacing.
+the hidden Markdown range adds no width, and a symmetric `-0.333ch` inline
+margin tightens KaTeX's optical side bearings by one third of an editor glyph.
 The container resets inherited `text-indent` because list wrapping applies a
 negative indent to the CodeMirror line; without that boundary, KaTeX's inner
 HTML is painted progressively farther left at deeper list levels even though
