@@ -4,8 +4,12 @@
   <img src="assets/branding/logtext-wordmark.png" alt="Logtext — Write logs. Build context." width="720" />
 </p>
 
-Goal: Allow for frictionless capturing of daily logs in local Markdown files. 
-Context should emerge by grouped tags and backlinks. Simple task workflow.
+Goal
+- Allow for frictionless capturing of daily logs in local Markdown files.
+- Context should emerge by grouped tags and backlinks.
+- Simple task/todo-list workflow.
+- Copy&paste for images, like screenshots.
+- Support for LaTex formulas and Mermaid diagramms
 
 The app is inspired by OrgMode and Logseq, but Markdown files remain the source
 of truth.
@@ -28,22 +32,9 @@ The app is meant to be a place to quickly write down
 meeting notes, decisions, project thoughts, risks, follow-ups, and open questions without deciding
 up front where each fragment belongs.
 
-The default workflow is:
+## The default workflow is
 
-1. Start in today's journal and write in blocks.
-2. Add context while writing with wiki links such as `[[projects/Rollout]]` or
-   `[[people/Katja]]`.
-3. Let linked references collect all mentions of a page across days and files.
-4. Add more structure only when it becomes useful, for example task states,
-   priorities, folder namespaces, semantic tags, or later block attributes.
-5. Retrieve information through backlinks, task overview, search, and the
-   Markdown files themselves.
-
-
-## Core Workflow
-
-When a workspace opens, Logtext opens or creates today's journal in the middle
-editor pane:
+Start in today's journal and write in blocks.
 
 ```md
 - Meeting with [[people/Katja]]
@@ -86,14 +77,8 @@ After the workspace is loaded, the middle pane always opens today's journal at
 file does not exist, Logtext creates it. The right pane keeps its previous
 context page from the last session.
 
-While a dated journal page is open in the editor, scrolling beyond its top or
-bottom opens the previous or next existing dated file. Page Up and Page Down
-provide the same transition on the next key press after reaching a boundary.
-The right pane presents dated journal pages as one continuous feed and loads
-more existing files near either scroll boundary. Scrolling never creates a
-missing day: use the Journal shortcuts or date picker when a new date file
-should be created. Both views follow the configured ascending or descending
-page order of the journal folder and can be disabled independently in `.config`.
+The right pane presents dated journal pages as one continuous feed and presents 
+rendered version of the Markdown files.
 
 Each workspace can also contain a `.config` file. Logtext creates it if needed
 and stores workspace-specific settings there, for example task colors, expanded
@@ -126,7 +111,7 @@ overview, backlinks, and search results. Existing files without a first-level
 heading fall back to the file name without `.md` until opened; when such a file
 is opened, Logtext adds the default first-level heading at the top.
 
-Internal links use wiki-link syntax:
+Internal links use wiki-link or hashtag syntax:
 
 ```md
 [[Project Alpha]]
