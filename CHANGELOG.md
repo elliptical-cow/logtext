@@ -46,7 +46,8 @@ current source version is `0.7.1`.
   editor text. Live-preview widgets use KaTeX's HTML output with an accessible
   source label and reset inherited list indentation so nested formulas remain
   anchored after their preceding text without artificial delimiter spacing.
-  Tall operators, limits, fractions, or roots are no longer vertically clipped.
+  Inline math font baselines are aligned with surrounding editor text, while
+  tall operators, limits, fractions, or roots are no longer vertically clipped.
 
 ## 0.7.1
 
