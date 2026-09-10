@@ -7,7 +7,8 @@
   complete block source remains directly editable. Fenced code, invalid LaTeX,
   multiple selections, and large-page widget reuse retain predictable behavior.
   Editor widgets use HTML-only KaTeX output with accessible source labels so an
-  embedded webview cannot misplace an additional MathML paint layer.
+  embedded webview cannot misplace an additional MathML paint layer, and reset
+  inherited list indentation to keep nested inline formulas correctly anchored.
 - [x] Paste supported clipboard images into the editor, store them in a
   configurable workspace media folder, render standard local Markdown images
   in live preview and rendered views, and use stable `media-folder/file` targets

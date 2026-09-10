@@ -462,6 +462,10 @@ separately from a right-sided point widget at the opening delimiter, which
 keeps the widget's left edge anchored after preceding text. The widget is an
 atomic LTR inline-flex container: a hidden opening-delimiter element reserves
 its font-relative width before a separate, non-shrinking KaTeX output element.
+The container resets inherited `text-indent` because list wrapping applies a
+negative indent to the CodeMirror line; without that boundary, KaTeX's inner
+HTML is painted progressively farther left at deeper list levels even though
+the outer widget remains correctly anchored.
 Editor widgets request KaTeX's HTML-only output so an absolutely positioned
 accessibility MathML layer cannot be painted at the wrong horizontal origin by
 an embedded webview. The widget exposes the formula source through a math role

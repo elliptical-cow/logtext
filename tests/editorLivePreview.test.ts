@@ -47,7 +47,7 @@ test("renders inline LaTeX without applying Markdown decorations inside it", () 
   assert.equal(/class="katex-mathml"/.test(rendered), false);
 });
 
-test("anchors inline LaTeX in an isolated left-to-right flex box", () => {
+test("anchors inline LaTeX without inheriting list text indentation", () => {
   const source = readFileSync(join(process.cwd(), "src/lib/editorLivePreview.ts"), "utf8");
   const inlineStyle = /"\.cm-live-latex-inline":\s*\{(?<rules>[^}]*)\}/s.exec(source);
   const inlineRules = inlineStyle?.groups?.rules ?? "";
@@ -62,6 +62,7 @@ test("anchors inline LaTeX in an isolated left-to-right flex box", () => {
   assert.match(inlineRules, /display: "inline-flex"/);
   assert.equal(/marginLeft/.test(inlineRules), false);
   assert.equal(/overflow/.test(inlineRules), false);
+  assert.match(inlineRules, /textIndent: "0"/);
   assert.match(inlineRules, /unicodeBidi: "isolate"/);
   assert.match(anchorRules, /flex: "0 0 auto"/);
   assert.match(anchorRules, /visibility: "hidden"/);

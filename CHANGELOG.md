@@ -44,8 +44,9 @@ current source version is `0.7.1`.
 
 - Inline LaTeX formulas no longer paint an extra MathML layer over preceding
   editor text. Live-preview widgets use KaTeX's HTML output with an accessible
-  source label, while tall operators, limits, fractions, or roots are no longer
-  vertically clipped.
+  source label and reset inherited list indentation so nested formulas remain
+  anchored after their preceding text. Tall operators, limits, fractions, or
+  roots are no longer vertically clipped.
 
 ## 0.7.1
 

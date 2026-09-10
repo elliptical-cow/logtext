@@ -313,6 +313,7 @@ const livePreviewTheme = EditorView.baseTheme({
     direction: "ltr",
     display: "inline-flex",
     maxWidth: "100%",
+    textIndent: "0",
     unicodeBidi: "isolate",
     verticalAlign: "middle",
   },
