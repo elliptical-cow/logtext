@@ -43,34 +43,24 @@ test("renders inline LaTeX without applying Markdown decorations inside it", () 
   const rendered = renderLatexPreview(String.raw`\sum_{i}f_i`, false);
   assert.match(rendered, /class="katex"/);
   assert.match(rendered, /class="katex-html"/);
+  assert.match(rendered, /class="katex-mathml"/);
   assert.match(rendered, /∑/);
-  assert.equal(/class="katex-mathml"/.test(rendered), false);
 });
 
-test("anchors inline LaTeX without inheriting list text indentation", () => {
+test("isolates inline LaTeX from inherited list text indentation", () => {
   const source = readFileSync(join(process.cwd(), "src/lib/editorLivePreview.ts"), "utf8");
   const inlineStyle = /"\.cm-live-latex-inline":\s*\{(?<rules>[^}]*)\}/s.exec(source);
   const inlineRules = inlineStyle?.groups?.rules ?? "";
-  const outputStyle = /"\.cm-live-latex-output":\s*\{(?<rules>[^}]*)\}/s.exec(source);
-  const outputRules = outputStyle?.groups?.rules ?? "";
 
   assert.ok(inlineRules);
-  assert.match(inlineRules, /alignItems: "baseline"/);
   assert.match(inlineRules, /direction: "ltr"/);
-  assert.match(inlineRules, /display: "inline-flex"/);
-  assert.equal(/marginLeft/.test(inlineRules), false);
+  assert.match(inlineRules, /display: "inline-block"/);
   assert.match(inlineRules, /marginInline: "-0\.333ch"/);
-  assert.equal(/overflow/.test(inlineRules), false);
   assert.match(inlineRules, /textIndent: "0"/);
   assert.match(inlineRules, /unicodeBidi: "isolate"/);
   assert.match(inlineRules, /verticalAlign: "baseline"/);
-  assert.match(outputRules, /display: "inline-block"/);
-  assert.match(outputRules, /flex: "0 0 auto"/);
   assert.equal(source.includes("cm-live-latex-anchor"), false);
-  assert.match(source, /container\.append\(output\)/);
-  assert.match(source, /output: "html"/);
-  assert.match(source, /container\.setAttribute\("role", "math"\)/);
-  assert.match(source, /container\.setAttribute\("aria-label", this\.source\)/);
+  assert.equal(source.includes("cm-live-latex-output"), false);
 });
 
 test("does not treat escaped dollars or code spans as LaTeX", () => {

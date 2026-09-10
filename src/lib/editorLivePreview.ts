@@ -309,18 +309,12 @@ const livePreviewTheme = EditorView.baseTheme({
     fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
   },
   ".cm-live-latex-inline": {
-    alignItems: "baseline",
     direction: "ltr",
-    display: "inline-flex",
+    display: "inline-block",
     marginInline: "-0.333ch",
-    maxWidth: "100%",
     textIndent: "0",
     unicodeBidi: "isolate",
     verticalAlign: "baseline",
-  },
-  ".cm-live-latex-output": {
-    display: "inline-block",
-    flex: "0 0 auto",
   },
   ".cm-live-latex-block": {
     display: "block",
@@ -1077,7 +1071,6 @@ function isWhitespace(char: string | undefined) {
 export function renderLatexPreview(source: string, displayMode: boolean) {
   return renderToString(source, {
     displayMode,
-    output: "html",
     throwOnError: false,
     trust: false,
   });
@@ -1105,17 +1098,7 @@ class LatexWidget extends WidgetType {
       ? "cm-live-latex cm-live-latex-block"
       : "cm-live-latex cm-live-latex-inline";
     container.setAttribute("contenteditable", "false");
-    container.setAttribute("role", "math");
-    container.setAttribute("aria-label", this.source);
-    const renderedLatex = renderLatexPreview(this.source, this.displayMode);
-    if (this.displayMode) {
-      container.innerHTML = renderedLatex;
-    } else {
-      const output = document.createElement("span");
-      output.className = "cm-live-latex-output";
-      output.innerHTML = renderedLatex;
-      container.append(output);
-    }
+    container.innerHTML = renderLatexPreview(this.source, this.displayMode);
     return container;
   }
 }
