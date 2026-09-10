@@ -282,9 +282,10 @@ $$
 ```
 
 The Markdown source remains unchanged. Invalid formulas are shown as source text
-without interrupting the rest of the rendered page. Until formulas are rendered
-directly in the editor, its live-preview mode displays LaTeX regions with code
-styling and does not interpret their contents as Markdown.
+without interrupting the rest of the rendered page. The editor's live-preview
+mode renders formulas on inactive lines. Selecting an inline formula restores
+its source line; selecting any line of a block formula restores the complete
+`$$...$$` block for editing.
 
 ### Task Overview
 

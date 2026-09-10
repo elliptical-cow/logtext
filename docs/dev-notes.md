@@ -457,7 +457,21 @@ The middle editor is CodeMirror-based.
 
 In source mode, CodeMirror shows plain Markdown text. In live mode, inactive
 lines are visually rendered while the active line remains editable Markdown
-source. This hybrid behavior is implemented mostly in:
+source. Inline LaTeX follows the same rule. Its Markdown range is hidden
+separately from a right-sided point widget at the opening delimiter, which
+keeps the widget's left edge anchored after preceding text. The widget is an
+atomic LTR inline-block; the hidden Markdown range adds no width, and a
+symmetric `-0.333ch` inline margin tightens KaTeX's optical side bearings by one
+third of an editor glyph. The container resets inherited `text-indent` because
+list wrapping applies a negative indent to the CodeMirror line; without that
+boundary, KaTeX's inner HTML is painted progressively farther left at deeper
+list levels even though the outer widget remains correctly anchored. Inline
+math uses its natural baseline and KaTeX's standard HTML and MathML output.
+Multiline LaTeX is represented by one block widget while
+inactive and restores the complete `$$...$$` source range when the selection
+enters any line of the block. KaTeX widgets reuse
+unchanged DOM through `WidgetType.eq()` so selection updates do not rerender
+every formula. This hybrid behavior is implemented mostly in:
 
 - `src/lib/editorLivePreview.ts`
 - `src/lib/markdownRendering.ts`

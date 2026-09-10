@@ -1,23 +1,28 @@
 import assert from "node:assert/strict";
-import { EditorState } from "@codemirror/state";
+import { EditorState, StateField } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
+import type { DecorationSet } from "@codemirror/view";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 import {
   activeBlockLineNumbers,
   checkboxAtDocumentPosition,
   emphasisSpans,
   inlineLatexSourceSpans,
+  latexBlockRanges,
   latexBlockLineNumbers,
   livePreviewExtension,
   liveCheckboxCheckClass,
   markdownImagesInState,
   previewDecorationsForLine,
+  renderLatexPreview,
   taskKeywordAtDocumentPosition,
   wikiLinkAtDocumentPosition,
   wikiLinkAtPosition,
 } from "../src/lib/editorLivePreview.js";
 
-test("shows inline LaTeX as code without applying Markdown decorations", () => {
+test("renders inline LaTeX without applying Markdown decorations inside it", () => {
   const decorations = previewDecorationsForLine(String.raw`Formula $x_i * y_i$ and **bold**`);
 
   assert.deepEqual(inlineLatexSourceSpans(String.raw`Formula $x_i * y_i$ and **bold**`), [
@@ -26,12 +31,36 @@ test("shows inline LaTeX as code without applying Markdown decorations", () => {
   assert.deepEqual(
     decorations.map(({ from, to }) => ({ from, to })),
     [
+      { from: 8, to: 8 },
       { from: 8, to: 19 },
       { from: 24, to: 26 },
       { from: 26, to: 30 },
       { from: 30, to: 32 },
     ],
   );
+  assert.ok(decorations[0].decoration.spec.widget);
+  assert.equal(decorations[0].decoration.spec.side, 1);
+  const rendered = renderLatexPreview(String.raw`\sum_{i}f_i`, false);
+  assert.match(rendered, /class="katex"/);
+  assert.match(rendered, /class="katex-html"/);
+  assert.match(rendered, /class="katex-mathml"/);
+  assert.match(rendered, /∑/);
+});
+
+test("isolates inline LaTeX from inherited list text indentation", () => {
+  const source = readFileSync(join(process.cwd(), "src/lib/editorLivePreview.ts"), "utf8");
+  const inlineStyle = /"\.cm-live-latex-inline":\s*\{(?<rules>[^}]*)\}/s.exec(source);
+  const inlineRules = inlineStyle?.groups?.rules ?? "";
+
+  assert.ok(inlineRules);
+  assert.match(inlineRules, /direction: "ltr"/);
+  assert.match(inlineRules, /display: "inline-block"/);
+  assert.match(inlineRules, /marginInline: "-0\.333ch"/);
+  assert.match(inlineRules, /textIndent: "0"/);
+  assert.match(inlineRules, /unicodeBidi: "isolate"/);
+  assert.match(inlineRules, /verticalAlign: "baseline"/);
+  assert.equal(source.includes("cm-live-latex-anchor"), false);
+  assert.equal(source.includes("cm-live-latex-output"), false);
 });
 
 test("does not treat escaped dollars or code spans as LaTeX", () => {
@@ -43,7 +72,7 @@ test("does not activate wiki links contained in inline LaTeX", () => {
   assert.equal(wikiLinkAtPosition(String.raw`$\text{[[Alpha]]}$`, 0, 9), null);
 });
 
-test("shows block LaTeX as code without interpreting fenced code as formulas", () => {
+test("recognizes block LaTeX without interpreting fenced code as formulas", () => {
   const source = [
     "Before",
     "$$",
@@ -55,16 +84,94 @@ test("shows block LaTeX as code without interpreting fenced code as formulas", (
   ].join("\n");
 
   assert.deepEqual([...latexBlockLineNumbers(source)], [2, 3, 4]);
+  assert.deepEqual(latexBlockRanges(source), [
+    {
+      from: source.indexOf("$$"),
+      to: source.indexOf("$$", source.indexOf("$$") + 2) + 2,
+      startLine: 2,
+      endLine: 4,
+      content: String.raw`x_i * y_i`,
+    },
+  ]);
 });
 
-test("builds live preview decorations for multiline block LaTeX", () => {
+test("extracts same-line and indented block formulas with CRLF positions", () => {
+  const source = [
+    "Before",
+    "$$ x^2 $$",
+    "```text",
+    "$$ignored$$",
+    "```",
+    "  $$",
+    String.raw`  \int_0^1 x^2 \, dx`,
+    "  $$",
+    "After",
+  ].join("\r\n");
+
+  assert.deepEqual(latexBlockRanges(source), [
+    {
+      from: source.indexOf("$$ x^2 $$"),
+      to: source.indexOf("$$ x^2 $$") + "$$ x^2 $$".length,
+      startLine: 2,
+      endLine: 2,
+      content: " x^2 ",
+    },
+    {
+      from: source.indexOf("  $$"),
+      to: source.lastIndexOf("  $$") + "  $$".length,
+      startLine: 6,
+      endLine: 8,
+      content: String.raw`\int_0^1 x^2 \, dx`,
+    },
+  ]);
+});
+
+test("renders inactive formulas and restores source for the active formula", () => {
+  const source = [
+    "Before",
+    "Inline $x_i$ formula",
+    "$$",
+    String.raw`x_i * y_i`,
+    "$$",
+    "After",
+  ].join("\n");
+  const inlineFrom = source.indexOf("$x_i$");
+  const blockFrom = source.indexOf("$$");
+  const blockTo = source.lastIndexOf("$$") + 2;
+
+  assert.deepEqual(latexWidgetRanges(source, 0), [
+    { from: inlineFrom, to: inlineFrom, block: false },
+    { from: blockFrom, to: blockTo, block: true },
+  ]);
+  assert.deepEqual(latexWidgetRanges(source, inlineFrom + 2), [
+    { from: blockFrom, to: blockTo, block: true },
+  ]);
+  assert.deepEqual(latexWidgetRanges(source, blockFrom + 3), [
+    { from: inlineFrom, to: inlineFrom, block: false },
+  ]);
+});
+
+test("keeps malformed LaTeX non-fatal in the editor preview", () => {
+  assert.match(renderLatexPreview(String.raw`\notacommand{`, false), /class="katex-error"/);
+});
+
+function latexWidgetRanges(source: string, anchor: number) {
+  const previewField = livePreviewExtension()[0] as StateField<DecorationSet>;
   const state = EditorState.create({
-    doc: ["Before", "$$", String.raw`x_i * y_i`, "$$", "After"].join("\n"),
-    extensions: livePreviewExtension(),
+    doc: source,
+    selection: { anchor },
+    extensions: [previewField],
+  });
+  const ranges: Array<{ from: number; to: number; block: boolean }> = [];
+
+  state.field(previewField).between(0, state.doc.length, (from, to, decoration) => {
+    if (decoration.spec.widget) {
+      ranges.push({ from, to, block: decoration.spec.block === true });
+    }
   });
 
-  assert.equal(state.doc.lines, 5);
-});
+  return ranges;
+}
 
 test("recognizes Markdown images through the editor syntax tree", () => {
   const source = "Before ![Screenshot](media/image.png) after";

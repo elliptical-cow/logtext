@@ -2505,12 +2505,14 @@ textarea {
 }
 
 .markdown-view .katex,
-.task-overview-main .katex {
+.task-overview-main .katex,
+.cm-live-latex .katex {
   color: inherit;
 }
 
 .markdown-view .katex .katex-mathml,
-.task-overview-main .katex .katex-mathml {
+.task-overview-main .katex .katex-mathml,
+.cm-live-latex .katex-mathml {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -2531,7 +2533,8 @@ textarea {
 }
 
 .markdown-view .katex-error,
-.task-overview-main .katex-error {
+.task-overview-main .katex-error,
+.cm-live-latex .katex-error {
   color: var(--error-text, #9b1c1c) !important;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
@@ -3003,7 +3006,8 @@ textarea {
 }
 
 :root[data-theme="dark"] .markdown-view .katex-error,
-:root[data-theme="dark"] .task-overview-main .katex-error {
+:root[data-theme="dark"] .task-overview-main .katex-error,
+:root[data-theme="dark"] .cm-live-latex .katex-error {
   color: #ffb4b4 !important;
 }
 

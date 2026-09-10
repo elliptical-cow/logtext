@@ -18,10 +18,9 @@ current source version is `0.7.1`.
   final reference check, moves confirmed files to the operating system trash
   without falling back to permanent deletion.
 - Added KaTeX rendering for inline (`$...$`) and block (`$$...$$`) LaTeX
-  formulas in rendered Markdown views, including the right pane, journal feed,
-  linked references, and Task Overview. Until full editor rendering is added,
-  the live editor preview displays formula source as code instead of interpreting
-  its contents as Markdown.
+  formulas in rendered Markdown views and the editor live preview. The editor
+  restores an inline formula's source line or a complete block formula when it
+  becomes active, keeping the Markdown directly editable.
 - Added Page Up and Page Down navigation across journal file boundaries in the
   editor, using the same configured order as mouse-wheel navigation.
 - Added independent `journalEditorContinuousScrolling` and
@@ -40,6 +39,15 @@ current source version is `0.7.1`.
   link; `[[target]]` and compact `#target` remain the supported link syntaxes.
 - Release assets now use consistent names that explicitly identify Logtext's
   version, target operating system, architecture, and Windows package variant.
+
+### Fixed
+
+- Inline LaTeX formulas no longer overlap preceding editor text. Live-preview
+  widgets reset inherited list indentation so nested formulas remain anchored
+  after their preceding text. Symmetric font-relative margins tighten the
+  optical spacing between inline math and adjacent editor text.
+  Inline math uses its natural baseline with surrounding editor text, while
+  tall operators, limits, fractions, or roots are no longer vertically clipped.
 
 ## 0.7.1
 
