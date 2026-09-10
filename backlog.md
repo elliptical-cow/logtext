@@ -9,8 +9,8 @@
   Editor widgets use HTML-only KaTeX output with accessible source labels so an
   embedded webview cannot misplace an additional MathML paint layer, and reset
   inherited list indentation to keep nested inline formulas correctly anchored
-  without adding artificial delimiter spacing. A font-relative offset aligns
-  inline math with the surrounding editor text baseline.
+  without adding artificial delimiter spacing. Inline math follows its natural
+  baseline instead of using a separate vertical offset.
 - [x] Paste supported clipboard images into the editor, store them in a
   configurable workspace media folder, render standard local Markdown images
   in live preview and rendered views, and use stable `media-folder/file` targets

@@ -465,9 +465,9 @@ the hidden Markdown range and the widget itself add no artificial outer spacing.
 The container resets inherited `text-indent` because list wrapping applies a
 negative indent to the CodeMirror line; without that boundary, KaTeX's inner
 HTML is painted progressively farther left at deeper list levels even though
-the outer widget remains correctly anchored. A small `0.075em` vertical offset
-compensates for the baseline difference between the editor font and KaTeX's
-math font while continuing to scale with the configured font size.
+the outer widget remains correctly anchored. The inline-flex widget uses its
+natural baseline; applying an additional font-box-derived vertical offset can
+misalign the actual painted glyphs across the editor and KaTeX fonts.
 Editor widgets request KaTeX's HTML-only output so an absolutely positioned
 accessibility MathML layer cannot be painted at the wrong horizontal origin by
 an embedded webview. The widget exposes the formula source through a math role

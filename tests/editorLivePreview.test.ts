@@ -62,7 +62,7 @@ test("anchors inline LaTeX without inheriting list text indentation", () => {
   assert.equal(/overflow/.test(inlineRules), false);
   assert.match(inlineRules, /textIndent: "0"/);
   assert.match(inlineRules, /unicodeBidi: "isolate"/);
-  assert.match(inlineRules, /verticalAlign: "0\.075em"/);
+  assert.match(inlineRules, /verticalAlign: "baseline"/);
   assert.match(outputRules, /display: "inline-block"/);
   assert.match(outputRules, /flex: "0 0 auto"/);
   assert.equal(source.includes("cm-live-latex-anchor"), false);
