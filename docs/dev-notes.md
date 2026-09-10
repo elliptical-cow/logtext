@@ -462,6 +462,10 @@ separately from a right-sided point widget at the opening delimiter, which
 keeps the widget's left edge anchored after preceding text. The widget is an
 atomic LTR inline-flex container: a hidden opening-delimiter element reserves
 its font-relative width before a separate, non-shrinking KaTeX output element.
+Editor widgets request KaTeX's HTML-only output so an absolutely positioned
+accessibility MathML layer cannot be painted at the wrong horizontal origin by
+an embedded webview. The widget exposes the formula source through a math role
+and accessible label instead. This does not change the right-pane renderer.
 Multiline LaTeX is represented by one block widget while
 inactive and restores the complete `$$...$$` source range when the selection
 enters any line of the block. KaTeX widgets reuse

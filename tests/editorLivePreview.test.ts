@@ -40,8 +40,11 @@ test("renders inline LaTeX without applying Markdown decorations inside it", () 
   );
   assert.ok(decorations[0].decoration.spec.widget);
   assert.equal(decorations[0].decoration.spec.side, 1);
-  assert.match(renderLatexPreview(String.raw`x_i * y_i`, false), /class="katex"/);
-  assert.match(renderLatexPreview(String.raw`\sum_{i}f_i`, false), /<mo>∑<\/mo>/);
+  const rendered = renderLatexPreview(String.raw`\sum_{i}f_i`, false);
+  assert.match(rendered, /class="katex"/);
+  assert.match(rendered, /class="katex-html"/);
+  assert.match(rendered, /∑/);
+  assert.equal(/class="katex-mathml"/.test(rendered), false);
 });
 
 test("anchors inline LaTeX in an isolated left-to-right flex box", () => {
@@ -66,6 +69,9 @@ test("anchors inline LaTeX in an isolated left-to-right flex box", () => {
   assert.match(outputRules, /flex: "0 0 auto"/);
   assert.match(source, /anchor\.textContent = "\$"/);
   assert.match(source, /container\.append\(anchor, output\)/);
+  assert.match(source, /output: "html"/);
+  assert.match(source, /container\.setAttribute\("role", "math"\)/);
+  assert.match(source, /container\.setAttribute\("aria-label", this\.source\)/);
 });
 
 test("does not treat escaped dollars or code spans as LaTeX", () => {

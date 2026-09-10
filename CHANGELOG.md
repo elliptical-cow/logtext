@@ -42,9 +42,10 @@ current source version is `0.7.1`.
 
 ### Fixed
 
-- Inline LaTeX formulas no longer overlap preceding text, and tall operators,
-  limits, fractions, or roots are no longer vertically clipped by the editor
-  live preview.
+- Inline LaTeX formulas no longer paint an extra MathML layer over preceding
+  editor text. Live-preview widgets use KaTeX's HTML output with an accessible
+  source label, while tall operators, limits, fractions, or roots are no longer
+  vertically clipped.
 
 ## 0.7.1
 

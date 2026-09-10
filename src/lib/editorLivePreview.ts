@@ -1079,6 +1079,7 @@ function isWhitespace(char: string | undefined) {
 export function renderLatexPreview(source: string, displayMode: boolean) {
   return renderToString(source, {
     displayMode,
+    output: "html",
     throwOnError: false,
     trust: false,
   });
@@ -1106,6 +1107,8 @@ class LatexWidget extends WidgetType {
       ? "cm-live-latex cm-live-latex-block"
       : "cm-live-latex cm-live-latex-inline";
     container.setAttribute("contenteditable", "false");
+    container.setAttribute("role", "math");
+    container.setAttribute("aria-label", this.source);
     const renderedLatex = renderLatexPreview(this.source, this.displayMode);
     if (this.displayMode) {
       container.innerHTML = renderedLatex;
