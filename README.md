@@ -336,6 +336,7 @@ Important editor shortcuts:
 - `Cmd/Ctrl+Shift+L`: toggle live preview/plain Markdown editing
 - `Cmd/Ctrl+1` to `Cmd/Ctrl+4`: collapse all blocks below that level
 - `Cmd/Ctrl+F`: search in current file
+- `Shift+F10` or `Menu`: open the editor context menu at the cursor
 - `Cmd/Ctrl+S`: save current file
 - `Cmd/Ctrl+Z`: undo
 - `Cmd/Ctrl+Shift+Z` or `Cmd/Ctrl+Y`: redo
@@ -344,6 +345,12 @@ Important editor shortcuts:
 Editor text changes use CodeMirror undo. Task changes and checkbox changes made
 outside direct text editing are tracked by Logtext's app-level undo stack. The
 Edit menu shows the next undo or redo action when available.
+
+The editor context menu combines standard editing commands with actions for the
+clicked selection, wiki link, task, or list block. A normal left click remains
+the primary way to open an existing wiki link in the editor; its context menu
+adds only distinct actions such as opening it in the right pane or copying its
+Markdown. Task status and priority choices retain their direct update behavior.
 
 ## Configuration
 

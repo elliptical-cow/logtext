@@ -15,13 +15,18 @@ export function editorContextMenuKind(
     return "link";
   }
 
-  if (
-    selection.to - selection.from > 1 &&
-    position >= selection.from &&
-    position < selection.to
-  ) {
+  if (editorContextMenuSelection(position, selection)) {
     return "selection";
   }
 
   return hasTask ? "task" : "text";
+}
+
+export function editorContextMenuSelection(
+  position: number,
+  selection: SelectionRange,
+): SelectionRange | null {
+  return selection.to > selection.from && position >= selection.from && position < selection.to
+    ? { from: selection.from, to: selection.to }
+    : null;
 }

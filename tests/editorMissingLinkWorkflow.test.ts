@@ -9,7 +9,7 @@ const editorPane = readFileSync(join(root, "src/lib/components/EditorPane.svelte
 
 test("offers page creation for unresolved links in the editor context menu", () => {
   assert.match(editor, /contextLink\.resolvedPath && !contextLink\.resolvedExists/);
-  assert.match(editor, /<span class="menu-mnemonic">C<\/span>reate page/);
+  assert.match(editor, /Create <span class="menu-mnemonic">n<\/span>ew page/);
   assert.match(editor, /onMissingWikiLink\(path\)/);
 });
 

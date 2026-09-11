@@ -29,6 +29,11 @@ current source version is `0.7.1`.
 
 ### Changed
 
+- Expanded the editor context menu with standard editing, selection-to-page-link,
+  task, and list-block actions. Context menus now preserve clicked selections,
+  position the cursor for paste, accept single-character selections, support
+  keyboard opening, and restore editor focus. Existing wiki links retain normal
+  left-click navigation and offer only distinct context actions.
 - All local image targets now use stable `media-folder/file` paths relative to
   the workspace root, so they remain valid when copied between pages. The
   configured media folder is excluded from page indexing and protected from
