@@ -39,13 +39,8 @@
     checked: boolean,
   ) => Promise<boolean> = async () => false;
   export let onOpenSourceLineInEditor: (path: string, line: number) => void = () => {};
-  export let onOpenSourceLineInRightPane: (path: string, line: number) => void = () => {};
   export let onOpenBacklinkInEditor: (backlink: BacklinkView) => void = () => {};
   export let onOpenBacklinkLineInEditor: (backlink: BacklinkView, line: number) => void = () => {};
-  export let onOpenBacklinkLineInRightPane: (
-    backlink: BacklinkView,
-    line: number,
-  ) => void = () => {};
   export let onTaskStatusChange: (
     path: string,
     line: number,
@@ -341,8 +336,6 @@
           onOpenWikiLink={onWikiLink}
           onOpenSourceLineInEditor={(line) =>
             onOpenSourceLineInEditor(pageView.page.path, line)}
-          onOpenSourceLineInRightPane={(line) =>
-            onOpenSourceLineInRightPane(pageView.page.path, line)}
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
           enableTextCopyContextMenu
@@ -367,7 +360,6 @@
           onOpenWikiLink={onWikiLink}
           onOpenSourceInEditor={onOpenBacklinkInEditor}
           onOpenSourceLineInEditor={onOpenBacklinkLineInEditor}
-          onOpenSourceLineInRightPane={onOpenBacklinkLineInRightPane}
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
           enableTextCopyContextMenu

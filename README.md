@@ -352,8 +352,9 @@ linking is grouped under Format. A normal left click remains the primary way to
 open an existing wiki link in the editor; its context menu adds only distinct
 actions such as opening it in the right pane or copying its Markdown. Task keyword
 menus are deliberately limited to Status, Priority, and showing the source line
-in the right pane. Selected rendered text can also be copied from right-pane
-context menus.
+in the opposite pane: the right pane from the editor, or the editor from the
+right pane. Selected rendered text can also be copied from right-pane context
+menus.
 
 ## Configuration
 

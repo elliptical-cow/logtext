@@ -22,13 +22,14 @@ test("copies only a right-clicked rendered text selection", () => {
   assert.match(journalFeed, /enableTextCopyContextMenu/g);
 });
 
-test("keeps rendered task menus limited to status, priority, and right-pane navigation", () => {
+test("keeps rendered task menus limited to status, priority, and editor navigation", () => {
   const taskMenu = markdownView.slice(markdownView.indexOf("{#if taskContextMenu}"));
 
   assert.match(taskMenu, /menu-mnemonic">S<\/span>tatus/);
   assert.match(taskMenu, /menu-mnemonic">P<\/span>riority/);
-  assert.match(taskMenu, /Show line in <span class="menu-mnemonic">r<\/span>ight pane/);
+  assert.match(taskMenu, /Show line in <span class="menu-mnemonic">e<\/span>ditor/);
   assert.equal(/copyRenderedSelection|>Copy</.test(taskMenu), false);
-  assert.match(rightPane, /onOpenSourceLineInRightPane=\{showCurrentLineInRightPane\}/);
-  assert.match(journalFeed, /onOpenSourceLineInRightPane\(pageView\.page\.path, line\)/);
+  assert.match(markdownView, /on:click=\{showTaskSourceLineInEditor\}/);
+  assert.match(rightPane, /onOpenSourceLineInEditor=\{openBacklinkLineInEditor\}/);
+  assert.match(journalFeed, /onOpenSourceLineInEditor\(pageView\.page\.path, line\)/);
 });

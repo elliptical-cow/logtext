@@ -53,16 +53,8 @@
     void linkOperations.open(path, "editor", { line });
   }
 
-  function showCurrentLineInRightPane(path: string, line: number) {
-    void linkOperations.open(path, "right", { line });
-  }
-
   function openBacklinkLineInEditor(backlink: BacklinkView, line: number) {
     void linkOperations.open(backlink.sourcePath, "editor", { line });
-  }
-
-  function showBacklinkLineInRightPane(backlink: BacklinkView, line: number) {
-    void linkOperations.open(backlink.sourcePath, "right", { line });
   }
 
   function closeErrorDialog() {
@@ -216,10 +208,8 @@
       onMissingWikiLink={requestMissingPage}
       onCheckboxToggle={toggleCheckboxForPath}
       onOpenSourceLineInEditor={openCurrentLineInEditor}
-      onOpenSourceLineInRightPane={showCurrentLineInRightPane}
       onOpenBacklinkInEditor={openBacklinkInEditor}
       onOpenBacklinkLineInEditor={openBacklinkLineInEditor}
-      onOpenBacklinkLineInRightPane={showBacklinkLineInRightPane}
       onTaskStatusChange={changeTaskStatusForPath}
       onTaskPriorityChange={changeTaskPriorityForPath}
       onOpenTasksOnlyChange={saveBacklinkOpenTasksOnly}
@@ -244,8 +234,6 @@
           onOpenWikiLink={openWikiTarget}
           onOpenSourceLineInEditor={(line) =>
             $rightPaneStore.path && openCurrentLineInEditor($rightPaneStore.path, line)}
-          onOpenSourceLineInRightPane={(line) =>
-            $rightPaneStore.path && showCurrentLineInRightPane($rightPaneStore.path, line)}
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
           enableTextCopyContextMenu
@@ -270,7 +258,6 @@
           onOpenWikiLink={openWikiTarget}
           onOpenSourceInEditor={openBacklinkInEditor}
           onOpenSourceLineInEditor={openBacklinkLineInEditor}
-          onOpenSourceLineInRightPane={showBacklinkLineInRightPane}
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
           enableTextCopyContextMenu

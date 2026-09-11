@@ -474,14 +474,14 @@
     onTaskPriorityChange(line, previousPriority, priority);
   }
 
-  function showTaskSourceLineInRightPane() {
+  function showTaskSourceLineInEditor() {
     if (!taskContextMenu) {
       return;
     }
 
     const { line } = taskContextMenu;
     taskContextMenu = null;
-    onOpenSourceLineInRightPane(line);
+    onOpenSourceLineInEditor(line);
   }
 
   function currentTaskPriority() {
@@ -753,10 +753,10 @@
     <button
       type="button"
       role="menuitem"
-      data-menu-key="r"
-      on:click={showTaskSourceLineInRightPane}
+      data-menu-key="e"
+      on:click={showTaskSourceLineInEditor}
     >
-      Show line in <span class="menu-mnemonic">r</span>ight pane
+      Show line in <span class="menu-mnemonic">e</span>ditor
     </button>
   </ContextMenuShell>
 {/if}
