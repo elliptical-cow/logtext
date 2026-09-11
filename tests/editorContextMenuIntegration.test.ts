@@ -22,6 +22,7 @@ test("composes contextual actions with standard editor actions", () => {
   assert.match(editor, /on:click=\{selectAllEditorText\}/);
   assert.match(editor, /on:click=\{linkContextSelection\}/);
   assert.match(editor, /on:click=\{openSourceLineInRightPane\}/);
+  assert.match(editor, /Show line in <span class="menu-mnemonic">r<\/span>ight pane/);
   assert.match(editor, /runContextEditorCommand\(indentSelectedBlocks\)/);
   assert.match(editor, /runContextEditorCommand\(moveCurrentBlock\("up"\)\)/);
 });

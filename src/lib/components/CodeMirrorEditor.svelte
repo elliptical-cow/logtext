@@ -1685,7 +1685,7 @@
         data-menu-key="r"
         on:click={openSourceLineInRightPane}
       >
-        Show block in <span class="menu-mnemonic">r</span>ight pane
+        Show line in <span class="menu-mnemonic">r</span>ight pane
       </button>
     {/if}
 
