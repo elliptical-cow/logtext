@@ -350,8 +350,10 @@ The editor context menu combines cut, copy, paste, and select-all commands with
 actions for the clicked selection, wiki link, task, or list block. Selection-to-page
 linking is grouped under Format. A normal left click remains the primary way to
 open an existing wiki link in the editor; its context menu adds only distinct
-actions such as opening it in the right pane or copying its Markdown. Task keyword
-menus are deliberately limited to Status, Priority, and showing the source line
+actions such as opening it in the right pane or copying its Markdown. A rendered
+link's context menu offers opening it in the editor, but omits the redundant action
+for reopening it in the right pane. Task keyword menus are deliberately limited
+to Status, Priority, and showing the source line
 in the opposite pane: the right pane from the editor, or the editor from the
 right pane. Selected rendered text can also be copied from right-pane context
 menus. Context-menu actions with an exact keyboard equivalent show a subtle

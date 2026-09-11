@@ -15,6 +15,18 @@ const journalFeed = readFileSync(
 );
 const styles = readFileSync(join(root, "src/styles.css"), "utf8");
 
+test("offers only opposite-pane navigation for rendered links", () => {
+  const linkMenu = markdownView.slice(
+    markdownView.indexOf("{#if linkContextMenu}"),
+    markdownView.indexOf("{#if sourceLineContextMenu}"),
+  );
+
+  assert.match(linkMenu, /Open link in <span class="menu-mnemonic">e<\/span>ditor/);
+  assert.match(linkMenu, /on:click=\{openContextLinkInEditor\}/);
+  assert.equal(/Open (?:link )?in [\s\S]*?right pane/.test(linkMenu), false);
+  assert.equal(/openContextLink\("right"\)/.test(linkMenu), false);
+});
+
 test("copies only a right-clicked rendered text selection", () => {
   assert.match(markdownView, /selectedRenderedTextAtPoint\(event\)/);
   assert.match(markdownView, /range\.getClientRects\(\)/);

@@ -1519,7 +1519,7 @@
           data-menu-key="r"
           on:click={openWikiLinkInRightPane}
         >
-          Open in <span class="menu-mnemonic">r</span>ight pane
+          Open link in <span class="menu-mnemonic">r</span>ight pane
         </button>
       {/if}
       {#if contextLink.resolvedPath && !contextLink.resolvedExists}

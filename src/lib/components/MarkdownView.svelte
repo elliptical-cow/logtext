@@ -381,7 +381,7 @@
     }
   }
 
-  function openContextLink(targetPane: "editor" | "right") {
+  function openContextLinkInEditor() {
     if (!linkContextMenu?.exists) {
       return;
     }
@@ -389,7 +389,7 @@
     const target = linkContextMenu.target;
     linkContextMenu = null;
 
-    onOpenWikiLink(target, targetPane);
+    onOpenWikiLink(target, "editor");
   }
 
   function createContextLinkPage() {
@@ -630,18 +630,9 @@
       role="menuitem"
       data-menu-key="e"
       disabled={!linkContextMenu.exists}
-      on:click={() => openContextLink("editor")}
+      on:click={openContextLinkInEditor}
     >
-      Open in <span class="menu-mnemonic">e</span>ditor
-    </button>
-    <button
-      type="button"
-      role="menuitem"
-      data-menu-key="r"
-      disabled={!linkContextMenu.exists}
-      on:click={() => openContextLink("right")}
-    >
-      Open in <span class="menu-mnemonic">r</span>ight pane
+      Open link in <span class="menu-mnemonic">e</span>ditor
     </button>
     {#if !linkContextMenu.exists}
       <button type="button" role="menuitem" data-menu-key="n" on:click={createContextLinkPage}>
