@@ -2146,7 +2146,6 @@ textarea {
 
 .editor-link-menu .context-menu-action {
   display: flex;
-  width: 100%;
   align-items: center;
   justify-content: space-between;
   gap: 28px;

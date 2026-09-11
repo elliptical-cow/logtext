@@ -1561,7 +1561,6 @@
           </button>
           <button
             type="button"
-            class="context-menu-action"
             role="menuitem"
             data-menu-key="i"
             disabled={disabled}
@@ -1629,6 +1628,7 @@
           {/if}
           <button
             type="button"
+            class="context-menu-action"
             role="menuitem"
             data-menu-key="i"
             disabled={disabled}
@@ -1677,7 +1677,6 @@
     {#if editorContextMenu.kind !== "link"}
       <button
         type="button"
-        class="context-menu-action"
         role="menuitem"
         data-menu-key="r"
         on:click={openSourceLineInRightPane}
@@ -1690,6 +1689,7 @@
       <div class="context-menu-separator"></div>
       <button
         type="button"
+        class="context-menu-action"
         role="menuitem"
         data-menu-key="t"
         disabled={disabled || !contextSelection}

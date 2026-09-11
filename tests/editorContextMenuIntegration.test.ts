@@ -44,9 +44,19 @@ test("keeps editor task keyword menus limited to task and line actions", () => {
 
 test("shows subtle Windows shortcut hints only for equivalent editor actions", () => {
   for (const shortcut of ["Tab", "Shift+Tab", "Ctrl+↑", "Ctrl+↓", "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+A"]) {
-    assert.match(editor, new RegExp(`context-menu-shortcut[^>]*>${shortcut.replace("+", "\\+")}<`));
+    const shortcutMarkup = `>${shortcut}<`;
+    const shortcutPosition = editor.indexOf(shortcutMarkup);
+    const buttonStart = editor.lastIndexOf("<button", shortcutPosition);
+    const buttonEnd = editor.indexOf("</button>", shortcutPosition);
+
+    assert.ok(shortcutPosition >= 0, `missing ${shortcut} shortcut hint`);
+    assert.match(editor.slice(buttonStart, buttonEnd), /class="context-menu-action"/);
   }
   assert.equal(/Cmd\/Ctrl/.test(editor), false);
+  assert.match(
+    editor,
+    /<button\s+type="button"\s+role="menuitem"\s+data-menu-key="r"\s+on:click=\{openSourceLineInRightPane\}/,
+  );
 });
 
 test("supports keyboard context menus and restores editor focus", () => {
