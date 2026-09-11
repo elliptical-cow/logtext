@@ -59,6 +59,7 @@
     label: string;
     target: string;
     exists: boolean;
+    line: number | null;
   } | null = null;
   let taskContextMenu: {
     x: number;
@@ -363,6 +364,7 @@
       label: link?.textContent?.trim() || decodeURIComponent(href.slice(prefix.length)),
       target: decodeURIComponent(href.slice(prefix.length)),
       exists: !missing,
+      line: sourceLineFromContextMenuTarget(event.target),
     };
   }
 
@@ -390,6 +392,16 @@
     linkContextMenu = null;
 
     onOpenWikiLink(target, "editor");
+  }
+
+  function showContextLinkSourceLineInEditor() {
+    if (!linkContextMenu || linkContextMenu.line === null) {
+      return;
+    }
+
+    const { line } = linkContextMenu;
+    linkContextMenu = null;
+    onOpenSourceLineInEditor(line);
   }
 
   function createContextLinkPage() {
@@ -634,6 +646,16 @@
     >
       Follow link in <span class="menu-mnemonic">e</span>ditor
     </button>
+    {#if linkContextMenu.line !== null && sourceLineMenuTargets.includes("editor")}
+      <button
+        type="button"
+        role="menuitem"
+        data-menu-key="s"
+        on:click={showContextLinkSourceLineInEditor}
+      >
+        <span class="menu-mnemonic">S</span>how line in editor
+      </button>
+    {/if}
     {#if !linkContextMenu.exists}
       <button type="button" role="menuitem" data-menu-key="n" on:click={createContextLinkPage}>
         Create <span class="menu-mnemonic">n</span>ew page

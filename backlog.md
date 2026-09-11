@@ -8,7 +8,8 @@
   and focus restoration now follow normal editor expectations while reusing the
   existing CodeMirror and task mutation paths. Task menus stay focused on Status,
   Priority, and source-line navigation; selected right-pane text can also be copied.
-  Exact keyboard equivalents appear as subtle Windows-style shortcut hints.
+  Link menus offer both link following and source-line navigation to the opposite
+  pane. Exact keyboard equivalents appear as subtle Windows-style shortcut hints.
 - [x] Render inline and block LaTeX formulas in the CodeMirror live preview.
   Inactive formulas use reusable KaTeX widgets, while the active inline line or
   complete block source remains directly editable. Fenced code, invalid LaTeX,

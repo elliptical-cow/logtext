@@ -1536,6 +1536,14 @@
       <button type="button" role="menuitem" data-menu-key="w" on:click={copyContextWikiLink}>
         Copy <span class="menu-mnemonic">w</span>iki link
       </button>
+      <button
+        type="button"
+        role="menuitem"
+        data-menu-key="s"
+        on:click={openSourceLineInRightPane}
+      >
+        <span class="menu-mnemonic">S</span>how line in right pane
+      </button>
     {/if}
 
     {#if editorContextMenu.kind === "selection" && contextSelection}

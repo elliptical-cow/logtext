@@ -13,6 +13,14 @@ test("keeps task state selection and the normal left-click link behavior intact"
   assert.match(editor, /onOpenWikiLink\(resolved\.path, "editor"\)/);
   assert.equal(/Open in editor/.test(editor), false);
   assert.match(editor, /Follow link in <span class="menu-mnemonic">r<\/span>ight pane/);
+
+  const linkMenu = editor.slice(
+    editor.indexOf('{#if editorContextMenu.kind === "link" && contextLink}'),
+    editor.indexOf('{#if editorContextMenu.kind === "selection" && contextSelection}'),
+  );
+  assert.ok(linkMenu.indexOf("Follow link in") < linkMenu.indexOf("Copy "));
+  assert.ok(linkMenu.indexOf("Copy ") < linkMenu.indexOf("how line in right pane"));
+  assert.match(linkMenu, /on:click=\{openSourceLineInRightPane\}/);
 });
 
 test("composes contextual actions with standard editor actions", () => {

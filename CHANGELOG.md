@@ -38,7 +38,8 @@ current source version is `0.7.1`.
   copied from right-pane context menus. Matching keyboard commands are shown as
   subtle Windows-style shortcut hints. Link navigation actions use explicit
   `Follow link in ...` labels, and rendered-link menus omit redundant right-pane
-  navigation.
+  navigation. Link menus can reveal the clicked link's source line in the opposite
+  pane without following the link.
 - All local image targets now use stable `media-folder/file` paths relative to
   the workspace root, so they remain valid when copied between pages. The
   configured media folder is excluded from page indexing and protected from

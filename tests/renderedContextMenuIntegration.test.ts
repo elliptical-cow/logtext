@@ -23,6 +23,9 @@ test("offers only opposite-pane navigation for rendered links", () => {
 
   assert.match(linkMenu, /Follow link in <span class="menu-mnemonic">e<\/span>ditor/);
   assert.match(linkMenu, /on:click=\{openContextLinkInEditor\}/);
+  assert.match(linkMenu, /<span class="menu-mnemonic">S<\/span>how line in editor/);
+  assert.match(linkMenu, /on:click=\{showContextLinkSourceLineInEditor\}/);
+  assert.ok(linkMenu.indexOf("Follow link in") < linkMenu.indexOf("how line in editor"));
   assert.equal(/Open (?:link )?in [\s\S]*?right pane/.test(linkMenu), false);
   assert.equal(/openContextLink\("right"\)/.test(linkMenu), false);
 });
