@@ -236,6 +236,7 @@
             $rightPaneStore.path && openCurrentLineInEditor($rightPaneStore.path, line)}
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
+          enableTextCopyContextMenu
           onTaskStatusChange={(line, currentStatus, nextStatus) =>
             void changeTaskStatusForPath($rightPaneStore.path, line, currentStatus, nextStatus)}
           onTaskPriorityChange={(line, currentPriority, nextPriority) =>
@@ -259,6 +260,7 @@
           onOpenSourceLineInEditor={openBacklinkLineInEditor}
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
+          enableTextCopyContextMenu
           onCheckboxToggle={(path, line, checked) => void toggleCheckboxForPath(path, line, checked)}
           onTaskStatusChange={(path, line, currentStatus, nextStatus) =>
             void changeTaskStatusForPath(path, line, currentStatus, nextStatus)}

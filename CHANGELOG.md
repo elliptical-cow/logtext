@@ -29,6 +29,17 @@ current source version is `0.7.1`.
 
 ### Changed
 
+- Expanded the editor context menu with cut, copy, paste, select-all,
+  selection-to-page-link, task, and list-block actions. Context menus now preserve
+  clicked selections, position the cursor for paste, accept single-character
+  selections, support keyboard opening, and restore editor focus. Undo and redo
+  remain in the Edit menu and on keyboard shortcuts. Task menus contain only
+  Status, Priority, and source-line navigation. Selected rendered text can also be
+  copied from right-pane context menus. Matching keyboard commands are shown as
+  subtle Windows-style shortcut hints. Link navigation actions use explicit
+  `Follow link in ...` labels, and rendered-link menus omit redundant right-pane
+  navigation. Link menus can reveal the clicked link's source line in the opposite
+  pane without following the link.
 - All local image targets now use stable `media-folder/file` paths relative to
   the workspace root, so they remain valid when copied between pages. The
   configured media folder is excluded from page indexing and protected from

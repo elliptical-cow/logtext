@@ -2144,6 +2144,20 @@ textarea {
   color: var(--text-faint);
 }
 
+.editor-link-menu .context-menu-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.context-menu-shortcut {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 400;
+  text-decoration: none;
+}
+
 .editor-submenu {
   display: grid;
 }

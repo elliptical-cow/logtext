@@ -338,6 +338,7 @@
             onOpenSourceLineInEditor(pageView.page.path, line)}
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
+          enableTextCopyContextMenu
           onTaskStatusChange={(line, currentStatus, nextStatus) =>
             void changeTaskStatus(pageView.page.path, line, currentStatus, nextStatus)}
           onTaskPriorityChange={(line, currentPriority, nextPriority) =>
@@ -361,6 +362,7 @@
           onOpenSourceLineInEditor={onOpenBacklinkLineInEditor}
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
+          enableTextCopyContextMenu
           onCheckboxToggle={(path, line, checked) => void toggleCheckbox(path, line, checked)}
           onTaskStatusChange={(path, line, currentStatus, nextStatus) =>
             void changeTaskStatus(path, line, currentStatus, nextStatus)}

@@ -5,14 +5,17 @@ import test from "node:test";
 
 const root = process.cwd();
 
-test("grants only image-write clipboard permission", () => {
+test("grants only the clipboard operations used by editor menus", () => {
   const capability = JSON.parse(
     readFileSync(join(root, "src-tauri/capabilities/default.json"), "utf8"),
   ) as { permissions: string[] };
 
   assert.equal(capability.permissions.includes("clipboard-manager:allow-write-image"), true);
-  assert.equal(capability.permissions.some((permission) => permission.includes("read-image")), false);
-  assert.equal(capability.permissions.some((permission) => permission.includes("read-text")), false);
+  assert.equal(capability.permissions.includes("clipboard-manager:allow-read-image"), true);
+  assert.equal(capability.permissions.includes("clipboard-manager:allow-read-text"), true);
+  assert.equal(capability.permissions.includes("clipboard-manager:allow-write-text"), true);
+  assert.equal(capability.permissions.some((permission) => permission.includes("write-html")), false);
+  assert.equal(capability.permissions.some((permission) => permission.includes("clear")), false);
 });
 
 test("registers one shared image context menu in editor and rendered views", () => {

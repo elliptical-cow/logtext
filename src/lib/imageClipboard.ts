@@ -38,3 +38,29 @@ export async function copyImageElementToClipboard(image: HTMLImageElement) {
     await clipboardImage.close();
   }
 }
+
+export async function clipboardImageToPngFile(image: Image) {
+  const [{ width, height }, rgba] = await Promise.all([image.size(), image.rgba()]);
+  if (width < 1 || height < 1 || rgba.length !== width * height * 4) {
+    throw new Error("The clipboard image has invalid dimensions");
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Logtext could not prepare the clipboard image");
+  }
+
+  const imageData = context.createImageData(width, height);
+  imageData.data.set(rgba);
+  context.putImageData(imageData, 0, 0);
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (value) => value ? resolve(value) : reject(new Error("Could not encode clipboard image")),
+      "image/png",
+    );
+  });
+  return new File([blob], "clipboard.png", { type: "image/png" });
+}

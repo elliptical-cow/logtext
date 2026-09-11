@@ -11,8 +11,14 @@
     EditorView,
     keymap,
     lineNumbers,
+    type Command,
     type DecorationSet,
   } from "@codemirror/view";
+  import {
+    readImage,
+    readText,
+    writeText,
+  } from "@tauri-apps/plugin-clipboard-manager";
   import {
     defaultKeymap,
     history,
@@ -38,10 +44,16 @@
     ensureLineVisible,
     expandAllBlockFolds,
     expandBlock,
-    foldableBlockLevelAtLine,
     foldedBlockAtLine,
   } from "../editorBlockFolding";
-  import { blockEditingKeymap } from "../editorBlockCommands";
+  import {
+    blockEditingKeymap,
+    blockRangeForCursorLine,
+    indentSelectedBlocks,
+    movableBlockRanges,
+    moveCurrentBlock,
+    outdentSelectedBlocks,
+  } from "../editorBlockCommands";
   import { listWrapIndentExtension } from "../editorLineWrapping";
   import {
     checkboxAtDocumentPosition,
@@ -57,6 +69,7 @@
   import { playTaskDoneSound } from "../taskCompletionSound";
   import {
     editorContextMenuKind,
+    editorContextMenuSelection,
     type EditorContextMenuKind,
   } from "../editorContextMenu";
   import { minimalTextChange } from "../textChanges";
@@ -69,7 +82,11 @@
   import { resolveWikiTarget } from "../wikiLinks";
   import type { LinkTargetPane } from "../stores/linkOperations";
   import type { FolderColors, PageSummary, TaskStateColors } from "../types";
-  import type { ImageContextMenuTarget } from "../imageClipboard";
+  import {
+    clipboardImageToPngFile,
+    type ImageContextMenuTarget,
+  } from "../imageClipboard";
+  import { runUserAction } from "../stores/appErrors";
 
   export let value = "";
   export let documentPath: string | null = null;
@@ -472,7 +489,18 @@
       return;
     }
 
+    event.preventDefault();
+    event.stopPropagation();
+    openEditorContextMenuAt(position, event.clientX, event.clientY);
+  }
+
+  function openEditorContextMenuAt(position: number, x: number, y: number) {
+    if (!view) {
+      return;
+    }
+
     const selection = view.state.selection.main;
+    const contextSelection = editorContextMenuSelection(position, selection);
     let task: TaskKeywordAtPosition | null = null;
     let link: ContextMenuLink | null = null;
 
@@ -492,18 +520,38 @@
 
     const kind = editorContextMenuKind(position, selection, Boolean(link), Boolean(task));
 
-    event.preventDefault();
-    event.stopPropagation();
+    if (!contextSelection) {
+      view.dispatch({ selection: { anchor: position } });
+    }
+
     imageContextMenu = null;
     editorContextMenu = {
       kind,
-      x: event.clientX,
-      y: event.clientY,
+      x,
+      y,
       line: view.state.doc.lineAt(position).number,
-      selection: kind === "selection" ? { from: selection.from, to: selection.to } : null,
+      selection: contextSelection,
       task,
       link,
     };
+  }
+
+  function handleEditorContextMenuKey(event: KeyboardEvent) {
+    if (!view || (event.key !== "ContextMenu" && !(event.key === "F10" && event.shiftKey))) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    const selection = view.state.selection.main;
+    const position = selection.empty ? selection.head : Math.min(selection.head, selection.to - 1);
+    const coordinates = view.coordsAtPos(position);
+    const fallback = host.getBoundingClientRect();
+    openEditorContextMenuAt(
+      position,
+      coordinates?.left ?? fallback.left + 12,
+      coordinates?.bottom ?? fallback.top + 12,
+    );
   }
 
   function openImageContextMenu(event: MouseEvent, image: HTMLImageElement) {
@@ -638,7 +686,7 @@
   }
 
   function setTaskStatus(nextStatus: string) {
-    if (!view || !editorContextMenu?.task) {
+    if (!view || disabled || !editorContextMenu?.task) {
       return;
     }
 
@@ -659,7 +707,7 @@
   }
 
   function setTaskPriority(nextPriority: string | null) {
-    if (!view || !editorContextMenu?.task) {
+    if (!view || disabled || !editorContextMenu?.task) {
       return;
     }
 
@@ -721,12 +769,170 @@
     onOpenSourceLineInRightPane(line);
   }
 
-  function currentSourceLineBlockLevel() {
-    if (!view || !editorContextMenu) {
-      return null;
+  function contextSelectionText() {
+    if (!view || !editorContextMenu?.selection) {
+      return "";
+    }
+    return view.state.sliceDoc(editorContextMenu.selection.from, editorContextMenu.selection.to);
+  }
+
+  function copyContextSelection(cut: boolean) {
+    if (!view || !editorContextMenu?.selection) {
+      return;
     }
 
-    return foldableBlockLevelAtLine(view.state, editorContextMenu.line);
+    const editorView = view;
+    const range = editorContextMenu.selection;
+    const text = editorView.state.sliceDoc(range.from, range.to);
+    closeEditorContextMenu();
+    editorView.focus();
+    void runUserAction(cut ? "Cut text" : "Copy text", async () => {
+      await writeText(text);
+      if (
+        cut &&
+        !disabled &&
+        view === editorView &&
+        editorView.state.selection.main.from === range.from &&
+        editorView.state.selection.main.to === range.to &&
+        editorView.state.sliceDoc(range.from, range.to) === text
+      ) {
+        editorView.dispatch({
+          changes: { from: range.from, to: range.to },
+          selection: { anchor: range.from },
+          scrollIntoView: true,
+        });
+      }
+      editorView.focus();
+    });
+  }
+
+  function pasteFromClipboard() {
+    if (!view || disabled) {
+      return;
+    }
+
+    const editorView = view;
+    const pastedIntoPath = documentPath;
+    closeEditorContextMenu();
+    editorView.focus();
+    void runUserAction("Paste clipboard content", async () => {
+      let clipboardImage: Awaited<ReturnType<typeof readImage>> | null = null;
+      try {
+        clipboardImage = await readImage();
+      } catch {
+        // The clipboard may contain text instead of an image.
+      }
+
+      if (clipboardImage) {
+        try {
+          const imageFile = await clipboardImageToPngFile(clipboardImage);
+          if (view !== editorView || documentPath !== pastedIntoPath || !pastedIntoPath || disabled) {
+            return;
+          }
+          const pasteId = beginImagePaste(editorView);
+          await persistPastedImage(editorView, pastedIntoPath, pasteId, imageFile);
+        } finally {
+          await clipboardImage.close();
+        }
+        return;
+      }
+
+      const text = await readText();
+      if (view !== editorView || disabled || text.length === 0) {
+        editorView.focus();
+        return;
+      }
+      const selection = editorView.state.selection.main;
+      editorView.dispatch({
+        changes: { from: selection.from, to: selection.to, insert: text },
+        selection: { anchor: selection.from + text.length },
+        scrollIntoView: true,
+      });
+      editorView.focus();
+    });
+  }
+
+  function selectAllEditorText() {
+    if (!view) {
+      return;
+    }
+    const editorView = view;
+    closeEditorContextMenu();
+    editorView.dispatch({ selection: { anchor: 0, head: editorView.state.doc.length } });
+    editorView.focus();
+  }
+
+  function copyContextWikiLink() {
+    if (!view || !editorContextMenu?.link) {
+      return;
+    }
+    const link = editorContextMenu.link.link;
+    const markdown = view.state.sliceDoc(link.from, link.to);
+    closeEditorContextMenu();
+    view.focus();
+    void runUserAction("Copy wiki link", () => writeText(markdown));
+  }
+
+  function canLinkContextSelection() {
+    const text = contextSelectionText();
+    return (
+      editorContextMenu?.kind === "selection" &&
+      text.length > 0 &&
+      text.trim() === text &&
+      !/[\[\]\r\n|]/.test(text) &&
+      resolveWikiTarget(text, pages) !== null
+    );
+  }
+
+  function linkContextSelection() {
+    if (!view || !editorContextMenu?.selection || !canLinkContextSelection()) {
+      return;
+    }
+    const editorView = view;
+    const { from, to } = editorContextMenu.selection;
+    const linked = `[[${editorView.state.sliceDoc(from, to)}]]`;
+    editorView.dispatch({
+      changes: { from, to, insert: linked },
+      selection: { anchor: from + linked.length },
+      scrollIntoView: true,
+    });
+    closeEditorContextMenu();
+    editorView.focus();
+  }
+
+  function currentSourceLineBlockIsList() {
+    if (!view || !editorContextMenu) {
+      return false;
+    }
+    return blockRangeForCursorLine(editorDocumentLines(), editorContextMenu.line).isList;
+  }
+
+  function currentSourceLineBlockCanOutdent() {
+    if (!view || !editorContextMenu) {
+      return false;
+    }
+    return blockRangeForCursorLine(editorDocumentLines(), editorContextMenu.line).indent > 0;
+  }
+
+  function currentSourceLineBlockCanMove(direction: "up" | "down") {
+    if (!view || !editorContextMenu || editorContextMenu.selection) {
+      return false;
+    }
+    return Boolean(movableBlockRanges(editorDocumentLines(), editorContextMenu.line, direction));
+  }
+
+  function editorDocumentLines() {
+    return view?.state.doc.toString().split("\n") ?? [];
+  }
+
+  function runContextEditorCommand(command: Command) {
+    if (!view || disabled) {
+      return;
+    }
+    const editorView = view;
+    closeEditorContextMenu();
+    command(editorView);
+    editorView.focus();
   }
 
   function currentSourceLineBlockIsCollapsible() {
@@ -761,31 +967,6 @@
     view.focus();
   }
 
-  function collapseSourceLineBelowLevel() {
-    if (!view || !editorContextMenu) {
-      return;
-    }
-
-    const level = foldableBlockLevelAtLine(view.state, editorContextMenu.line);
-    if (level === null) {
-      return;
-    }
-
-    collapseAllBlocksBelowLevel(view, level);
-    closeEditorContextMenu();
-    view.focus();
-  }
-
-  function expandAllSourceLineBlocks() {
-    if (!view) {
-      return;
-    }
-
-    expandAllBlockFolds(view);
-    closeEditorContextMenu();
-    view.focus();
-  }
-
   function handleCollapseBelowLevelEvent(event: Event) {
     if (!view || !(event instanceof CustomEvent)) {
       return;
@@ -814,12 +995,13 @@
     imageContextMenu = null;
   }
 
-  function selectedFormatText() {
-    if (!view || !editorContextMenu?.selection) {
-      return "";
-    }
+  function closeEditorContextMenuAndFocus() {
+    closeEditorContextMenu();
+    view?.focus();
+  }
 
-    return view.state.sliceDoc(editorContextMenu.selection.from, editorContextMenu.selection.to);
+  function selectedFormatText() {
+    return contextSelectionText();
   }
 
   function canFormatSelection(format: InlineMarkdownFormat) {
@@ -914,6 +1096,12 @@
     event.preventDefault();
     const editorView = view;
     const pastedIntoPath = documentPath;
+    const pasteId = beginImagePaste(editorView);
+    void persistPastedImage(editorView, pastedIntoPath, pasteId, imageFile);
+    return true;
+  }
+
+  function beginImagePaste(editorView: EditorView) {
     const selection = editorView.state.selection.main;
     const pasteId = nextImagePasteId++;
     editorView.dispatch({
@@ -924,8 +1112,7 @@
       }),
       annotations: Transaction.addToHistory.of(false),
     });
-    void persistPastedImage(editorView, pastedIntoPath, pasteId, imageFile);
-    return true;
+    return pasteId;
   }
 
   async function persistPastedImage(
@@ -1231,7 +1418,7 @@
     tabindex="-1"
     on:mousedown={handleEditorMouseDown}
     on:click={handleEditorClick}
-    on:keydown={() => {}}
+    on:keydown={handleEditorContextMenuKey}
     on:contextmenu={openEditorContextMenu}
   ></div>
 </div>
@@ -1241,21 +1428,25 @@
     x={imageContextMenu.x}
     y={imageContextMenu.y}
     image={imageContextMenu.image}
-    onClose={closeEditorContextMenu}
+    onClose={closeEditorContextMenuAndFocus}
   />
 {/if}
 
 {#if editorContextMenu}
-  {@const blockLevel = currentSourceLineBlockLevel()}
+  {@const blockIsList = currentSourceLineBlockIsList()}
   {@const blockIsCollapsible = currentSourceLineBlockIsCollapsible()}
   {@const blockIsFolded = currentSourceLineBlockIsFolded()}
+  {@const blockCanOutdent = currentSourceLineBlockCanOutdent()}
+  {@const blockCanMoveUp = currentSourceLineBlockCanMove("up")}
+  {@const blockCanMoveDown = currentSourceLineBlockCanMove("down")}
   {@const currentPriority = currentTaskPriority()}
   {@const contextLink = editorContextMenu.link}
+  {@const contextSelection = editorContextMenu.selection}
   <ContextMenuShell
     className="editor-link-menu"
     x={editorContextMenu.x}
     y={editorContextMenu.y}
-    onClose={closeEditorContextMenu}
+    onClose={closeEditorContextMenuAndFocus}
   >
     {#if editorContextMenu.kind === "task" && editorContextMenu.task}
       <div class="editor-menu-flyout" role="menuitem" tabindex="0">
@@ -1274,7 +1465,7 @@
               type="button"
               role="menuitem"
               data-menu-key={String(index + 1)}
-              disabled={state === editorContextMenu.task.status}
+              disabled={disabled || state === editorContextMenu.task.status}
               on:click={() => setTaskStatus(state)}
             >
               <span class="menu-mnemonic">{index + 1}</span> {state}
@@ -1286,10 +1477,10 @@
         <button
           type="button"
           class="editor-menu-flyout-trigger"
-          data-menu-key="p"
+          data-menu-key="y"
           on:click|stopPropagation
         >
-          <span><span class="menu-mnemonic">P</span>riority</span>
+          <span>Priorit<span class="menu-mnemonic">y</span></span>
           <span aria-hidden="true">›</span>
         </button>
         <div class="editor-menu-flyout-panel" role="menu">
@@ -1297,7 +1488,7 @@
             type="button"
             role="menuitem"
             data-menu-key="0"
-            disabled={currentPriority === null}
+            disabled={disabled || currentPriority === null}
             on:click={() => setTaskPriority(null)}
           >
             <span class="menu-mnemonic">0</span> No priority
@@ -1307,7 +1498,7 @@
               type="button"
               role="menuitem"
               data-menu-key={priority}
-              disabled={currentPriority === priority}
+              disabled={disabled || currentPriority === priority}
               on:click={() => setTaskPriority(priority)}
             >
               #<span class="menu-mnemonic">{priority}</span>
@@ -1317,88 +1508,45 @@
       </div>
     {/if}
 
-    {#if editorContextMenu.kind === "text"}
-      <div class="editor-menu-flyout" role="menuitem" tabindex="0">
+    {#if editorContextMenu.kind === "link" && contextLink}
+      <div class="editor-link-menu-title" title={contextLink.link.target}>
+        {contextLink.link.label}
+      </div>
+      {#if contextLink.resolvedPath && contextLink.resolvedExists}
         <button
           type="button"
-          class="editor-menu-flyout-trigger"
-          data-menu-key="c"
-          on:click|stopPropagation
+          role="menuitem"
+          data-menu-key="r"
+          on:click={openWikiLinkInRightPane}
         >
-          <span><span class="menu-mnemonic">C</span>ollapse</span>
-          <span aria-hidden="true">›</span>
+          Follow link in <span class="menu-mnemonic">r</span>ight pane
         </button>
-        <div class="editor-menu-flyout-panel" role="menu">
-          {#if blockIsCollapsible}
-            <button
-              type="button"
-              role="menuitem"
-              data-menu-key={blockIsFolded ? "e" : "c"}
-              on:click={toggleSourceLineBlockFold}
-            >
-              {#if blockIsFolded}
-                <span class="menu-mnemonic">E</span>xpand block
-              {:else}
-                <span class="menu-mnemonic">C</span>ollapse block
-              {/if}
-            </button>
-          {/if}
-          {#if blockLevel !== null}
-            <button
-              type="button"
-              role="menuitem"
-              data-menu-key="l"
-              on:click={collapseSourceLineBelowLevel}
-            >
-              Collapse all below <span class="menu-mnemonic">l</span>evel {blockLevel}
-            </button>
-          {/if}
-          <button
-            type="button"
-            role="menuitem"
-            data-menu-key="a"
-            on:click={expandAllSourceLineBlocks}
-          >
-            Expand <span class="menu-mnemonic">a</span>ll
-          </button>
-        </div>
-      </div>
-    {/if}
-
-    {#if editorContextMenu.kind === "link" && contextLink}
-      <button
-        type="button"
-        role="menuitem"
-        data-menu-key="p"
-        disabled={!contextLink.resolvedPath || !contextLink.resolvedExists}
-        on:click={openWikiLinkInRightPane}
-      >
-        Open link in right <span class="menu-mnemonic">p</span>ane
-      </button>
+      {/if}
       {#if contextLink.resolvedPath && !contextLink.resolvedExists}
         <button
           type="button"
           role="menuitem"
-          data-menu-key="c"
+          data-menu-key="n"
+          disabled={disabled}
           on:click={requestMissingWikiLinkPage}
         >
-          <span class="menu-mnemonic">C</span>reate page
+          Create <span class="menu-mnemonic">n</span>ew page
         </button>
       {/if}
-    {/if}
-
-    {#if editorContextMenu.kind === "text"}
+      <button type="button" role="menuitem" data-menu-key="w" on:click={copyContextWikiLink}>
+        Copy <span class="menu-mnemonic">w</span>iki link
+      </button>
       <button
         type="button"
         role="menuitem"
-        data-menu-key="r"
+        data-menu-key="s"
         on:click={openSourceLineInRightPane}
       >
-        Open line in <span class="menu-mnemonic">r</span>ight pane
+        <span class="menu-mnemonic">S</span>how line in right pane
       </button>
     {/if}
 
-    {#if editorContextMenu.kind === "selection" && editorContextMenu.selection}
+    {#if editorContextMenu.kind === "selection" && contextSelection}
       <div class="editor-menu-flyout" role="menuitem" tabindex="0">
         <button
           type="button"
@@ -1414,6 +1562,7 @@
             type="button"
             role="menuitem"
             data-menu-key="b"
+            disabled={disabled}
             on:click={() => applyFormatToSelection("bold")}
           >
             <span class="menu-mnemonic">B</span>old
@@ -1422,6 +1571,7 @@
             type="button"
             role="menuitem"
             data-menu-key="i"
+            disabled={disabled}
             on:click={() => applyFormatToSelection("italic")}
           >
             <span class="menu-mnemonic">I</span>talic
@@ -1430,6 +1580,7 @@
             type="button"
             role="menuitem"
             data-menu-key="s"
+            disabled={disabled}
             on:click={() => applyFormatToSelection("strikethrough")}
           >
             <span class="menu-mnemonic">S</span>trikethrough
@@ -1438,13 +1589,155 @@
             type="button"
             role="menuitem"
             data-menu-key="c"
-            disabled={!canFormatSelection("inline-code")}
+            disabled={disabled || !canFormatSelection("inline-code")}
             on:click={() => applyFormatToSelection("inline-code")}
           >
             Inline <span class="menu-mnemonic">c</span>ode
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            data-menu-key="l"
+            disabled={disabled || !canLinkContextSelection()}
+            on:click={linkContextSelection}
+          >
+            <span class="menu-mnemonic">L</span>ink selection as page
+          </button>
         </div>
       </div>
+    {/if}
+
+    {#if blockIsList && editorContextMenu.kind !== "link" && editorContextMenu.kind !== "task"}
+      <div class="editor-menu-flyout" role="menuitem" tabindex="0">
+        <button
+          type="button"
+          class="editor-menu-flyout-trigger"
+          data-menu-key="b"
+          on:click|stopPropagation
+        >
+          <span><span class="menu-mnemonic">B</span>lock</span>
+          <span aria-hidden="true">›</span>
+        </button>
+        <div class="editor-menu-flyout-panel" role="menu">
+          {#if blockIsCollapsible}
+            <button
+              type="button"
+              role="menuitem"
+              data-menu-key={blockIsFolded ? "e" : "c"}
+              disabled={disabled}
+              on:click={toggleSourceLineBlockFold}
+            >
+              {#if blockIsFolded}
+                <span class="menu-mnemonic">E</span>xpand block
+              {:else}
+                <span class="menu-mnemonic">C</span>ollapse block
+              {/if}
+            </button>
+          {/if}
+          <button
+            type="button"
+            class="context-menu-action"
+            role="menuitem"
+            data-menu-key="i"
+            disabled={disabled}
+            on:click={() => runContextEditorCommand(indentSelectedBlocks)}
+          >
+            <span><span class="menu-mnemonic">I</span>ndent</span>
+            <span class="context-menu-shortcut" aria-hidden="true">Tab</span>
+          </button>
+          <button
+            type="button"
+            class="context-menu-action"
+            role="menuitem"
+            data-menu-key="o"
+            disabled={disabled || !blockCanOutdent}
+            on:click={() => runContextEditorCommand(outdentSelectedBlocks)}
+          >
+            <span><span class="menu-mnemonic">O</span>utdent</span>
+            <span class="context-menu-shortcut" aria-hidden="true">Shift+Tab</span>
+          </button>
+          <button
+            type="button"
+            class="context-menu-action"
+            role="menuitem"
+            data-menu-key="u"
+            disabled={disabled || !blockCanMoveUp}
+            on:click={() => runContextEditorCommand(moveCurrentBlock("up"))}
+          >
+            <span>Move <span class="menu-mnemonic">u</span>p</span>
+            <span class="context-menu-shortcut" aria-hidden="true">Ctrl+↑</span>
+          </button>
+          <button
+            type="button"
+            class="context-menu-action"
+            role="menuitem"
+            data-menu-key="d"
+            disabled={disabled || !blockCanMoveDown}
+            on:click={() => runContextEditorCommand(moveCurrentBlock("down"))}
+          >
+            <span>Move <span class="menu-mnemonic">d</span>own</span>
+            <span class="context-menu-shortcut" aria-hidden="true">Ctrl+↓</span>
+          </button>
+        </div>
+      </div>
+    {/if}
+
+    {#if editorContextMenu.kind !== "link"}
+      <button
+        type="button"
+        role="menuitem"
+        data-menu-key="r"
+        on:click={openSourceLineInRightPane}
+      >
+        Show line in <span class="menu-mnemonic">r</span>ight pane
+      </button>
+    {/if}
+
+    {#if editorContextMenu.kind !== "task"}
+      <div class="context-menu-separator"></div>
+      <button
+        type="button"
+        class="context-menu-action"
+        role="menuitem"
+        data-menu-key="t"
+        disabled={disabled || !contextSelection}
+        on:click={() => copyContextSelection(true)}
+      >
+        <span>Cu<span class="menu-mnemonic">t</span></span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+X</span>
+      </button>
+      <button
+        type="button"
+        class="context-menu-action"
+        role="menuitem"
+        data-menu-key="c"
+        disabled={!contextSelection}
+        on:click={() => copyContextSelection(false)}
+      >
+        <span><span class="menu-mnemonic">C</span>opy</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+C</span>
+      </button>
+      <button
+        type="button"
+        class="context-menu-action"
+        role="menuitem"
+        data-menu-key="p"
+        disabled={disabled}
+        on:click={pasteFromClipboard}
+      >
+        <span><span class="menu-mnemonic">P</span>aste</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+V</span>
+      </button>
+      <button
+        type="button"
+        class="context-menu-action"
+        role="menuitem"
+        data-menu-key="a"
+        on:click={selectAllEditorText}
+      >
+        <span>Select <span class="menu-mnemonic">a</span>ll</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+A</span>
+      </button>
     {/if}
   </ContextMenuShell>
 {/if}

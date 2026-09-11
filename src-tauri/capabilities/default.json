@@ -6,7 +6,10 @@
   "permissions": [
     "core:default",
     "core:window:allow-set-title",
+    "clipboard-manager:allow-read-image",
+    "clipboard-manager:allow-read-text",
     "clipboard-manager:allow-write-image",
+    "clipboard-manager:allow-write-text",
     "dialog:allow-open",
     "dialog:allow-message"
   ]

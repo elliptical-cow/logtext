@@ -358,9 +358,34 @@ automatic height, and cap the result at the pane width.
 Image copy uses one shared context-menu component across CodeMirror and rendered
 Markdown. The browser canvas converts an already displayed workspace image to
 RGBA data, then the official Tauri clipboard plugin writes it to the native
-clipboard. The application capability grants only `allow-write-image`; it does
-not grant clipboard read or text-write permissions. Remote images are excluded
-from this action to avoid cross-origin canvas behavior.
+clipboard. The editor's user-triggered standard context-menu actions use the
+same plugin for text read/write and image reads. Clipboard images selected
+through Paste are converted to PNG and then follow the existing validated image
+paste path. The capability does not grant clipboard clearing or HTML writes.
+Remote images are excluded from image copy to avoid cross-origin canvas
+behavior.
+
+The CodeMirror context menu preserves a clicked selection or moves the cursor to
+the clicked position, then composes cut, copy, paste, and select-all commands with
+applicable selection, wiki-link, and list-block groups. Selection-to-page linking
+lives in the Format flyout. Task keyword menus are intentionally restricted to
+Status, Priority, and source-line navigation; they continue to use the existing
+task mutation functions. Existing links deliberately omit an editor-open action
+because normal left-click navigation already provides it. Rendered-link menus
+likewise omit right-pane navigation because the link is already displayed there;
+link navigation actions use explicit `Follow link in ...` labels. Link menus retain
+the clicked source line so they can reveal it in the opposite pane without following
+the link itself. Keyboard invocation
+uses Shift+F10 or the Menu key, and Escape returns focus to the editor.
+
+Rendered Markdown enables text copying explicitly in the right pane. It snapshots
+the browser selection only when the context-menu pointer lies inside that selection,
+then writes the exact selected text through the same Tauri clipboard permission as
+the editor. Task keyword menus remain restricted even when their text is selected.
+Actions with an identical keyboard command render a right-aligned shortcut hint.
+These compact labels intentionally use the Windows notation (`Ctrl`, not a
+combined `Cmd/Ctrl` label); they are informational and hidden from assistive
+technology because the accessible menu label already describes the action.
 
 The workspace scanner excludes the media subtree from Markdown indexing and
 navigation. App-managed file operations prevent pages from entering that
