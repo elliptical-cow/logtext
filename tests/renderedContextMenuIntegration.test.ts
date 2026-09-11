@@ -13,13 +13,16 @@ const journalFeed = readFileSync(
   join(root, "src/lib/components/JournalFeed.svelte"),
   "utf8",
 );
+const styles = readFileSync(join(root, "src/styles.css"), "utf8");
 
 test("copies only a right-clicked rendered text selection", () => {
   assert.match(markdownView, /selectedRenderedTextAtPoint\(event\)/);
   assert.match(markdownView, /range\.getClientRects\(\)/);
   assert.match(markdownView, /writeText\(text\)/);
+  assert.match(markdownView, /context-menu-shortcut[^>]*>Ctrl\+C<\/span>/);
   assert.match(rightPane, /enableTextCopyContextMenu/g);
   assert.match(journalFeed, /enableTextCopyContextMenu/g);
+  assert.match(styles, /\.context-menu-shortcut\s*\{[^}]*color: var\(--text-faint\)/s);
 });
 
 test("keeps rendered task menus limited to status, priority, and editor navigation", () => {

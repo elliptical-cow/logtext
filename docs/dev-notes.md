@@ -378,6 +378,10 @@ Rendered Markdown enables text copying explicitly in the right pane. It snapshot
 the browser selection only when the context-menu pointer lies inside that selection,
 then writes the exact selected text through the same Tauri clipboard permission as
 the editor. Task keyword menus remain restricted even when their text is selected.
+Actions with an identical keyboard command render a right-aligned shortcut hint.
+These compact labels intentionally use the Windows notation (`Ctrl`, not a
+combined `Cmd/Ctrl` label); they are informational and hidden from assistive
+technology because the accessible menu label already describes the action.
 
 The workspace scanner excludes the media subtree from Markdown indexing and
 navigation. App-managed file operations prevent pages from entering that

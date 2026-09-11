@@ -650,8 +650,15 @@
     {/if}
     {#if contextSelectionText}
       <div class="context-menu-separator"></div>
-      <button type="button" role="menuitem" data-menu-key="c" on:click={copyRenderedSelection}>
-        <span class="menu-mnemonic">C</span>opy
+      <button
+        type="button"
+        class="context-menu-action"
+        role="menuitem"
+        data-menu-key="c"
+        on:click={copyRenderedSelection}
+      >
+        <span><span class="menu-mnemonic">C</span>opy</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+C</span>
       </button>
     {/if}
   </ContextMenuShell>
@@ -688,8 +695,15 @@
       {#if sourceLineContextMenu.line !== null}
         <div class="context-menu-separator"></div>
       {/if}
-      <button type="button" role="menuitem" data-menu-key="c" on:click={copyRenderedSelection}>
-        <span class="menu-mnemonic">C</span>opy
+      <button
+        type="button"
+        class="context-menu-action"
+        role="menuitem"
+        data-menu-key="c"
+        on:click={copyRenderedSelection}
+      >
+        <span><span class="menu-mnemonic">C</span>opy</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+C</span>
       </button>
     {/if}
   </ContextMenuShell>

@@ -1561,6 +1561,7 @@
           </button>
           <button
             type="button"
+            class="context-menu-action"
             role="menuitem"
             data-menu-key="i"
             disabled={disabled}
@@ -1633,34 +1634,41 @@
             disabled={disabled}
             on:click={() => runContextEditorCommand(indentSelectedBlocks)}
           >
-            <span class="menu-mnemonic">I</span>ndent
+            <span><span class="menu-mnemonic">I</span>ndent</span>
+            <span class="context-menu-shortcut" aria-hidden="true">Tab</span>
           </button>
           <button
             type="button"
+            class="context-menu-action"
             role="menuitem"
             data-menu-key="o"
             disabled={disabled || !blockCanOutdent}
             on:click={() => runContextEditorCommand(outdentSelectedBlocks)}
           >
-            <span class="menu-mnemonic">O</span>utdent
+            <span><span class="menu-mnemonic">O</span>utdent</span>
+            <span class="context-menu-shortcut" aria-hidden="true">Shift+Tab</span>
           </button>
           <button
             type="button"
+            class="context-menu-action"
             role="menuitem"
             data-menu-key="u"
             disabled={disabled || !blockCanMoveUp}
             on:click={() => runContextEditorCommand(moveCurrentBlock("up"))}
           >
-            Move <span class="menu-mnemonic">u</span>p
+            <span>Move <span class="menu-mnemonic">u</span>p</span>
+            <span class="context-menu-shortcut" aria-hidden="true">Ctrl+↑</span>
           </button>
           <button
             type="button"
+            class="context-menu-action"
             role="menuitem"
             data-menu-key="d"
             disabled={disabled || !blockCanMoveDown}
             on:click={() => runContextEditorCommand(moveCurrentBlock("down"))}
           >
-            Move <span class="menu-mnemonic">d</span>own
+            <span>Move <span class="menu-mnemonic">d</span>own</span>
+            <span class="context-menu-shortcut" aria-hidden="true">Ctrl+↓</span>
           </button>
         </div>
       </div>
@@ -1669,6 +1677,7 @@
     {#if editorContextMenu.kind !== "link"}
       <button
         type="button"
+        class="context-menu-action"
         role="menuitem"
         data-menu-key="r"
         on:click={openSourceLineInRightPane}
@@ -1686,28 +1695,40 @@
         disabled={disabled || !contextSelection}
         on:click={() => copyContextSelection(true)}
       >
-        Cu<span class="menu-mnemonic">t</span>
+        <span>Cu<span class="menu-mnemonic">t</span></span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+X</span>
       </button>
       <button
         type="button"
+        class="context-menu-action"
         role="menuitem"
         data-menu-key="c"
         disabled={!contextSelection}
         on:click={() => copyContextSelection(false)}
       >
-        <span class="menu-mnemonic">C</span>opy
+        <span><span class="menu-mnemonic">C</span>opy</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+C</span>
       </button>
       <button
         type="button"
+        class="context-menu-action"
         role="menuitem"
         data-menu-key="p"
         disabled={disabled}
         on:click={pasteFromClipboard}
       >
-        <span class="menu-mnemonic">P</span>aste
+        <span><span class="menu-mnemonic">P</span>aste</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+V</span>
       </button>
-      <button type="button" role="menuitem" data-menu-key="a" on:click={selectAllEditorText}>
-        Select <span class="menu-mnemonic">a</span>ll
+      <button
+        type="button"
+        class="context-menu-action"
+        role="menuitem"
+        data-menu-key="a"
+        on:click={selectAllEditorText}
+      >
+        <span>Select <span class="menu-mnemonic">a</span>ll</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+A</span>
       </button>
     {/if}
   </ContextMenuShell>

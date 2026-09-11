@@ -354,7 +354,8 @@ actions such as opening it in the right pane or copying its Markdown. Task keywo
 menus are deliberately limited to Status, Priority, and showing the source line
 in the opposite pane: the right pane from the editor, or the editor from the
 right pane. Selected rendered text can also be copied from right-pane context
-menus.
+menus. Context-menu actions with an exact keyboard equivalent show a subtle
+Windows-style hint such as `Ctrl+C` or `Shift+Tab`.
 
 ## Configuration
 
