@@ -22,6 +22,7 @@
   export let onOpenSourceLineInRightPane: (backlink: BacklinkView, line: number) => void = () => {};
   export let sourceLineMenuTargets: Array<"editor" | "right"> = [];
   export let enableTaskContextMenu = false;
+  export let enableTextCopyContextMenu = false;
   export let onCheckboxToggle: (path: string, line: number, checked: boolean) => void = () => {};
   export let onTaskStatusChange: (
     path: string,
@@ -175,6 +176,7 @@
                   onOpenSourceLineInRightPane(backlink, line)}
                 {sourceLineMenuTargets}
                 {enableTaskContextMenu}
+                {enableTextCopyContextMenu}
                 onTaskStatusChange={(line, currentStatus, nextStatus) =>
                   onTaskStatusChange(backlink.sourcePath, line, currentStatus, nextStatus)}
                 onTaskPriorityChange={(line, currentPriority, nextPriority) =>

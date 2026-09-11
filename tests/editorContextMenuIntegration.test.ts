@@ -15,16 +15,31 @@ test("keeps task state selection and the normal left-click link behavior intact"
 });
 
 test("composes contextual actions with standard editor actions", () => {
-  for (const label of ["Undo", "Copy", "Paste"]) {
+  for (const label of ["Copy", "Paste"]) {
     assert.match(editor, new RegExp(label.replace(" ", "\\s+"), "i"));
   }
+  assert.equal(/undoFromContextMenu|redoFromContextMenu/.test(editor), false);
   assert.match(editor, /copyContextSelection\(true\)/);
   assert.match(editor, /on:click=\{selectAllEditorText\}/);
-  assert.match(editor, /on:click=\{linkContextSelection\}/);
+  assert.match(
+    editor,
+    /<span><span class="menu-mnemonic">F<\/span>ormat<\/span>[\s\S]*?on:click=\{linkContextSelection\}/,
+  );
   assert.match(editor, /on:click=\{openSourceLineInRightPane\}/);
   assert.match(editor, /Show line in <span class="menu-mnemonic">r<\/span>ight pane/);
   assert.match(editor, /runContextEditorCommand\(indentSelectedBlocks\)/);
   assert.match(editor, /runContextEditorCommand\(moveCurrentBlock\("up"\)\)/);
+});
+
+test("keeps editor task keyword menus limited to task and line actions", () => {
+  assert.match(editor, /editorContextMenu\.kind !== "task"/);
+  assert.match(
+    editor,
+    /blockIsList && editorContextMenu\.kind !== "link" && editorContextMenu\.kind !== "task"/,
+  );
+  assert.match(editor, /on:click=\{\(\) => setTaskStatus\(state\)\}/);
+  assert.match(editor, /on:click=\{\(\) => setTaskPriority\(priority\)\}/);
+  assert.match(editor, /on:click=\{openSourceLineInRightPane\}/);
 });
 
 test("supports keyboard context menus and restores editor focus", () => {

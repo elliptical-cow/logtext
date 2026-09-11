@@ -366,12 +366,18 @@ Remote images are excluded from image copy to avoid cross-origin canvas
 behavior.
 
 The CodeMirror context menu preserves a clicked selection or moves the cursor to
-the clicked position, then composes common editing commands with applicable
-selection, wiki-link, task, and list-block groups. These actions reuse the same
-CodeMirror commands and task mutation functions as their keyboard equivalents.
-Existing links deliberately omit an editor-open action because normal left-click
-navigation already provides it. Keyboard invocation uses Shift+F10 or the Menu
-key, and Escape returns focus to the editor.
+the clicked position, then composes cut, copy, paste, and select-all commands with
+applicable selection, wiki-link, and list-block groups. Selection-to-page linking
+lives in the Format flyout. Task keyword menus are intentionally restricted to
+Status, Priority, and source-line navigation; they continue to use the existing
+task mutation functions. Existing links deliberately omit an editor-open action
+because normal left-click navigation already provides it. Keyboard invocation
+uses Shift+F10 or the Menu key, and Escape returns focus to the editor.
+
+Rendered Markdown enables text copying explicitly in the right pane. It snapshots
+the browser selection only when the context-menu pointer lies inside that selection,
+then writes the exact selected text through the same Tauri clipboard permission as
+the editor. Task keyword menus remain restricted even when their text is selected.
 
 The workspace scanner excludes the media subtree from Markdown indexing and
 navigation. App-managed file operations prevent pages from entering that

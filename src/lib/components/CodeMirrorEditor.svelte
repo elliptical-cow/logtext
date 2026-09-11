@@ -862,18 +862,6 @@
     editorView.focus();
   }
 
-  function undoFromContextMenu() {
-    closeEditorContextMenu();
-    undoCurrentDocument();
-    view?.focus();
-  }
-
-  function redoFromContextMenu() {
-    closeEditorContextMenu();
-    redoCurrentDocument();
-    view?.focus();
-  }
-
   function copyContextWikiLink() {
     if (!view || !editorContextMenu?.link) {
       return;
@@ -1598,20 +1586,20 @@
           >
             Inline <span class="menu-mnemonic">c</span>ode
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            data-menu-key="l"
+            disabled={disabled || !canLinkContextSelection()}
+            on:click={linkContextSelection}
+          >
+            <span class="menu-mnemonic">L</span>ink selection as page
+          </button>
         </div>
       </div>
-      <button
-        type="button"
-        role="menuitem"
-        data-menu-key="l"
-        disabled={disabled || !canLinkContextSelection()}
-        on:click={linkContextSelection}
-      >
-        <span class="menu-mnemonic">L</span>ink selection as page
-      </button>
     {/if}
 
-    {#if blockIsList && editorContextMenu.kind !== "link"}
+    {#if blockIsList && editorContextMenu.kind !== "link" && editorContextMenu.kind !== "task"}
       <div class="editor-menu-flyout" role="menuitem" tabindex="0">
         <button
           type="button"
@@ -1689,56 +1677,38 @@
       </button>
     {/if}
 
-    <div class="context-menu-separator"></div>
-    <button
-      type="button"
-      role="menuitem"
-      data-menu-key="u"
-      disabled={disabled || !view || undoDepth(view.state) === 0}
-      on:click={undoFromContextMenu}
-    >
-      <span class="menu-mnemonic">U</span>ndo
-    </button>
-    <button
-      type="button"
-      role="menuitem"
-      data-menu-key="d"
-      disabled={disabled || !view || redoDepth(view.state) === 0}
-      on:click={redoFromContextMenu}
-    >
-      Re<span class="menu-mnemonic">d</span>o
-    </button>
-
-    <div class="context-menu-separator"></div>
-    <button
-      type="button"
-      role="menuitem"
-      data-menu-key="t"
-      disabled={disabled || !contextSelection}
-      on:click={() => copyContextSelection(true)}
-    >
-      Cu<span class="menu-mnemonic">t</span>
-    </button>
-    <button
-      type="button"
-      role="menuitem"
-      data-menu-key="c"
-      disabled={!contextSelection}
-      on:click={() => copyContextSelection(false)}
-    >
-      <span class="menu-mnemonic">C</span>opy
-    </button>
-    <button
-      type="button"
-      role="menuitem"
-      data-menu-key="p"
-      disabled={disabled}
-      on:click={pasteFromClipboard}
-    >
-      <span class="menu-mnemonic">P</span>aste
-    </button>
-    <button type="button" role="menuitem" data-menu-key="a" on:click={selectAllEditorText}>
-      Select <span class="menu-mnemonic">a</span>ll
-    </button>
+    {#if editorContextMenu.kind !== "task"}
+      <div class="context-menu-separator"></div>
+      <button
+        type="button"
+        role="menuitem"
+        data-menu-key="t"
+        disabled={disabled || !contextSelection}
+        on:click={() => copyContextSelection(true)}
+      >
+        Cu<span class="menu-mnemonic">t</span>
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        data-menu-key="c"
+        disabled={!contextSelection}
+        on:click={() => copyContextSelection(false)}
+      >
+        <span class="menu-mnemonic">C</span>opy
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        data-menu-key="p"
+        disabled={disabled}
+        on:click={pasteFromClipboard}
+      >
+        <span class="menu-mnemonic">P</span>aste
+      </button>
+      <button type="button" role="menuitem" data-menu-key="a" on:click={selectAllEditorText}>
+        Select <span class="menu-mnemonic">a</span>ll
+      </button>
+    {/if}
   </ContextMenuShell>
 {/if}

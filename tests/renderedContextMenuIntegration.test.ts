@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import test from "node:test";
+
+const root = process.cwd();
+const markdownView = readFileSync(
+  join(root, "src/lib/components/MarkdownView.svelte"),
+  "utf8",
+);
+const rightPane = readFileSync(join(root, "src/lib/components/RightPane.svelte"), "utf8");
+const journalFeed = readFileSync(
+  join(root, "src/lib/components/JournalFeed.svelte"),
+  "utf8",
+);
+
+test("copies only a right-clicked rendered text selection", () => {
+  assert.match(markdownView, /selectedRenderedTextAtPoint\(event\)/);
+  assert.match(markdownView, /range\.getClientRects\(\)/);
+  assert.match(markdownView, /writeText\(text\)/);
+  assert.match(rightPane, /enableTextCopyContextMenu/g);
+  assert.match(journalFeed, /enableTextCopyContextMenu/g);
+});
+
+test("keeps rendered task menus limited to status, priority, and right-pane navigation", () => {
+  const taskMenu = markdownView.slice(markdownView.indexOf("{#if taskContextMenu}"));
+
+  assert.match(taskMenu, /menu-mnemonic">S<\/span>tatus/);
+  assert.match(taskMenu, /menu-mnemonic">P<\/span>riority/);
+  assert.match(taskMenu, /Show line in <span class="menu-mnemonic">r<\/span>ight pane/);
+  assert.equal(/copyRenderedSelection|>Copy</.test(taskMenu), false);
+  assert.match(rightPane, /onOpenSourceLineInRightPane=\{showCurrentLineInRightPane\}/);
+  assert.match(journalFeed, /onOpenSourceLineInRightPane\(pageView\.page\.path, line\)/);
+});

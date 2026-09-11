@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from "svelte";
+  import { writeText } from "@tauri-apps/plugin-clipboard-manager";
   import ContextMenuShell from "./ContextMenuShell.svelte";
   import ImageContextMenu from "./ImageContextMenu.svelte";
   import { createMarkdownRenderer } from "../markdownRenderer";
@@ -21,6 +22,7 @@
   import type { LinkTargetPane } from "../stores/linkOperations";
   import type { FolderColors, PageSummary, TaskStateColors } from "../types";
   import type { ImageContextMenuTarget } from "../imageClipboard";
+  import { runUserAction } from "../stores/appErrors";
 
   export let content = "";
   export let sourcePath = "";
@@ -49,6 +51,7 @@
     nextPriority: string | null,
   ) => void = () => {};
   export let enableTaskContextMenu = false;
+  export let enableTextCopyContextMenu = false;
 
   let linkContextMenu: {
     x: number;
@@ -67,9 +70,10 @@
   let sourceLineContextMenu: {
     x: number;
     y: number;
-    line: number;
+    line: number | null;
   } | null = null;
   let imageContextMenu: ImageContextMenuTarget | null = null;
+  let contextSelectionText = "";
   let markdownElement: HTMLElement | null = null;
   let lastHighlightKey = "";
   let lastObservedWidth: number | null = null;
@@ -290,10 +294,12 @@
       linkContextMenu = null;
       taskContextMenu = null;
       sourceLineContextMenu = null;
+      contextSelectionText = "";
       imageContextMenu = { x: event.clientX, y: event.clientY, image };
       return;
     }
     imageContextMenu = null;
+    contextSelectionText = selectedRenderedTextAtPoint(event);
 
     if (enableTaskContextMenu) {
       const taskKeyword = (event.target as HTMLElement).closest<HTMLElement>(
@@ -322,13 +328,13 @@
     const href = link?.getAttribute("href");
 
     if (!href?.startsWith("logtext:") && !href?.startsWith("logtext-missing:")) {
-      if (sourceLineMenuTargets.length === 0) {
+      if (sourceLineMenuTargets.length === 0 && !contextSelectionText) {
         return;
       }
 
       const line = sourceLineFromContextMenuTarget(event.target);
 
-      if (line === null) {
+      if (line === null && !contextSelectionText) {
         return;
       }
 
@@ -361,7 +367,7 @@
   }
 
   function openSourceLine(targetPane: "editor" | "right") {
-    if (!sourceLineContextMenu) {
+    if (!sourceLineContextMenu || sourceLineContextMenu.line === null) {
       return;
     }
 
@@ -401,6 +407,44 @@
     taskContextMenu = null;
     sourceLineContextMenu = null;
     imageContextMenu = null;
+    contextSelectionText = "";
+  }
+
+  function selectedRenderedTextAtPoint(event: MouseEvent) {
+    if (!enableTextCopyContextMenu || !markdownElement) {
+      return "";
+    }
+
+    const selection = window.getSelection();
+    if (
+      !selection ||
+      selection.isCollapsed ||
+      selection.rangeCount === 0 ||
+      !markdownElement.contains(selection.anchorNode) ||
+      !markdownElement.contains(selection.focusNode)
+    ) {
+      return "";
+    }
+
+    const range = selection.getRangeAt(0);
+    const clickedSelection = Array.from(range.getClientRects()).some(
+      (rect) =>
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom,
+    );
+    return clickedSelection ? selection.toString() : "";
+  }
+
+  function copyRenderedSelection() {
+    const text = contextSelectionText;
+    if (!text) {
+      return;
+    }
+
+    closeContextMenu();
+    void runUserAction("Copy text", () => writeText(text));
   }
 
   function handleWindowKeydown(event: KeyboardEvent) {
@@ -428,6 +472,16 @@
     const previousPriority = currentTaskPriority();
     taskContextMenu = null;
     onTaskPriorityChange(line, previousPriority, priority);
+  }
+
+  function showTaskSourceLineInRightPane() {
+    if (!taskContextMenu) {
+      return;
+    }
+
+    const { line } = taskContextMenu;
+    taskContextMenu = null;
+    onOpenSourceLineInRightPane(line);
   }
 
   function currentTaskPriority() {
@@ -590,8 +644,14 @@
       Open in <span class="menu-mnemonic">r</span>ight pane
     </button>
     {#if !linkContextMenu.exists}
-      <button type="button" role="menuitem" data-menu-key="c" on:click={createContextLinkPage}>
-        <span class="menu-mnemonic">C</span>reate page
+      <button type="button" role="menuitem" data-menu-key="n" on:click={createContextLinkPage}>
+        Create <span class="menu-mnemonic">n</span>ew page
+      </button>
+    {/if}
+    {#if contextSelectionText}
+      <div class="context-menu-separator"></div>
+      <button type="button" role="menuitem" data-menu-key="c" on:click={copyRenderedSelection}>
+        <span class="menu-mnemonic">C</span>opy
       </button>
     {/if}
   </ContextMenuShell>
@@ -604,7 +664,7 @@
     y={sourceLineContextMenu.y}
     onClose={closeContextMenu}
   >
-    {#if sourceLineMenuTargets.includes("editor")}
+    {#if sourceLineContextMenu.line !== null && sourceLineMenuTargets.includes("editor")}
       <button
         type="button"
         role="menuitem"
@@ -614,7 +674,7 @@
         Open line in <span class="menu-mnemonic">e</span>ditor
       </button>
     {/if}
-    {#if sourceLineMenuTargets.includes("right")}
+    {#if sourceLineContextMenu.line !== null && sourceLineMenuTargets.includes("right")}
       <button
         type="button"
         role="menuitem"
@@ -622,6 +682,14 @@
         on:click={() => openSourceLine("right")}
       >
         Open line in <span class="menu-mnemonic">r</span>ight pane
+      </button>
+    {/if}
+    {#if contextSelectionText}
+      {#if sourceLineContextMenu.line !== null}
+        <div class="context-menu-separator"></div>
+      {/if}
+      <button type="button" role="menuitem" data-menu-key="c" on:click={copyRenderedSelection}>
+        <span class="menu-mnemonic">C</span>opy
       </button>
     {/if}
   </ContextMenuShell>
@@ -635,55 +703,60 @@
     y={taskContextMenu.y}
     onClose={closeContextMenu}
   >
-    <details class="editor-submenu" open>
-      <summary>Task</summary>
-      <div class="editor-menu-flyout" role="menuitem" tabindex="0">
-        <button type="button" class="editor-menu-flyout-trigger" data-menu-key="s">
-          <span><span class="menu-mnemonic">S</span>tatus</span>
-          <span aria-hidden="true">›</span>
-        </button>
-        <div class="editor-menu-flyout-panel" role="menu">
-          {#each taskStates as state, index}
-            <button
-              type="button"
-              role="menuitem"
-              data-menu-key={String(index + 1)}
-              disabled={state === taskContextMenu.status}
-              on:click={() => setTaskStatus(state)}
-            >
-              <span class="menu-mnemonic">{index + 1}</span> {state}
-            </button>
-          {/each}
-        </div>
-      </div>
-      <div class="editor-menu-flyout" role="menuitem" tabindex="0">
-        <button type="button" class="editor-menu-flyout-trigger" data-menu-key="p">
-          <span><span class="menu-mnemonic">P</span>riority</span>
-          <span aria-hidden="true">›</span>
-        </button>
-        <div class="editor-menu-flyout-panel" role="menu">
+    <div class="editor-menu-flyout" role="menuitem" tabindex="0">
+      <button type="button" class="editor-menu-flyout-trigger" data-menu-key="s">
+        <span><span class="menu-mnemonic">S</span>tatus</span>
+        <span aria-hidden="true">›</span>
+      </button>
+      <div class="editor-menu-flyout-panel" role="menu">
+        {#each taskStates as state, index}
           <button
             type="button"
             role="menuitem"
-            data-menu-key="0"
-            disabled={currentPriority === null}
-            on:click={() => setTaskPriority(null)}
+            data-menu-key={String(index + 1)}
+            disabled={state === taskContextMenu.status}
+            on:click={() => setTaskStatus(state)}
           >
-            <span class="menu-mnemonic">0</span> No priority
+            <span class="menu-mnemonic">{index + 1}</span> {state}
           </button>
-          {#each taskPriorityOptions as priority}
-            <button
-              type="button"
-              role="menuitem"
-              data-menu-key={priority}
-              disabled={currentPriority === priority}
-              on:click={() => setTaskPriority(priority)}
-            >
-              #<span class="menu-mnemonic">{priority}</span>
-            </button>
-          {/each}
-        </div>
+        {/each}
       </div>
-    </details>
+    </div>
+    <div class="editor-menu-flyout" role="menuitem" tabindex="0">
+      <button type="button" class="editor-menu-flyout-trigger" data-menu-key="p">
+        <span><span class="menu-mnemonic">P</span>riority</span>
+        <span aria-hidden="true">›</span>
+      </button>
+      <div class="editor-menu-flyout-panel" role="menu">
+        <button
+          type="button"
+          role="menuitem"
+          data-menu-key="0"
+          disabled={currentPriority === null}
+          on:click={() => setTaskPriority(null)}
+        >
+          <span class="menu-mnemonic">0</span> No priority
+        </button>
+        {#each taskPriorityOptions as priority}
+          <button
+            type="button"
+            role="menuitem"
+            data-menu-key={priority}
+            disabled={currentPriority === priority}
+            on:click={() => setTaskPriority(priority)}
+          >
+            #<span class="menu-mnemonic">{priority}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+    <button
+      type="button"
+      role="menuitem"
+      data-menu-key="r"
+      on:click={showTaskSourceLineInRightPane}
+    >
+      Show line in <span class="menu-mnemonic">r</span>ight pane
+    </button>
   </ContextMenuShell>
 {/if}

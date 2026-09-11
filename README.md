@@ -346,11 +346,14 @@ Editor text changes use CodeMirror undo. Task changes and checkbox changes made
 outside direct text editing are tracked by Logtext's app-level undo stack. The
 Edit menu shows the next undo or redo action when available.
 
-The editor context menu combines standard editing commands with actions for the
-clicked selection, wiki link, task, or list block. A normal left click remains
-the primary way to open an existing wiki link in the editor; its context menu
-adds only distinct actions such as opening it in the right pane or copying its
-Markdown. Task status and priority choices retain their direct update behavior.
+The editor context menu combines cut, copy, paste, and select-all commands with
+actions for the clicked selection, wiki link, task, or list block. Selection-to-page
+linking is grouped under Format. A normal left click remains the primary way to
+open an existing wiki link in the editor; its context menu adds only distinct
+actions such as opening it in the right pane or copying its Markdown. Task keyword
+menus are deliberately limited to Status, Priority, and showing the source line
+in the right pane. Selected rendered text can also be copied from right-pane
+context menus.
 
 ## Configuration
 
