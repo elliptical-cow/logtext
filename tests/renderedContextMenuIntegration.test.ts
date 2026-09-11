@@ -21,7 +21,7 @@ test("offers only opposite-pane navigation for rendered links", () => {
     markdownView.indexOf("{#if sourceLineContextMenu}"),
   );
 
-  assert.match(linkMenu, /Open link in <span class="menu-mnemonic">e<\/span>ditor/);
+  assert.match(linkMenu, /Follow link in <span class="menu-mnemonic">e<\/span>ditor/);
   assert.match(linkMenu, /on:click=\{openContextLinkInEditor\}/);
   assert.equal(/Open (?:link )?in [\s\S]*?right pane/.test(linkMenu), false);
   assert.equal(/openContextLink\("right"\)/.test(linkMenu), false);

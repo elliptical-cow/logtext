@@ -12,7 +12,7 @@ test("keeps task state selection and the normal left-click link behavior intact"
   assert.match(editor, /on:click=\{\(\) => setTaskStatus\(state\)\}/);
   assert.match(editor, /onOpenWikiLink\(resolved\.path, "editor"\)/);
   assert.equal(/Open in editor/.test(editor), false);
-  assert.match(editor, /Open link in <span class="menu-mnemonic">r<\/span>ight pane/);
+  assert.match(editor, /Follow link in <span class="menu-mnemonic">r<\/span>ight pane/);
 });
 
 test("composes contextual actions with standard editor actions", () => {

@@ -632,7 +632,7 @@
       disabled={!linkContextMenu.exists}
       on:click={openContextLinkInEditor}
     >
-      Open link in <span class="menu-mnemonic">e</span>ditor
+      Follow link in <span class="menu-mnemonic">e</span>ditor
     </button>
     {#if !linkContextMenu.exists}
       <button type="button" role="menuitem" data-menu-key="n" on:click={createContextLinkPage}>

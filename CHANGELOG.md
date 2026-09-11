@@ -37,7 +37,7 @@ current source version is `0.7.1`.
   Status, Priority, and source-line navigation. Selected rendered text can also be
   copied from right-pane context menus. Matching keyboard commands are shown as
   subtle Windows-style shortcut hints. Link navigation actions use explicit
-  `Open link in ...` labels, and rendered-link menus omit redundant right-pane
+  `Follow link in ...` labels, and rendered-link menus omit redundant right-pane
   navigation.
 - All local image targets now use stable `media-folder/file` paths relative to
   the workspace root, so they remain valid when copied between pages. The

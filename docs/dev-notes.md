@@ -373,7 +373,7 @@ Status, Priority, and source-line navigation; they continue to use the existing
 task mutation functions. Existing links deliberately omit an editor-open action
 because normal left-click navigation already provides it. Rendered-link menus
 likewise omit right-pane navigation because the link is already displayed there;
-link navigation actions use explicit `Open link in ...` labels. Keyboard invocation
+link navigation actions use explicit `Follow link in ...` labels. Keyboard invocation
 uses Shift+F10 or the Menu key, and Escape returns focus to the editor.
 
 Rendered Markdown enables text copying explicitly in the right pane. It snapshots
