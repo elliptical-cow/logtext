@@ -2,6 +2,11 @@
 
 ## Recently implemented
 
+- [x] Publish an additional `linux-x86_64-thin.tar.gz` release asset containing
+  the native stripped Logtext executable, runtime guidance, and license. The
+  package reuses the Ubuntu 22.04 Linux build and expects system-provided
+  WebKitGTK 4.1, GTK 3, and related runtime libraries; `.deb` and AppImage remain
+  available as integrated and portable alternatives.
 - [x] Compose the editor context menu from cut, copy, paste, select-all, and
   applicable selection, wiki-link, task, and list-block actions. Single-character
   selections, cursor placement, clipboard text and image paste, keyboard opening,

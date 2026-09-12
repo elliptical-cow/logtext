@@ -158,12 +158,19 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           mkdir -p release-assets
+          thin_dir=$(mktemp -d)
+          trap 'rm -rf "$thin_dir"' EXIT
           appimage_path=$(find src-tauri/target/release/bundle -type f -name "*.AppImage" | head -1)
           deb_path=$(find src-tauri/target/release/bundle -type f -name "*.deb" | head -1)
           test -n "$appimage_path"
           test -n "$deb_path"
           cp "$appimage_path" "release-assets/Logtext-${version}-linux-x86_64.AppImage"
           cp "$deb_path" "release-assets/Logtext-${version}-linux-x86_64.deb"
+          install -m 0755 src-tauri/target/release/Logtext "$thin_dir/Logtext"
+          install -m 0644 packaging/linux-thin/README.txt "$thin_dir/README.txt"
+          install -m 0644 LICENSE "$thin_dir/LICENSE"
+          tar -czf "release-assets/Logtext-${version}-linux-x86_64-thin.tar.gz" \
+            -C "$thin_dir" Logtext README.txt LICENSE
 
       - name: Upload staged release assets
         uses: actions/upload-artifact@v4

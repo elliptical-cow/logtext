@@ -474,6 +474,14 @@ Official releases are created only by pushing a semantic version tag such as
 tag and source versions, rebuilds all platforms, and publishes the Windows,
 macOS, and Linux assets after every build succeeds.
 
+Linux releases provide three alternatives: the `.deb` package for Debian and
+Ubuntu, an AppImage as the portable fallback, and
+`Logtext-<version>-linux-x86_64-thin.tar.gz` for experienced users. The thin
+archive contains the native executable without bundled GTK or WebKitGTK
+libraries and therefore requires a system compatible with the Ubuntu 22.04
+build baseline plus WebKitGTK 4.1, GTK 3, and the related runtime libraries.
+Its bundled `README.txt` documents the prerequisites and limitations.
+
 ## License
 
 Logtext is licensed under the GNU Affero General Public License v3.0. See
