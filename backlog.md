@@ -4,8 +4,9 @@
 
 - [x] Render fenced Mermaid diagrams in the right pane, continuous journal feed,
   and right-pane linked references. Rendering is secure, theme-aware, lazy-loaded,
-  bounded, and protected against stale asynchronous results; invalid diagrams
-  retain their escaped source while the middle editor remains unchanged.
+  bounded, compatible with older WebKit desktop views, and protected against
+  stale asynchronous results; invalid diagrams retain their escaped source while
+  the middle editor remains unchanged.
 - [x] Publish an additional `linux-x86_64-thin.tar.gz` release asset containing
   the native stripped Logtext executable, runtime guidance, and license. The
   package reuses the Ubuntu 22.04 Linux build and expects system-provided

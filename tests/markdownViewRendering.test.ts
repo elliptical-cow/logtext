@@ -5,8 +5,10 @@ import test from "node:test";
 
 import { createMarkdownRenderer } from "../src/lib/markdownRenderer.js";
 import {
+  installMermaidCssStyleSheetCompatibility,
   mermaidConfiguration,
   mermaidRenderErrorMessage,
+  type MermaidCssStyleSheetEnvironment,
 } from "../src/lib/mermaidRendering.js";
 
 const root = process.cwd();
@@ -136,6 +138,76 @@ test("uses bounded strict Mermaid rendering for both application themes", () => 
     mermaidRenderErrorMessage(new Error("Parse error on line 2\nDetails")),
     "Mermaid diagram could not be rendered: Parse error on line 2",
   );
+});
+
+test("provides and restores a stylesheet fallback for older WebKit webviews", () => {
+  class IllegalCssStyleSheet {
+    constructor() {
+      throw new TypeError("Illegal constructor");
+    }
+  }
+
+  const rules: Array<{ cssText: string }> = [];
+  let appended = false;
+  let removed = false;
+  let styleText: string | null = null;
+  const nativeStyleSheet = {
+    cssRules: rules,
+    insertRule(rule: string, index = rules.length) {
+      rules.splice(index, 0, { cssText: rule });
+      return index;
+    },
+  };
+  const styleElement = {
+    media: "",
+    get textContent() {
+      return styleText;
+    },
+    set textContent(value: string | null) {
+      styleText = value;
+    },
+    sheet: nativeStyleSheet,
+    remove() {
+      removed = true;
+    },
+  };
+  const environment: MermaidCssStyleSheetEnvironment = {
+    CSSStyleSheet:
+      IllegalCssStyleSheet as unknown as NonNullable<
+        MermaidCssStyleSheetEnvironment["CSSStyleSheet"]
+      >,
+    document: {
+      head: {
+        appendChild(element) {
+          appended = element === styleElement;
+        },
+      },
+      createElement() {
+        return styleElement;
+      },
+    },
+  };
+  const restore = installMermaidCssStyleSheetCompatibility(environment);
+  const CompatibleCssStyleSheet = environment.CSSStyleSheet;
+  if (!CompatibleCssStyleSheet) {
+    throw new Error("Expected the compatibility stylesheet constructor to be installed.");
+  }
+  const styleSheet = new CompatibleCssStyleSheet();
+
+  assert.equal(styleSheet.insertRule(".node { color: red; }"), 0);
+  assert.equal(styleSheet.insertRule(".edge { color: blue; }"), 1);
+  assert.deepEqual(
+    Array.from(styleSheet.cssRules, (rule) => rule.cssText),
+    [".node { color: red; }", ".edge { color: blue; }"],
+  );
+  styleSheet.replaceSync?.(".theme { color: green; }");
+  assert.equal(styleText, ".theme { color: green; }");
+  assert.equal(appended, true);
+  assert.equal(styleElement.media, "not all");
+
+  restore();
+  assert.equal(removed, true);
+  assert.equal(environment.CSSStyleSheet, IllegalCssStyleSheet);
 });
 
 test("enables lazy Mermaid rendering only in the right pane", () => {

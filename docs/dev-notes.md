@@ -514,7 +514,10 @@ theme changes trigger a fresh render. Strict security, disabled HTML labels, and
 bounded input and edge counts keep workspace-authored diagrams non-interactive.
 Invalid diagrams retain their fenced source and show a local error instead of
 interrupting the surrounding page. Explicit `enableMermaid` props keep the
-middle editor and its linked references out of this rendering path.
+middle editor and its linked references out of this rendering path. Older
+WebKit desktop views expose a non-constructible `CSSStyleSheet`; the render
+service temporarily substitutes the small stylesheet interface Mermaid needs
+and restores the native global immediately after each serialized render.
 
 Markdown rendering and editing behavior are intentionally separate from backend
 indexing. The backend parses only the structures needed for file operations and

@@ -36,6 +36,11 @@ current source version is `0.7.1`.
   `journalRightPaneContinuousScrolling` workspace settings. Both default to
   enabled for compatibility with existing workspaces.
 
+### Fixed
+
+- Fixed Mermaid rendering on older WebKit-based desktop environments where the
+  built-in `CSSStyleSheet` type exists but cannot be constructed.
+
 ### Changed
 
 - Expanded the editor context menu with cut, copy, paste, select-all,
