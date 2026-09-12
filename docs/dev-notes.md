@@ -519,6 +519,18 @@ WebKit desktop views expose a non-constructible `CSSStyleSheet`; the render
 service temporarily substitutes the small stylesheet interface Mermaid needs
 and restores the native global immediately after each serialized render.
 
+The project deliberately keeps Mermaid pinned to `11.17.2` instead of solving
+this compatibility issue with a dependency downgrade. Versions `11.15.0` and
+`11.16.1` use the same non-constructible stylesheet path, while `10.9.5` avoids
+it but has published CSS-injection, prototype-pollution, and denial-of-service
+advisories. Mermaid `11.6.0` avoids this stylesheet path but has a documented
+regression on older Safari/WebKit releases. The compatibility layer therefore
+uses the WebView's stylesheet obtained from an inert `<style media="not all">`
+element, preserving the native CSS parser rather than reimplementing CSS or
+accepting unparsed styles. It exists only during a serialized Mermaid render
+and should be removed once Logtext's minimum supported WebKit version provides
+a constructible `CSSStyleSheet`.
+
 Markdown rendering and editing behavior are intentionally separate from backend
 indexing. The backend parses only the structures needed for file operations and
 derived indexes.
