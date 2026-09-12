@@ -765,6 +765,12 @@ CI and release automation are intentionally separate:
 - Cross-platform dependencies and build targets must stay synchronized between
   CI and release workflows. CI may use smaller native bundles; releases retain
   the full distributable package set.
+- Linux builds additionally package the already stripped
+  `src-tauri/target/release/Logtext` executable as
+  `Logtext-<version>-linux-x86_64-thin.tar.gz` in both workflows. The archive
+  includes its runtime guidance and the project license but deliberately omits
+  WebKitGTK, GTK, desktop integration, and dependency installation. AppImage and
+  `.deb` release assets remain available alongside it.
 
 Manual acceptance checks:
 

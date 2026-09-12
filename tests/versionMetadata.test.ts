@@ -71,7 +71,21 @@ test("uses explicit OS and architecture names for release assets", () => {
     "Logtext-${version}-macos-universal-app.zip",
     "Logtext-${version}-linux-x86_64.AppImage",
     "Logtext-${version}-linux-x86_64.deb",
+    "Logtext-${version}-linux-x86_64-thin.tar.gz",
   ]) {
     assert.equal(releaseWorkflow.includes(assetName), true);
+  }
+});
+
+test("packages the native Linux binary consistently in CI and releases", () => {
+  for (const workflowPath of [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
+  ]) {
+    const workflow = readFileSync(join(root, workflowPath), "utf8");
+
+    assert.match(workflow, /install -m 0755 src-tauri\/target\/release\/Logtext "\$thin_dir\/Logtext"/);
+    assert.match(workflow, /packaging\/linux-thin\/README\.txt/);
+    assert.match(workflow, /-C "\$thin_dir" Logtext README\.txt LICENSE/);
   }
 });

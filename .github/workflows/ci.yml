@@ -135,11 +135,19 @@ jobs:
           test -n "$app_path"
           ditto -c -k --keepParent "$app_path" "ci-artifacts/Logtext_macos_${{ runner.arch }}.app.zip"
 
-      - name: Stage Linux artifact
+      - name: Stage Linux artifacts
         if: matrix.kind == 'linux'
         run: |
+          version=$(node -p "require('./package.json').version")
           mkdir -p ci-artifacts
+          thin_dir=$(mktemp -d)
+          trap 'rm -rf "$thin_dir"' EXIT
           tar -czf "ci-artifacts/Logtext_linux_${{ runner.arch }}.tar.gz" -C src-tauri/target/release/bundle/appimage .
+          install -m 0755 src-tauri/target/release/Logtext "$thin_dir/Logtext"
+          install -m 0644 packaging/linux-thin/README.txt "$thin_dir/README.txt"
+          install -m 0644 LICENSE "$thin_dir/LICENSE"
+          tar -czf "ci-artifacts/Logtext-${version}-linux-x86_64-thin.tar.gz" \
+            -C "$thin_dir" Logtext README.txt LICENSE
 
       - name: Upload temporary build artifact
         uses: actions/upload-artifact@v4
