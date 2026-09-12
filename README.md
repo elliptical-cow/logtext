@@ -272,6 +272,25 @@ mode renders formulas on inactive lines. Selecting an inline formula restores
 its source line; selecting any line of a block formula restores the complete
 `$$...$$` block for editing.
 
+### Mermaid diagrams
+
+The right pane renders fenced `mermaid` code blocks as diagrams, including pages,
+the continuous journal feed, and linked references:
+
+````md
+```mermaid
+flowchart TD
+  Capture --> Connect
+  Connect --> Context
+```
+````
+
+Diagram rendering is intentionally limited to the right pane; the middle editor
+continues to show the fenced Markdown source. Diagrams are rendered only when
+they approach the visible area. Invalid Mermaid syntax remains visible as a code
+block with a local error message, and switching the application theme rerenders
+visible diagrams with matching colors.
+
 ### Task Overview
 
 Open the task overview from the left pane with `Show Task Overview`, or toggle

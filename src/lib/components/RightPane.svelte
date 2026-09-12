@@ -237,6 +237,7 @@
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
           enableTextCopyContextMenu
+          enableMermaid
           onTaskStatusChange={(line, currentStatus, nextStatus) =>
             void changeTaskStatusForPath($rightPaneStore.path, line, currentStatus, nextStatus)}
           onTaskPriorityChange={(line, currentPriority, nextPriority) =>
@@ -261,6 +262,7 @@
           sourceLineMenuTargets={["editor"]}
           enableTaskContextMenu
           enableTextCopyContextMenu
+          enableMermaid
           onCheckboxToggle={(path, line, checked) => void toggleCheckboxForPath(path, line, checked)}
           onTaskStatusChange={(path, line, currentStatus, nextStatus) =>
             void changeTaskStatusForPath(path, line, currentStatus, nextStatus)}

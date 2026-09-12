@@ -504,7 +504,32 @@ every formula. This hybrid behavior is implemented mostly in:
 - `src/lib/editorLineWrapping.ts`
 
 The right pane and backlink sections use rendered Markdown components rather
-than CodeMirror.
+than CodeMirror. Right-pane `mermaid` fences are emitted as escaped source
+placeholders and rendered asynchronously as SVG only when an IntersectionObserver
+reports that they are near the viewport. The official Mermaid dependency is
+loaded through a dynamic import on first use. Rendering is serialized because
+Mermaid configuration is process-global, and a generation guard prevents stale
+results from replacing content after navigation or save refreshes. Light/dark
+theme changes trigger a fresh render. Strict security, disabled HTML labels, and
+bounded input and edge counts keep workspace-authored diagrams non-interactive.
+Invalid diagrams retain their fenced source and show a local error instead of
+interrupting the surrounding page. Explicit `enableMermaid` props keep the
+middle editor and its linked references out of this rendering path. Older
+WebKit desktop views expose a non-constructible `CSSStyleSheet`; the render
+service temporarily substitutes the small stylesheet interface Mermaid needs
+and restores the native global immediately after each serialized render.
+
+The project deliberately keeps Mermaid pinned to `11.17.2` instead of solving
+this compatibility issue with a dependency downgrade. Versions `11.15.0` and
+`11.16.1` use the same non-constructible stylesheet path, while `10.9.5` avoids
+it but has published CSS-injection, prototype-pollution, and denial-of-service
+advisories. Mermaid `11.6.0` avoids this stylesheet path but has a documented
+regression on older Safari/WebKit releases. The compatibility layer therefore
+uses the WebView's stylesheet obtained from an inert `<style media="not all">`
+element, preserving the native CSS parser rather than reimplementing CSS or
+accepting unparsed styles. It exists only during a serialized Mermaid render
+and should be removed once Logtext's minimum supported WebKit version provides
+a constructible `CSSStyleSheet`.
 
 Markdown rendering and editing behavior are intentionally separate from backend
 indexing. The backend parses only the structures needed for file operations and

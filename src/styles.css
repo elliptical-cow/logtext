@@ -2553,6 +2553,34 @@ textarea {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
+.right-pane .mermaid-diagram {
+  min-width: 0;
+  margin: 0.8em 0;
+}
+
+.right-pane .mermaid-diagram-source {
+  margin: 0;
+}
+
+.right-pane .mermaid-diagram-output {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.right-pane .mermaid-diagram-output svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.right-pane .mermaid-diagram-error {
+  margin-top: 6px;
+  color: var(--error-text, #9b1c1c);
+  font-size: 0.857em;
+}
+
 .markdown-view ul,
 .markdown-view ol {
   margin: 4px 0 4px 1.2em;

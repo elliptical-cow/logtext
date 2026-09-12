@@ -7,6 +7,11 @@ current source version is `0.7.1`.
 
 ### Added
 
+- Added secure Mermaid rendering for fenced `mermaid` blocks in right-pane pages,
+  the continuous journal feed, and right-pane linked references. Mermaid loads
+  only when a diagram approaches the viewport, follows the current light or dark
+  theme, and leaves escaped source visible with a local message when rendering
+  fails. The middle editor continues to show Mermaid blocks as Markdown source.
 - Added `Logtext-<version>-linux-x86_64-thin.tar.gz` to CI and release builds.
   The small archive contains the native stripped executable, runtime guidance,
   and license while relying on system-provided WebKitGTK 4.1, GTK 3, and related
@@ -30,6 +35,11 @@ current source version is `0.7.1`.
 - Added independent `journalEditorContinuousScrolling` and
   `journalRightPaneContinuousScrolling` workspace settings. Both default to
   enabled for compatibility with existing workspaces.
+
+### Fixed
+
+- Fixed Mermaid rendering on older WebKit-based desktop environments where the
+  built-in `CSSStyleSheet` type exists but cannot be constructed.
 
 ### Changed
 

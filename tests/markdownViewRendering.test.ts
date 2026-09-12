@@ -4,6 +4,12 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { createMarkdownRenderer } from "../src/lib/markdownRenderer.js";
+import {
+  installMermaidCssStyleSheetCompatibility,
+  mermaidConfiguration,
+  mermaidRenderErrorMessage,
+  type MermaidCssStyleSheetEnvironment,
+} from "../src/lib/mermaidRendering.js";
 
 const root = process.cwd();
 
@@ -91,6 +97,151 @@ test("keeps rendering after malformed LaTeX and ignores formulas in Markdown cod
   assert.equal(/class="katex"/.test(code), false);
   assert.match(code, /<code>\$E = mc\^2\$<\/code>/);
   assert.match(code, /\$\$x\^2\$\$/);
+});
+
+test("marks Mermaid fences only when rendered-diagram support is enabled", () => {
+  const source = ["```Mermaid", "flowchart TD", "  A[<unsafe>] --> B", "```"].join("\n");
+  const regular = createMarkdownRenderer({ breaks: true }).render(source);
+  const mermaid = createMarkdownRenderer({ breaks: true, mermaidCodeBlocks: true }).render(
+    source,
+    { sourceLineNumbers: [17] },
+  );
+
+  assert.equal(/data-mermaid-diagram/.test(regular), false);
+  assert.match(regular, /<pre><code class="language-Mermaid">/);
+  assert.match(mermaid, /data-mermaid-diagram data-source-line="17"/);
+  assert.match(mermaid, /class="mermaid-diagram-source"/);
+  assert.match(mermaid, /class="mermaid-diagram-output" hidden/);
+  assert.match(mermaid, /A\[&lt;unsafe&gt;\] --&gt; B/);
+});
+
+test("keeps non-Mermaid fences unchanged when diagram rendering is enabled", () => {
+  const markdown = createMarkdownRenderer({ breaks: true, mermaidCodeBlocks: true });
+  const rendered = markdown.render(["```typescript", "const value = 1;", "```"].join("\n"));
+
+  assert.equal(/data-mermaid-diagram/.test(rendered), false);
+  assert.match(rendered, /<pre><code class="language-typescript">/);
+});
+
+test("uses bounded strict Mermaid rendering for both application themes", () => {
+  assert.deepEqual(mermaidConfiguration("light"), {
+    startOnLoad: false,
+    securityLevel: "strict",
+    htmlLabels: false,
+    suppressErrorRendering: true,
+    maxTextSize: 50_000,
+    maxEdges: 500,
+    theme: "default",
+  });
+  assert.equal(mermaidConfiguration("dark").theme, "dark");
+  assert.equal(
+    mermaidRenderErrorMessage(new Error("Parse error on line 2\nDetails")),
+    "Mermaid diagram could not be rendered: Parse error on line 2",
+  );
+});
+
+test("provides and restores a stylesheet fallback for older WebKit webviews", () => {
+  class IllegalCssStyleSheet {
+    constructor() {
+      throw new TypeError("Illegal constructor");
+    }
+  }
+
+  const rules: Array<{ cssText: string }> = [];
+  let appended = false;
+  let removed = false;
+  let styleText: string | null = null;
+  const nativeStyleSheet = {
+    cssRules: rules,
+    insertRule(rule: string, index = rules.length) {
+      rules.splice(index, 0, { cssText: rule });
+      return index;
+    },
+  };
+  const styleElement = {
+    media: "",
+    get textContent() {
+      return styleText;
+    },
+    set textContent(value: string | null) {
+      styleText = value;
+    },
+    sheet: nativeStyleSheet,
+    remove() {
+      removed = true;
+    },
+  };
+  const environment: MermaidCssStyleSheetEnvironment = {
+    CSSStyleSheet:
+      IllegalCssStyleSheet as unknown as NonNullable<
+        MermaidCssStyleSheetEnvironment["CSSStyleSheet"]
+      >,
+    document: {
+      head: {
+        appendChild(element) {
+          appended = element === styleElement;
+        },
+      },
+      createElement() {
+        return styleElement;
+      },
+    },
+  };
+  const restore = installMermaidCssStyleSheetCompatibility(environment);
+  const CompatibleCssStyleSheet = environment.CSSStyleSheet;
+  if (!CompatibleCssStyleSheet) {
+    throw new Error("Expected the compatibility stylesheet constructor to be installed.");
+  }
+  const styleSheet = new CompatibleCssStyleSheet();
+
+  assert.equal(styleSheet.insertRule(".node { color: red; }"), 0);
+  assert.equal(styleSheet.insertRule(".edge { color: blue; }"), 1);
+  assert.deepEqual(
+    Array.from(styleSheet.cssRules, (rule) => rule.cssText),
+    [".node { color: red; }", ".edge { color: blue; }"],
+  );
+  styleSheet.replaceSync?.(".theme { color: green; }");
+  assert.equal(styleText, ".theme { color: green; }");
+  assert.equal(appended, true);
+  assert.equal(styleElement.media, "not all");
+
+  restore();
+  assert.equal(removed, true);
+  assert.equal(environment.CSSStyleSheet, IllegalCssStyleSheet);
+});
+
+test("enables lazy Mermaid rendering only in the right pane", () => {
+  const markdownView = readFileSync(
+    join(root, "src/lib/components/MarkdownView.svelte"),
+    "utf8",
+  );
+  const rightPane = readFileSync(join(root, "src/lib/components/RightPane.svelte"), "utf8");
+  const journalFeed = readFileSync(join(root, "src/lib/components/JournalFeed.svelte"), "utf8");
+  const linkedReferences = readFileSync(
+    join(root, "src/lib/components/LinkedReferences.svelte"),
+    "utf8",
+  );
+  const editorPane = readFileSync(join(root, "src/lib/components/EditorPane.svelte"), "utf8");
+
+  assert.match(markdownView, /new IntersectionObserver/);
+  assert.match(markdownView, /rootMargin: "240px 0px"/);
+  assert.match(markdownView, /renderMermaidDiagram\(sourceElement\.textContent \?\? "", theme\)/);
+  assert.match(rightPane, /<MarkdownView[\s\S]*?enableMermaid/);
+  assert.match(rightPane, /<LinkedReferences[\s\S]*?enableMermaid/);
+  assert.match(journalFeed, /<MarkdownView[\s\S]*?enableMermaid/);
+  assert.match(journalFeed, /<LinkedReferences[\s\S]*?enableMermaid/);
+  assert.match(linkedReferences, /\{enableMermaid\}/);
+  assert.equal(/enableMermaid/.test(editorPane), false);
+});
+
+test("constrains rendered Mermaid SVGs to the right-pane width", () => {
+  const styles = readFileSync(join(root, "src/styles.css"), "utf8");
+
+  assert.match(
+    styles,
+    /\.right-pane \.mermaid-diagram-output svg\s*\{[^}]*max-width: 100%;[^}]*height: auto;/s,
+  );
+  assert.match(styles, /\.right-pane \.mermaid-diagram-error\s*\{[^}]*color: var\(--error-text/s);
 });
 
 test("scales rendered Markdown headings with the application font size", () => {
