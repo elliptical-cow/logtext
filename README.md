@@ -4,24 +4,13 @@
   <img src="assets/branding/logtext-wordmark.png" alt="Logtext — Write logs. Build context." width="720" />
 </p>
 
-Local, Markdown-first notes and tasks with journals, wiki links, backlinks, and a
-three-pane desktop UI.
-
-Built for personal knowledge management with project and task management in
-mind.
-
-Logtext is inspired by Org mode and Logseq. Ordinary Markdown files remain the
-source of truth.
+Built for local, personal knowledge management with project and task management in
+mind. Capture meeting notes, decisions, project thoughts, risks, follow-ups, and open
+questions without deciding up front where every fragment belongs.
 
 > Capture first. Structure later. Files forever.
-
-![Logtext workspace with journal editor and linked references](docs/assets/logtext-workspace.png)
-
-Logtext is in early development. Keep backups of important workspaces,
-especially when testing file operations.
-
+> 
 ## Goals
-
 - frictionless daily capture in local Markdown files
 - context through wiki links, semantic tags, and backlinks
 - a simple task and to-do workflow
@@ -29,8 +18,11 @@ especially when testing file operations.
 - rendered LaTeX formulas and Mermaid diagrams
 - no proprietary storage format for primary content
 
-Capture meeting notes, decisions, project thoughts, risks, follow-ups, and open
-questions without deciding up front where every fragment belongs.
+Logtext is inspired by Org mode and Logseq. Ordinary Markdown files remain the
+source of truth.
+
+![Logtext workspace with journal editor and linked references](docs/assets/logtext-workspace.png)
+
 
 ## Workflow
 
@@ -59,19 +51,15 @@ Create database -> define schema -> create document -> fill fields
 ## Main Features
 
 - local workspaces made of ordinary folders and Markdown files
-- daily journal pages stored as `YYYY-MM-DD.md`
-- continuous journal reading in the right pane
-- boundary navigation between journal files in the editor
-- independent editor and reference panes
-- case-insensitive `[[wiki links]]` and compact `#tags`
-- backlinks with parent and child block context
+- `[[wiki links]]` and `#tags` to reference people, projects or any entity- daily journal pages stored as `YYYY-MM-DD.md`
+  - backlinks with parent and child block context
 - configurable task states, colors, and priorities
-- filtered and grouped task overview
-- image paste, live preview, resizing, copying, and media cleanup
-- KaTeX rendering in Markdown views and editor live preview
-- Mermaid rendering in the right pane
-- workspace and in-file search
-- conservative page and folder operations with wiki-link updates
+  - filtered and grouped task overview
+- allow to include additional media data
+  - image paste, live preview, resizing, copying, and media cleanup
+  - KaTeX rendering in Markdown views and editor live preview
+  - Mermaid rendering in the preview pane
+
 
 ## Installation
 
@@ -98,6 +86,9 @@ Basic installation:
 - **Thin Linux archive:** extract it and read the included `README.txt` before
   running `Logtext`.
 
+Logtext is in early development. Keep backups of important workspaces,
+especially when testing file operations.
+
 See the [manual](docs/manual.md#installation) for more detail.
 
 ## Quick Start
@@ -105,8 +96,9 @@ See the [manual](docs/manual.md#installation) for more detail.
 1. Start Logtext.
 2. Open a folder with `File > Open Workspace Folder...`.
 3. Logtext opens or creates today's page in `journal/`.
-4. Write Markdown and connect pages with `[[page]]` or `#page`.
+4. Capture meeting notes or thoughts and connect them to pages with `[[page]]` or `#page`.
 5. Add tasks with states such as `TODO`, `INPROGRESS`, `WAITING`, and `DONE`.
+6. Open pages and get recent updates on their topic by backlinks that contain important context
 
 A ready-to-open workspace is included in
 [`docs/example_workspace`](docs/example_workspace). Open the folder in Logtext
