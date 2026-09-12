@@ -504,7 +504,17 @@ every formula. This hybrid behavior is implemented mostly in:
 - `src/lib/editorLineWrapping.ts`
 
 The right pane and backlink sections use rendered Markdown components rather
-than CodeMirror.
+than CodeMirror. Right-pane `mermaid` fences are emitted as escaped source
+placeholders and rendered asynchronously as SVG only when an IntersectionObserver
+reports that they are near the viewport. The official Mermaid dependency is
+loaded through a dynamic import on first use. Rendering is serialized because
+Mermaid configuration is process-global, and a generation guard prevents stale
+results from replacing content after navigation or save refreshes. Light/dark
+theme changes trigger a fresh render. Strict security, disabled HTML labels, and
+bounded input and edge counts keep workspace-authored diagrams non-interactive.
+Invalid diagrams retain their fenced source and show a local error instead of
+interrupting the surrounding page. Explicit `enableMermaid` props keep the
+middle editor and its linked references out of this rendering path.
 
 Markdown rendering and editing behavior are intentionally separate from backend
 indexing. The backend parses only the structures needed for file operations and

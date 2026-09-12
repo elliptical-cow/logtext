@@ -23,6 +23,7 @@
   export let sourceLineMenuTargets: Array<"editor" | "right"> = [];
   export let enableTaskContextMenu = false;
   export let enableTextCopyContextMenu = false;
+  export let enableMermaid = false;
   export let onCheckboxToggle: (path: string, line: number, checked: boolean) => void = () => {};
   export let onTaskStatusChange: (
     path: string,
@@ -177,6 +178,7 @@
                 {sourceLineMenuTargets}
                 {enableTaskContextMenu}
                 {enableTextCopyContextMenu}
+                {enableMermaid}
                 onTaskStatusChange={(line, currentStatus, nextStatus) =>
                   onTaskStatusChange(backlink.sourcePath, line, currentStatus, nextStatus)}
                 onTaskPriorityChange={(line, currentPriority, nextPriority) =>

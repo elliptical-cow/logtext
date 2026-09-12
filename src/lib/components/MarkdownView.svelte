@@ -12,6 +12,15 @@
     sourceLineFromContextMenuTarget,
     sourceLineSelectorForLine,
   } from "../markdownSourceLines";
+  import {
+    MERMAID_DIAGRAM_SELECTOR,
+    MERMAID_ERROR_SELECTOR,
+    MERMAID_OUTPUT_SELECTOR,
+    MERMAID_SOURCE_SELECTOR,
+    mermaidRenderErrorMessage,
+    renderMermaidDiagram,
+  } from "../mermaidRendering";
+  import { themeStore } from "../stores/theme";
   import { taskColorStyle } from "../taskColors";
   import {
     DEFAULT_TASK_STATES,
@@ -20,7 +29,7 @@
   } from "../taskKeywords";
   import { applyWikiLinkColorStyles, renderWikiLinks } from "../wikiLinks";
   import type { LinkTargetPane } from "../stores/linkOperations";
-  import type { FolderColors, PageSummary, TaskStateColors } from "../types";
+  import type { FolderColors, PageSummary, TaskStateColors, ThemeMode } from "../types";
   import type { ImageContextMenuTarget } from "../imageClipboard";
   import { runUserAction } from "../stores/appErrors";
 
@@ -52,6 +61,7 @@
   ) => void = () => {};
   export let enableTaskContextMenu = false;
   export let enableTextCopyContextMenu = false;
+  export let enableMermaid = false;
 
   let linkContextMenu: {
     x: number;
@@ -79,9 +89,15 @@
   let lastHighlightKey = "";
   let lastObservedWidth: number | null = null;
   let highlightTimer: ReturnType<typeof setTimeout> | null = null;
+  let mermaidObserver: IntersectionObserver | null = null;
+  let mermaidRenderGeneration = 0;
   const taskPriorityOptions = ["A", "B", "C"];
 
-  const markdown = createMarkdownRenderer({ breaks: true, workspaceImages: true });
+  const markdown = createMarkdownRenderer({
+    breaks: true,
+    workspaceImages: true,
+    mermaidCodeBlocks: enableMermaid,
+  });
   const markdownWithSourceLines = markdown as unknown as MarkdownItWithSourceLines;
 
   $: taskRender = markTaskKeywordsForRendering(content, taskStates, sourceLineNumbers);
@@ -100,6 +116,12 @@
     ),
     taskRender.priorityTokens,
   );
+  $: mermaidRenderRequest = enableMermaid
+    ? { renderedHtml: rendered, theme: $themeStore }
+    : null;
+  $: if (markdownElement && mermaidRenderRequest) {
+    void scheduleMermaidRendering(mermaidRenderRequest.theme);
+  }
   $: highlightKey = highlightedLine ? `${highlightToken}:${highlightedLine}` : "";
   $: if (markdownElement && highlightKey !== lastHighlightKey) {
     lastHighlightKey = highlightKey;
@@ -138,8 +160,99 @@
   });
 
   onDestroy(() => {
+    mermaidRenderGeneration += 1;
+    mermaidObserver?.disconnect();
     clearHighlightedLineHighlight();
   });
+
+  async function scheduleMermaidRendering(theme: ThemeMode) {
+    const generation = ++mermaidRenderGeneration;
+    mermaidObserver?.disconnect();
+    mermaidObserver = null;
+
+    await tick();
+    if (generation !== mermaidRenderGeneration || !markdownElement) {
+      return;
+    }
+
+    const diagrams = Array.from(
+      markdownElement.querySelectorAll<HTMLElement>(MERMAID_DIAGRAM_SELECTOR),
+    ).filter((diagram) => diagram.dataset.mermaidRenderedTheme !== theme);
+    if (diagrams.length === 0) {
+      return;
+    }
+
+    if (typeof IntersectionObserver === "undefined") {
+      for (const diagram of diagrams) {
+        void renderVisibleMermaidDiagram(diagram, theme, generation);
+      }
+      return;
+    }
+
+    mermaidObserver = new IntersectionObserver(
+      (entries, observer) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) {
+            continue;
+          }
+
+          observer.unobserve(entry.target);
+          void renderVisibleMermaidDiagram(entry.target as HTMLElement, theme, generation);
+        }
+      },
+      { rootMargin: "240px 0px" },
+    );
+    for (const diagram of diagrams) {
+      mermaidObserver.observe(diagram);
+    }
+  }
+
+  async function renderVisibleMermaidDiagram(
+    diagram: HTMLElement,
+    theme: ThemeMode,
+    generation: number,
+  ) {
+    const sourceElement = diagram.querySelector<HTMLElement>(MERMAID_SOURCE_SELECTOR);
+    const sourceContainer = sourceElement?.closest<HTMLElement>(".mermaid-diagram-source");
+    const output = diagram.querySelector<HTMLElement>(MERMAID_OUTPUT_SELECTOR);
+    const error = diagram.querySelector<HTMLElement>(MERMAID_ERROR_SELECTOR);
+    if (!sourceElement || !sourceContainer || !output || !error) {
+      return;
+    }
+
+    const renderKey = `${generation}:${theme}`;
+    if (diagram.dataset.mermaidRenderKey === renderKey) {
+      return;
+    }
+
+    diagram.dataset.mermaidRenderKey = renderKey;
+    diagram.setAttribute("aria-busy", "true");
+    try {
+      const svg = await renderMermaidDiagram(sourceElement.textContent ?? "", theme);
+      if (generation !== mermaidRenderGeneration || !diagram.isConnected) {
+        return;
+      }
+
+      output.innerHTML = svg;
+      output.hidden = false;
+      sourceContainer.hidden = true;
+      error.hidden = true;
+      error.textContent = "";
+      diagram.dataset.mermaidRenderedTheme = theme;
+      diagram.removeAttribute("aria-busy");
+    } catch (renderError) {
+      if (generation !== mermaidRenderGeneration || !diagram.isConnected) {
+        return;
+      }
+
+      output.replaceChildren();
+      output.hidden = true;
+      sourceContainer.hidden = false;
+      error.textContent = mermaidRenderErrorMessage(renderError);
+      error.hidden = false;
+      diagram.removeAttribute("aria-busy");
+    }
+  }
 
   for (const rule of SOURCE_LINE_RENDER_TOKEN_RULES) {
     markdownWithSourceLines.renderer.rules[rule] = renderTokenWithSourceLine;
