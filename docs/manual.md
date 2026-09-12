@@ -182,7 +182,8 @@ Rules:
 - Selecting a page with spaces from `#` autocomplete replaces the input with a
   `[[target]]` link.
 - Markdown headings, task priorities such as `[#A]`, URL fragments, escaped
-  hashes, and code are not interpreted as compact links.
+  links, standard Markdown link labels and targets, LaTeX, and code are not
+  interpreted as page links.
 - `((...))` is ordinary text and is not an alias for `[[...]]`.
 
 Typing `[[` or a compact `#` target opens page suggestions. Suggestions show
@@ -302,6 +303,8 @@ panes:
 ```
 
 Clicking a rendered checkbox updates the source Markdown file.
+Checkboxes also remain interactive in blockquotes and in loose list items that
+contain additional paragraphs.
 
 ## Images and Media
 
@@ -371,6 +374,8 @@ $$
 
 Invalid formulas remain visible as source text without preventing the rest of
 the page from rendering.
+An unfinished `$$` block remains editable source and does not consume the rest
+of the document as a preview formula.
 
 In editor live preview, formulas are rendered on inactive lines. Selecting an
 inline formula restores its source line. Selecting any line in a block formula

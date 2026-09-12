@@ -42,6 +42,7 @@ fn parse_flat_blocks(lines: &[String], task_states: &[String]) -> Vec<FlatBlock>
     let mut blocks = Vec::new();
     let mut current: Option<FlatBlock> = None;
     let mut active_fence: Option<(char, usize)> = None;
+    let mut active_math_block = false;
 
     for (index, line) in lines.iter().enumerate() {
         let line_number = index + 1;
@@ -58,7 +59,9 @@ fn parse_flat_blocks(lines: &[String], task_states: &[String]) -> Vec<FlatBlock>
                 _ => {}
             }
         }
-        let line_links = if is_code_line {
+        let is_math_line = !is_code_line && markdown_math_block_line(line, &mut active_math_block);
+        let is_protected_line = is_code_line || is_math_line;
+        let line_links = if is_protected_line {
             Vec::new()
         } else {
             parse_wiki_links(line)
@@ -69,7 +72,14 @@ fn parse_flat_blocks(lines: &[String], task_states: &[String]) -> Vec<FlatBlock>
                 blocks.push(block);
             }
 
-            let task_marker = parse_task_marker(item.text, task_states);
+            let task_marker = if is_protected_line {
+                TaskMarker {
+                    status: None,
+                    priority: None,
+                }
+            } else {
+                parse_task_marker(item.text, task_states)
+            };
             current = Some(FlatBlock {
                 line_start: line_number,
                 line_end: line_number,
@@ -98,7 +108,14 @@ fn parse_flat_blocks(lines: &[String], task_states: &[String]) -> Vec<FlatBlock>
 
         if !line.trim().is_empty() {
             let indent = count_indent(line);
-            let task_marker = parse_task_marker(&line[indent..], task_states);
+            let task_marker = if is_protected_line {
+                TaskMarker {
+                    status: None,
+                    priority: None,
+                }
+            } else {
+                parse_task_marker(&line[indent..], task_states)
+            };
             current = Some(FlatBlock {
                 line_start: line_number,
                 line_end: line_number,
@@ -117,6 +134,24 @@ fn parse_flat_blocks(lines: &[String], task_states: &[String]) -> Vec<FlatBlock>
     }
 
     blocks
+}
+
+fn markdown_math_block_line(line: &str, active: &mut bool) -> bool {
+    let trimmed = line.trim_start();
+    if *active {
+        if trimmed.contains("$$") {
+            *active = false;
+        }
+        return true;
+    }
+
+    let Some(rest) = trimmed.strip_prefix("$$") else {
+        return false;
+    };
+    if !rest.contains("$$") {
+        *active = true;
+    }
+    true
 }
 
 fn build_tree(
@@ -403,6 +438,26 @@ mod tests {
     }
 
     #[test]
+    fn ignores_task_markers_inside_fenced_code() {
+        let blocks = parse_blocks("```md\n- TODO [#A] Example\n```\n- TODO Real task");
+        let tasks: Vec<(&str, Option<&str>)> = blocks
+            .iter()
+            .filter_map(|block| {
+                block
+                    .task_status
+                    .as_deref()
+                    .map(|status| (status, block.task_priority.as_deref()))
+            })
+            .collect();
+
+        assert_eq!(tasks, vec![("TODO", None)]);
+        assert_eq!(
+            blocks.last().map(|block| block.text.as_str()),
+            Some("TODO Real task")
+        );
+    }
+
+    #[test]
     fn recognizes_ordered_list_markers() {
         let blocks = parse_blocks("1. TODO First\n  2) DONE Second");
 
@@ -498,6 +553,19 @@ mod tests {
                 fixture.name
             );
         }
+    }
+
+    #[test]
+    fn ignores_links_and_task_markers_inside_block_latex() {
+        let blocks = parse_blocks("$$\n- TODO [#A] [[Formula link]]\n$$\n- TODO [[Real link]]");
+        let tasks: Vec<&ParsedBlock> = blocks
+            .iter()
+            .filter(|block| block.task_status.is_some())
+            .collect();
+
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].links.len(), 1);
+        assert_eq!(tasks[0].links[0].target, "Real link");
     }
 
     #[test]

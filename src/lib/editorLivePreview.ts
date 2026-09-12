@@ -392,6 +392,7 @@ function buildLivePreviewDecorations(
   const builder = new RangeSetBuilder<Decoration>();
   const activeLines = activeBlockLineNumbers(state);
   const latexBlocks = latexBlockRanges(state.doc.toString());
+  const fencedCodeLines = markdownFencedCodeLineNumbers(state.doc.toString());
   const latexBlockByLine = new Map<number, LatexBlockRange>();
   const activeLatexBlocks = new Set<LatexBlockRange>();
   for (const block of latexBlocks) {
@@ -403,12 +404,9 @@ function buildLivePreviewDecorations(
     }
   }
   const imageMatches = markdownImagesInState(state);
-  let inFencedCode = false;
 
   for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber += 1) {
     const line = state.doc.line(lineNumber);
-    const trimmed = line.text.trimStart();
-    const startsFence = trimmed.startsWith("```") || trimmed.startsWith("~~~");
 
     const latexBlock = latexBlockByLine.get(lineNumber);
     if (latexBlock) {
@@ -428,12 +426,7 @@ function buildLivePreviewDecorations(
       continue;
     }
 
-    if (startsFence) {
-      inFencedCode = !inFencedCode;
-      continue;
-    }
-
-    if (inFencedCode) {
+    if (fencedCodeLines.has(lineNumber)) {
       continue;
     }
 
@@ -532,20 +525,14 @@ export function latexBlockLineNumbers(source: string) {
 export function latexBlockRanges(source: string): LatexBlockRange[] {
   const blocks: LatexBlockRange[] = [];
   const lines = sourceLines(source);
-  let inFencedCode = false;
+  const fencedCodeLines = markdownFencedCodeLineNumbers(source);
   let index = 0;
 
   while (index < lines.length) {
     const line = lines[index];
     const trimmed = line.text.trimStart();
 
-    if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
-      inFencedCode = !inFencedCode;
-      index += 1;
-      continue;
-    }
-
-    if (inFencedCode || !trimmed.startsWith("$$")) {
+    if (fencedCodeLines.has(line.number) || !trimmed.startsWith("$$")) {
       index += 1;
       continue;
     }
@@ -582,6 +569,10 @@ export function latexBlockRanges(source: string): LatexBlockRange[] {
       contentLines.push(contentLine);
     }
 
+    if (!closed) {
+      break;
+    }
+
     const endLine = lines[endIndex];
     blocks.push({
       from: line.from,
@@ -590,7 +581,7 @@ export function latexBlockRanges(source: string): LatexBlockRange[] {
       endLine: endLine.number,
       content: contentLines.join("\n"),
     });
-    index = closed ? endIndex + 1 : lines.length;
+    index = endIndex + 1;
   }
 
   return blocks;
@@ -764,25 +755,49 @@ export function activeBlockLineNumbers(state: EditorState) {
 
 function isPositionInsideFencedCode(state: EditorState, position: number) {
   const currentLine = state.doc.lineAt(position).number;
-  let inFencedCode = false;
+  return markdownFencedCodeLineNumbers(state.doc.toString()).has(currentLine);
+}
 
-  for (let lineNumber = 1; lineNumber <= currentLine; lineNumber += 1) {
-    const line = state.doc.line(lineNumber);
-    const trimmed = line.text.trimStart();
-    const startsFence = trimmed.startsWith("```") || trimmed.startsWith("~~~");
+export function markdownFencedCodeLineNumbers(source: string) {
+  const codeLines = new Set<number>();
+  let fence: { marker: "`" | "~"; length: number } | null = null;
 
-    if (!startsFence) {
+  for (const line of sourceLines(source)) {
+    const candidate = markdownFenceCandidate(line.text);
+    if (fence) {
+      codeLines.add(line.number);
+      if (
+        candidate?.marker === fence.marker &&
+        candidate.length >= fence.length &&
+        candidate.rest.trim() === ""
+      ) {
+        fence = null;
+      }
       continue;
     }
 
-    if (lineNumber === currentLine) {
-      return false;
+    if (!candidate || (candidate.marker === "`" && candidate.rest.includes("`"))) {
+      continue;
     }
 
-    inFencedCode = !inFencedCode;
+    fence = { marker: candidate.marker, length: candidate.length };
+    codeLines.add(line.number);
   }
 
-  return inFencedCode;
+  return codeLines;
+}
+
+function markdownFenceCandidate(line: string) {
+  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    marker: match[1][0] as "`" | "~",
+    length: match[1].length,
+    rest: match[2],
+  };
 }
 
 function isTableRow(lineText: string) {
@@ -953,12 +968,28 @@ function addStrongDecorations(
   lineFrom: number,
   decorations: PreviewDecoration[],
 ) {
-  const matcher = /\*\*([^*\n]+)\*\*/g;
+  const matcher = /(\*\*|__)([^\n]+?)\1/g;
+  const codeRanges = markdownInlineCodeRanges(lineText);
 
   for (const match of lineText.matchAll(matcher)) {
     const start = match.index ?? 0;
-    const contentStart = start + 2;
-    const contentEnd = contentStart + match[1].length;
+    const marker = match[1];
+    const content = match[2];
+    const closingStart = start + marker.length + content.length;
+    if (
+      isEscapedMarkdownCharacter(lineText, start) ||
+      isEscapedMarkdownCharacter(lineText, closingStart) ||
+      codeRanges.some(({ from, to }) => start >= from && start < to) ||
+      isWhitespace(content[0]) ||
+      isWhitespace(content.at(-1)) ||
+      (marker === "__" &&
+        isMarkdownWordCharacter(lineText[start - 1]) &&
+        isMarkdownWordCharacter(lineText[closingStart + marker.length]))
+    ) {
+      continue;
+    }
+    const contentStart = start + marker.length;
+    const contentEnd = contentStart + content.length;
 
     decorations.push({
       from: lineFrom + start,
@@ -972,7 +1003,7 @@ function addStrongDecorations(
     });
     decorations.push({
       from: lineFrom + contentEnd,
-      to: lineFrom + contentEnd + 2,
+      to: lineFrom + contentEnd + marker.length,
       decoration: hiddenMarkdown,
     });
   }
@@ -1012,17 +1043,22 @@ type EmphasisSpan = {
 
 export function emphasisSpans(lineText: string): EmphasisSpan[] {
   const spans: EmphasisSpan[] = [];
+  const codeRanges = markdownInlineCodeRanges(lineText);
 
   for (let start = 0; start < lineText.length; start += 1) {
     const marker = lineText[start];
     if (marker !== "*" && marker !== "_") {
       continue;
     }
-    if (!canOpenEmphasis(lineText, start, marker)) {
+    if (
+      isEscapedMarkdownCharacter(lineText, start) ||
+      codeRanges.some(({ from, to }) => start >= from && start < to) ||
+      !canOpenEmphasis(lineText, start, marker)
+    ) {
       continue;
     }
 
-    const end = closingEmphasisIndex(lineText, start + 1, marker);
+    const end = closingEmphasisIndex(lineText, start + 1, marker, codeRanges);
     if (end === -1) {
       continue;
     }
@@ -1034,9 +1070,19 @@ export function emphasisSpans(lineText: string): EmphasisSpan[] {
   return spans;
 }
 
-function closingEmphasisIndex(lineText: string, from: number, marker: string) {
+function closingEmphasisIndex(
+  lineText: string,
+  from: number,
+  marker: string,
+  codeRanges: Array<{ from: number; to: number }>,
+) {
   for (let end = from; end < lineText.length; end += 1) {
-    if (lineText[end] === marker && canCloseEmphasis(lineText, end, marker)) {
+    if (
+      lineText[end] === marker &&
+      !isEscapedMarkdownCharacter(lineText, end) &&
+      !codeRanges.some(({ from: codeFrom, to }) => end >= codeFrom && end < to) &&
+      canCloseEmphasis(lineText, end, marker)
+    ) {
       return end;
     }
   }
@@ -1048,7 +1094,12 @@ function canOpenEmphasis(lineText: string, index: number, marker: string) {
   return (
     !isPartOfStrongDelimiter(lineText, index, marker) &&
     !isWhitespace(lineText[index + 1]) &&
-    lineText[index + 1] !== marker
+    lineText[index + 1] !== marker &&
+    !(
+      marker === "_" &&
+      isMarkdownWordCharacter(lineText[index - 1]) &&
+      isMarkdownWordCharacter(lineText[index + 1])
+    )
   );
 }
 
@@ -1056,7 +1107,12 @@ function canCloseEmphasis(lineText: string, index: number, marker: string) {
   return (
     !isPartOfStrongDelimiter(lineText, index, marker) &&
     !isWhitespace(lineText[index - 1]) &&
-    lineText[index - 1] !== marker
+    lineText[index - 1] !== marker &&
+    !(
+      marker === "_" &&
+      isMarkdownWordCharacter(lineText[index - 1]) &&
+      isMarkdownWordCharacter(lineText[index + 1])
+    )
   );
 }
 
@@ -1066,6 +1122,44 @@ function isPartOfStrongDelimiter(lineText: string, index: number, marker: string
 
 function isWhitespace(char: string | undefined) {
   return char === undefined || /\s/.test(char);
+}
+
+function isMarkdownWordCharacter(char: string | undefined) {
+  return Boolean(char && /[\p{L}\p{N}_]/u.test(char));
+}
+
+function isEscapedMarkdownCharacter(source: string, position: number) {
+  let backslashes = 0;
+  for (let index = position - 1; index >= 0 && source[index] === "\\"; index -= 1) {
+    backslashes += 1;
+  }
+  return backslashes % 2 === 1;
+}
+
+function markdownInlineCodeRanges(source: string) {
+  const ranges: Array<{ from: number; to: number }> = [];
+
+  for (let start = 0; start < source.length; start += 1) {
+    if (source[start] !== "`" || isEscapedMarkdownCharacter(source, start)) {
+      continue;
+    }
+
+    let openingEnd = start + 1;
+    while (source[openingEnd] === "`") {
+      openingEnd += 1;
+    }
+    const marker = source.slice(start, openingEnd);
+    const close = source.indexOf(marker, openingEnd);
+    if (close === -1) {
+      start = openingEnd - 1;
+      continue;
+    }
+
+    ranges.push({ from: start, to: close + marker.length });
+    start = close + marker.length - 1;
+  }
+
+  return ranges;
 }
 
 export function renderLatexPreview(source: string, displayMode: boolean) {

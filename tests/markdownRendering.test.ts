@@ -44,3 +44,23 @@ test("renders checkbox list items with source line attributes", () => {
     '<ul>\n<li data-source-line="8" class="task-list-item"><input class="task-list-checkbox" type="checkbox" data-line="8" aria-label="Unchecked task" /> Parent</li>\n<li data-source-line="13" class="task-list-item"><input class="task-list-checkbox" type="checkbox" checked data-line="13" aria-label="Checked task" /> Child</li>\n</ul>\n',
   );
 });
+
+test("keeps blockquote checkbox source lines aligned with rendered list items", () => {
+  assert.equal(
+    renderCheckboxItems(
+      '<blockquote>\n<ul>\n<li data-source-line="1">[ ] Quoted</li>\n</ul>\n</blockquote>\n<ul>\n<li data-source-line="3">[ ] Normal</li>\n</ul>\n',
+      "> - [ ] Quoted\n\n- [ ] Normal",
+    ),
+    '<blockquote>\n<ul>\n<li data-source-line="1" class="task-list-item"><input class="task-list-checkbox" type="checkbox" data-line="1" aria-label="Unchecked task" /> Quoted</li>\n</ul>\n</blockquote>\n<ul>\n<li data-source-line="3" class="task-list-item"><input class="task-list-checkbox" type="checkbox" data-line="3" aria-label="Unchecked task" /> Normal</li>\n</ul>\n',
+  );
+});
+
+test("renders checkbox markers in loose list paragraphs", () => {
+  assert.equal(
+    renderCheckboxItems(
+      '<ul>\n<li data-source-line="1">\n<p>[ ] Loose</p>\n<p>Continuation</p>\n</li>\n</ul>\n',
+      "- [ ] Loose\n\n  Continuation",
+    ),
+    '<ul>\n<li data-source-line="1" class="task-list-item">\n<p><input class="task-list-checkbox" type="checkbox" data-line="1" aria-label="Unchecked task" /> Loose</p>\n<p>Continuation</p>\n</li>\n</ul>\n',
+  );
+});

@@ -43,6 +43,43 @@ test("keeps explicit wiki link aliases", () => {
   );
 });
 
+test("keeps additional pipe characters in wiki link aliases", () => {
+  assert.deepEqual(wikiLinksInText("[[projects/forecasts|Forecast | Q4]]")[0], {
+    from: 0,
+    to: 36,
+    raw: "[[projects/forecasts|Forecast | Q4]]",
+    target: "projects/forecasts",
+    alias: "Forecast | Q4",
+    syntax: "square",
+  });
+});
+
+test("ignores escaped wiki links and wiki syntax inside Markdown links", () => {
+  const source = [
+    String.raw`\[[Escaped]]`,
+    "[See [[Alpha]]](https://example.test)",
+    "[Example](https://example.test/[[Alpha]])",
+  ].join("\n");
+
+  assert.deepEqual(wikiLinksInText(source), []);
+  assert.equal(renderWikiLinks(source, pages), source);
+});
+
+test("ignores wiki links inside inline and block LaTeX", () => {
+  const source = [
+    String.raw`$\text{[[Inline formula]]}$`,
+    "$$",
+    String.raw`\text{[[Block formula]]}`,
+    "$$",
+    "[[Real link]]",
+  ].join("\n");
+
+  assert.deepEqual(
+    wikiLinksInText(source).map((link) => link.target),
+    ["Real link"],
+  );
+});
+
 test("keeps round-delimited text unchanged", () => {
   const source = "((projects/forecasts.md|Forecast))";
 

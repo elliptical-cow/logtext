@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createMarkdownRenderer } from "../src/lib/markdownRenderer.js";
+import {
+  createMarkdownRenderer,
+  markdownCodeLineNumbers,
+} from "../src/lib/markdownRenderer.js";
 import {
   installMermaidCssStyleSheetCompatibility,
   mermaidConfiguration,
@@ -85,6 +88,15 @@ test("applies persisted image widths while keeping images within the pane", () =
   );
 });
 
+test("keeps wide rendered Markdown tables horizontally scrollable", () => {
+  const styles = readFileSync(join(root, "src/styles.css"), "utf8");
+
+  assert.match(
+    styles,
+    /\.markdown-view table\s*\{[^}]*display: block;[^}]*max-width: 100%;[^}]*overflow-x: auto;/s,
+  );
+});
+
 test("keeps rendering after malformed LaTeX and ignores formulas in Markdown code", () => {
   const markdown = createMarkdownRenderer({ breaks: true });
   const malformed = markdown.render(String.raw`Before $\notacommand{$ after **still here**.`);
@@ -97,6 +109,48 @@ test("keeps rendering after malformed LaTeX and ignores formulas in Markdown cod
   assert.equal(/class="katex"/.test(code), false);
   assert.match(code, /<code>\$E = mc\^2\$<\/code>/);
   assert.match(code, /\$\$x\^2\$\$/);
+});
+
+test("renders Logtext wiki links as Markdown-it inline tokens", () => {
+  const markdown = createMarkdownRenderer({ breaks: true, logtextWikiLinks: true });
+  const pages = [
+    {
+      exists: true,
+      key: "projects/forecasts",
+      path: "Projects/Forecasts.md",
+      title: "Forecasts",
+    },
+  ];
+  const rendered = markdown.render(
+    "See [[projects/forecasts|Forecast]] and #projects/forecasts.",
+    { pages },
+  );
+
+  assert.match(rendered, /href="logtext:Projects%2FForecasts\.md">Forecast<\/a>/);
+  assert.match(rendered, /href="logtext:Projects%2FForecasts\.md">#Forecasts<\/a>/);
+});
+
+test("does not render wiki links in protected Markdown contexts", () => {
+  const markdown = createMarkdownRenderer({ breaks: true, logtextWikiLinks: true });
+  const source = [
+    "`[[Inline code]]`",
+    "",
+    "    [[Indented code]]",
+    "",
+    String.raw`$\text{[[Formula]]}$`,
+    "",
+    "[See [[Label content]]](https://example.test)",
+    "",
+    String.raw`\[[Escaped]]`,
+  ].join("\n");
+  const rendered = markdown.render(source, { pages: [] });
+
+  assert.equal(rendered.includes("logtext:"), false);
+  assert.match(rendered, /<code>\[\[Inline code\]\]<\/code>/);
+  assert.match(rendered, /<pre><code>\[\[Indented code\]\]/);
+  assert.match(rendered, /\\text\{\[\[Formula\]\]\}/);
+  assert.match(rendered, /href="https:\/\/example\.test">See \[\[Label content\]\]<\/a>/);
+  assert.match(rendered, /\[\[Escaped\]\]/);
 });
 
 test("marks Mermaid fences only when rendered-diagram support is enabled", () => {
@@ -121,6 +175,21 @@ test("keeps non-Mermaid fences unchanged when diagram rendering is enabled", () 
 
   assert.equal(/data-mermaid-diagram/.test(rendered), false);
   assert.match(rendered, /<pre><code class="language-typescript">/);
+});
+
+test("identifies fenced and indented code lines before Logtext preprocessing", () => {
+  const markdown = createMarkdownRenderer({ breaks: true });
+  const source = [
+    "```md",
+    "- TODO fenced",
+    "```",
+    "",
+    "    - TODO indented",
+    "",
+    "- TODO real task",
+  ].join("\n");
+
+  assert.deepEqual([...markdownCodeLineNumbers(markdown, source)], [1, 2, 3, 5]);
 });
 
 test("uses bounded strict Mermaid rendering for both application themes", () => {

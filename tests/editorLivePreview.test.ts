@@ -14,6 +14,7 @@ import {
   latexBlockLineNumbers,
   livePreviewExtension,
   liveCheckboxCheckClass,
+  markdownFencedCodeLineNumbers,
   markdownImagesInState,
   previewDecorationsForLine,
   renderLatexPreview,
@@ -124,6 +125,36 @@ test("extracts same-line and indented block formulas with CRLF positions", () =>
       content: String.raw`\int_0^1 x^2 \, dx`,
     },
   ]);
+});
+
+test("does not render an unclosed block formula through the end of the document", () => {
+  assert.deepEqual(latexBlockRanges("Before\n$$\nx + y\nAfter"), []);
+});
+
+test("matches fenced code by marker type and opening length", () => {
+  const source = [
+    "````md",
+    "```",
+    "[[Alpha]]",
+    "- TODO Example",
+    "$$",
+    "x + y",
+    "$$",
+    "````",
+    "[[Beta]]",
+  ].join("\n");
+
+  assert.deepEqual([...markdownFencedCodeLineNumbers(source)], [1, 2, 3, 4, 5, 6, 7, 8]);
+  const state = EditorState.create({ doc: source });
+  assert.equal(wikiLinkAtDocumentPosition(state, source.indexOf("Alpha")), null);
+  assert.equal(taskKeywordAtDocumentPosition(state, source.indexOf("TODO")), null);
+  assert.deepEqual(latexBlockRanges(source), []);
+  assert.deepEqual(wikiLinkAtDocumentPosition(state, source.indexOf("Beta")), {
+    from: source.indexOf("[[Beta]]"),
+    to: source.indexOf("[[Beta]]") + "[[Beta]]".length,
+    target: "Beta",
+    label: "Beta",
+  });
 });
 
 test("renders inactive formulas and restores source for the active formula", () => {
@@ -388,6 +419,26 @@ test("detects emphasis spans without treating list markers as emphasis", () => {
     { start: 24, end: 31 },
   ]);
   assert.deepEqual(emphasisSpans("* Bewerbungsgespraech **Hans** fuer"), []);
+});
+
+test("keeps escaped, code-span, and intraword emphasis as Markdown source", () => {
+  assert.deepEqual(previewDecorationsForLine(String.raw`\**not bold**`), []);
+  assert.deepEqual(previewDecorationsForLine(String.raw`\*not italic*`), []);
+  assert.deepEqual(previewDecorationsForLine("`**not bold**` and `_not italic_`"), []);
+  assert.deepEqual(emphasisSpans("snake_case_value"), []);
+});
+
+test("renders underscore-delimited strong emphasis in live preview", () => {
+  const decorations = previewDecorationsForLine("__strong__");
+
+  assert.deepEqual(
+    decorations.map(({ from, to }) => ({ from, to })),
+    [
+      { from: 0, to: 2 },
+      { from: 2, to: 8 },
+      { from: 8, to: 10 },
+    ],
+  );
 });
 
 test("does not create live preview decorations inside table rows", () => {

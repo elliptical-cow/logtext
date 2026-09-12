@@ -8,7 +8,7 @@
   import { mutationOperations } from "../stores/mutationOperations";
   import { taskStore } from "../stores/tasks";
   import { workspaceStore } from "../stores/workspace";
-  import { applyWikiLinkColorStyles, compactPageLabel, renderWikiLinks } from "../wikiLinks";
+  import { applyWikiLinkColorStyles, compactPageLabel } from "../wikiLinks";
   import type { TaskItem, TaskOverviewConfig, TaskOverviewGroupMode, TaskStatus } from "../types";
 
   type StatusFilter = "OPEN" | TaskStatus | "ALL";
@@ -29,7 +29,11 @@
     y: number;
     task: TaskItem;
   } | null = null;
-  const inlineMarkdown = createMarkdownRenderer({ breaks: false, workspaceImages: true });
+  const inlineMarkdown = createMarkdownRenderer({
+    breaks: false,
+    workspaceImages: true,
+    logtextWikiLinks: true,
+  });
 
   function closeErrorDialog() {
     localError = null;
@@ -207,8 +211,9 @@
 
   function renderTaskText(task: TaskItem) {
     return applyWikiLinkColorStyles(
-      inlineMarkdown.renderInline(renderWikiLinks(taskDisplayText(task), $workspaceStore.pages), {
+      inlineMarkdown.renderInline(taskDisplayText(task), {
         sourcePath: task.path,
+        pages: $workspaceStore.pages,
       }),
       $workspaceStore.pages,
       $workspaceStore.folderColors,

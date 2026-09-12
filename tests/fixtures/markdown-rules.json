@@ -25,6 +25,33 @@
         ]
       },
       {
+        "name": "alias containing additional pipe",
+        "source": "[[Projects/Alpha|Alpha | Q4]]",
+        "links": [
+          {
+            "target": "Projects/Alpha",
+            "alias": "Alpha | Q4",
+            "label": "Alpha | Q4"
+          }
+        ]
+      },
+      {
+        "name": "escaped and nested link syntax",
+        "source": "\\[[Escaped]] [See [[Nested]]](https://example.test) [Target](https://example.test/[[Destination]])",
+        "links": []
+      },
+      {
+        "name": "LaTeX content is not a wiki link",
+        "source": "$\\text{[[Inline formula]]}$\n$$\n\\text{[[Block formula]]}\n$$\n[[Projects/Alpha]]",
+        "links": [
+          {
+            "target": "Projects/Alpha",
+            "alias": null,
+            "label": "Projects/Alpha"
+          }
+        ]
+      },
+      {
         "name": "round delimiters are plain text",
         "source": "((Projects/Alpha|Alpha plan))",
         "links": []

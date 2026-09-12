@@ -249,10 +249,11 @@ Page links are recognized in square (`[[page]]`) and compact (`#page`) syntax.
 Round delimiters such as `((page))` are ordinary text. Compact targets are
 slash-separated, whitespace-free path segments. The Rust parser and TypeScript
 live-preview scanner deliberately share fixtures for valid links and exclusions
-such as headings, task priorities, URL fragments, escaped hashes, inline code,
-and fenced code. Rename and move operations preserve compact syntax when the
-replacement remains valid and fall back to square syntax when a new target
-contains spaces.
+such as headings, task priorities, URL fragments, escaped links, standard
+Markdown link labels and targets, LaTeX, inline code, and fenced code. Aliases
+retain every character after the first `|`. Rename and move operations preserve
+compact syntax when the replacement remains valid and fall back to square
+syntax when a new target contains spaces.
 
 ## File Operations
 
@@ -500,11 +501,20 @@ every formula. This hybrid behavior is implemented mostly in:
 
 - `src/lib/editorLivePreview.ts`
 - `src/lib/markdownRendering.ts`
+- `src/lib/taskMarkdownRendering.ts`
 - `src/lib/editorBlockCommands.ts`
 - `src/lib/editorLineWrapping.ts`
 
 The right pane and backlink sections use rendered Markdown components rather
-than CodeMirror. Right-pane `mermaid` fences are emitted as escaped source
+than CodeMirror. Wiki links are emitted by a Markdown-it inline rule rather than
+by rewriting the Markdown source before parsing. This keeps wiki syntax inside
+code, LaTeX, images, and standard Markdown links in its original parsing
+context. Task preprocessing first asks Markdown-it for fenced and indented code
+line maps, so code examples cannot become interactive tasks. Checkbox controls
+prefer the list token's `data-source-line` and support blockquote and loose-list
+forms without relying only on rendered order.
+
+Right-pane `mermaid` fences are emitted as escaped source
 placeholders and rendered asynchronously as SVG only when an IntersectionObserver
 reports that they are near the viewport. The official Mermaid dependency is
 loaded through a dynamic import on first use. Rendering is serialized because
