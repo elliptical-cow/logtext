@@ -1,7 +1,7 @@
 # Changelog
 
 This file records notable user-facing and development changes to Logtext. The
-current source version is `0.7.1`.
+current source version is `0.7.5`.
 
 ## Unreleased
 
