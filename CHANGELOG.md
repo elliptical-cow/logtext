@@ -3,61 +3,37 @@
 This file records notable user-facing and development changes to Logtext. The
 current source version is `0.7.5`.
 
-## Unreleased
+## 0.7.5
+Changes since `v0.7.1`.
 
 ### Added
 
-- Added secure Mermaid rendering for fenced `mermaid` blocks in right-pane pages,
-  the continuous journal feed, and right-pane linked references. Mermaid loads
-  only when a diagram approaches the viewport, follows the current light or dark
-  theme, and leaves escaped source visible with a local message when rendering
-  fails. The middle editor continues to show Mermaid blocks as Markdown source.
+- Added secure Mermaid rendering for fenced `mermaid` blocks in right-pane pages.
 - Added `Logtext-<version>-linux-x86_64-thin.tar.gz` to CI and release builds.
   The small archive contains the native stripped executable, runtime guidance,
   and license while relying on system-provided WebKitGTK 4.1, GTK 3, and related
   Linux libraries. The existing `.deb` and AppImage assets remain available.
-- Added clipboard image paste for PNG, JPEG, WebP, and GIF files. Logtext stores
-  validated images in a configurable workspace media folder, inserts
-  workspace-root-relative Markdown targets, and renders workspace images in the
-  editor live preview and all rendered views. Live-preview controls resize
-  images without changing their aspect ratio, persist the chosen width in
-  Markdown, and retain the existing page-width limit. A shared image context
-  menu copies workspace images from the editor or rendered views to the system
-  clipboard. A File-menu cleanup action lists unreferenced images and, after a
-  final reference check, moves confirmed files to the operating system trash
-  without falling back to permanent deletion.
+- Added clipboard image paste. Logtext stores validated images in a configurable
+  workspace media folder, inserts workspace-root-relative Markdown targets, and
+  renders workspace images in the editor live preview and all rendered views.
+  A shared image context menu copies workspace images from the editor or rendered
+  views to the system clipboard. A File-menu cleanup action lists unreferenced
+  images and, after a final reference check, moves confirmed files to the
+  operating system trash without falling back to permanent deletion.
 - Added KaTeX rendering for inline (`$...$`) and block (`$$...$$`) LaTeX
   formulas in rendered Markdown views and the editor live preview. The editor
   restores an inline formula's source line or a complete block formula when it
   becomes active, keeping the Markdown directly editable.
-- Added Page Up and Page Down navigation across journal file boundaries in the
-  editor, using the same configured order as mouse-wheel navigation.
 - Added independent `journalEditorContinuousScrolling` and
   `journalRightPaneContinuousScrolling` workspace settings. Both default to
-  enabled for compatibility with existing workspaces.
+  enabled for compatibility with existing workspaces and allow scrolling across
+  journal file boundaries in the editor.
 
-### Fixed
-
-- Fixed Mermaid rendering on older WebKit-based desktop environments where the
-  built-in `CSSStyleSheet` type exists but cannot be constructed.
 
 ### Changed
 
 - Expanded the editor context menu with cut, copy, paste, select-all,
-  selection-to-page-link, task, and list-block actions. Context menus now preserve
-  clicked selections, position the cursor for paste, accept single-character
-  selections, support keyboard opening, and restore editor focus. Undo and redo
-  remain in the Edit menu and on keyboard shortcuts. Task menus contain only
-  Status, Priority, and source-line navigation. Selected rendered text can also be
-  copied from right-pane context menus. Matching keyboard commands are shown as
-  subtle Windows-style shortcut hints. Link navigation actions use explicit
-  `Follow link in ...` labels, and rendered-link menus omit redundant right-pane
-  navigation. Link menus can reveal the clicked link's source line in the opposite
-  pane without following the link.
-- All local image targets now use stable `media-folder/file` paths relative to
-  the workspace root, so they remain valid when copied between pages. The
-  configured media folder is excluded from page indexing and protected from
-  page and folder operations in the navigation tree.
+  selection-to-page-link, task, and list-block actions. 
 - Compact `#` link completion now offers every page and automatically switches
   to `[[target]]` syntax when the selected target contains spaces.
 - Round-delimited text such as `((target))` is no longer interpreted as a page
@@ -67,12 +43,9 @@ current source version is `0.7.5`.
 
 ### Fixed
 
-- Inline LaTeX formulas no longer overlap preceding editor text. Live-preview
-  widgets reset inherited list indentation so nested formulas remain anchored
-  after their preceding text. Symmetric font-relative margins tighten the
-  optical spacing between inline math and adjacent editor text.
-  Inline math uses its natural baseline with surrounding editor text, while
-  tall operators, limits, fractions, or roots are no longer vertically clipped.
+- Fixed Mermaid rendering on older WebKit-based desktop environments where the
+  built-in `CSSStyleSheet` type exists but cannot be constructed.
+  
 
 ## 0.7.1
 
