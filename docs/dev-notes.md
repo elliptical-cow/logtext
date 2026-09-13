@@ -517,9 +517,7 @@ code, LaTeX, images, and standard Markdown links in its original parsing
 context. Task preprocessing first asks Markdown-it for fenced and indented code
 line maps, so code examples cannot become interactive tasks. Checkbox controls
 prefer the list token's `data-source-line` and support blockquote and loose-list
-forms without relying only on rendered order. Right-pane marker-axis styling
-covers both a checkbox directly below `li` and Markdown-it's loose-list
-`li > p > input` structure.
+forms without relying only on rendered order.
 
 Right-pane `mermaid` fences are emitted as escaped source
 placeholders and rendered asynchronously as SVG only when an IntersectionObserver
