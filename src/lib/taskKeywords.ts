@@ -49,11 +49,7 @@ export function taskKeywordMatch(
   }
 
   const prefix = parseListItemPrefix(lineText);
-  if (!prefix) {
-    return null;
-  }
-
-  const statusFrom = listItemTextFrom(prefix);
+  const statusFrom = prefix ? listItemTextFrom(prefix) : 0;
   const status = states.find((candidate) => {
     if (!lineText.startsWith(candidate, statusFrom)) {
       return false;

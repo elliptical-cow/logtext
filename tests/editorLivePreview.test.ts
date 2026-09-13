@@ -391,6 +391,25 @@ test("creates preview decorations for numbered task list items", () => {
   );
 });
 
+test("creates preview decorations for plain task lines", () => {
+  const decorations = previewDecorationsForLine("TODO Finish report");
+
+  assert.deepEqual(
+    decorations.map(({ from, to }) => ({ from, to })),
+    [{ from: 0, to: 4 }],
+  );
+});
+
+test("finds a plain task keyword at its document position", () => {
+  const state = EditorState.create({ doc: "TODO Finish report" });
+
+  assert.deepEqual(taskKeywordAtDocumentPosition(state, 2), {
+    from: 0,
+    to: 4,
+    status: "TODO",
+  });
+});
+
 test("creates preview decorations for task priority cookies", () => {
   const decorations = previewDecorationsForLine("- TODO [#A] Finish report");
 

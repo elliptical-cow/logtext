@@ -31,3 +31,19 @@ test("does not mark task syntax inside fenced or indented code", () => {
   assert.match(result.markdown, /- TODO \[#A\] fenced example/);
   assert.match(result.markdown, /- DONE indented example/);
 });
+
+test("marks plain task lines for rendered views", () => {
+  const source = "TODO [#A] Prepare kickoff";
+  const markdown = createMarkdownRenderer({ breaks: true });
+  const result = markTaskKeywordsForRendering(
+    source,
+    taskStates,
+    [],
+    markdownCodeLineNumbers(markdown, source),
+  );
+
+  assert.equal(result.taskTokens.length, 1);
+  assert.equal(result.taskTokens[0].status, "TODO");
+  assert.equal(result.priorityTokens.length, 1);
+  assert.equal(result.priorityTokens[0].priority, "A");
+});

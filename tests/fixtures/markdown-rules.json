@@ -161,6 +161,20 @@
     ],
     "taskLines": [
       {
+        "name": "plain todo line",
+        "source": "TODO Prepare kickoff",
+        "taskStates": null,
+        "status": "TODO",
+        "priority": null
+      },
+      {
+        "name": "plain task with priority cookie",
+        "source": "WAITING[#B] Input",
+        "taskStates": null,
+        "status": "WAITING",
+        "priority": "B"
+      },
+      {
         "name": "todo list item",
         "source": "- TODO Prepare kickoff",
         "taskStates": null,

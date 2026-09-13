@@ -263,14 +263,18 @@ the next application action when available.
 
 ## Tasks
 
-Tasks are Markdown list items beginning with a configured state:
+Tasks are Markdown lines or list items beginning with a configured state:
 
 ```md
+TODO Capture a task without a list marker
 - TODO Prepare project review
 - INPROGRESS [#A] Write decision note
 - WAITING[#B] Feedback from stakeholder
 - DONE Close release checklist
 ```
+
+The state must begin the line or the text of a list item. A keyword later in an
+ordinary sentence is not interpreted as a task.
 
 Default states:
 

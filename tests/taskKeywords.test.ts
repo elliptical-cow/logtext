@@ -10,6 +10,10 @@ test("renders task keywords at the start of list blocks", () => {
   );
 });
 
+test("renders task keywords at the start of plain lines", () => {
+  assert.equal(renderTaskKeywords("TODO Prepare\nDONE Closed"), "**TODO** Prepare\n**DONE** Closed");
+});
+
 test("renders task keywords after checkbox markers", () => {
   assert.equal(renderTaskKeywords("- [ ] WAITING Input"), "- [ ] **WAITING** Input");
 });
@@ -34,6 +38,14 @@ test("adds task priority cookies after task keywords", () => {
   assert.deepEqual(taskPriorityChange("- TODO Prepare", 0, "A"), {
     from: 6,
     to: 6,
+    insert: " [#A]",
+  });
+});
+
+test("adds task priority cookies to plain task lines", () => {
+  assert.deepEqual(taskPriorityChange("TODO Prepare", 0, "A"), {
+    from: 4,
+    to: 4,
     insert: " [#A]",
   });
 });
