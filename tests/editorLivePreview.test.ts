@@ -421,10 +421,15 @@ test("detects emphasis spans without treating list markers as emphasis", () => {
   assert.deepEqual(emphasisSpans("* Bewerbungsgespraech **Hans** fuer"), []);
 });
 
-test("keeps escaped, code-span, and intraword emphasis as Markdown source", () => {
+test("keeps escaped and intraword emphasis as source and isolates code spans", () => {
   assert.deepEqual(previewDecorationsForLine(String.raw`\**not bold**`), []);
   assert.deepEqual(previewDecorationsForLine(String.raw`\*not italic*`), []);
-  assert.deepEqual(previewDecorationsForLine("`**not bold**` and `_not italic_`"), []);
+  assert.deepEqual(
+    previewDecorationsForLine("`**not bold**` and `_not italic_`")
+      .map(({ decoration }) => decoration.spec.class)
+      .filter(Boolean),
+    ["cm-live-inline-code", "cm-live-inline-code"],
+  );
   assert.deepEqual(emphasisSpans("snake_case_value"), []);
 });
 
@@ -437,6 +442,61 @@ test("renders underscore-delimited strong emphasis in live preview", () => {
       { from: 0, to: 2 },
       { from: 2, to: 8 },
       { from: 8, to: 10 },
+    ],
+  );
+});
+
+test("renders triple-marker text as strong emphasis in live preview", () => {
+  const decorations = previewDecorationsForLine("***bold and italic***");
+
+  assert.deepEqual(
+    decorations.map(({ from, to }) => ({ from, to })),
+    [
+      { from: 0, to: 3 },
+      { from: 3, to: 18 },
+      { from: 18, to: 21 },
+    ],
+  );
+  assert.equal(decorations[1].decoration.spec.class, "cm-live-strong-emphasis");
+});
+
+test("renders strikethrough text in live preview", () => {
+  const decorations = previewDecorationsForLine("~~removed~~");
+
+  assert.deepEqual(
+    decorations.map(({ from, to }) => ({ from, to })),
+    [
+      { from: 0, to: 2 },
+      { from: 2, to: 9 },
+      { from: 9, to: 11 },
+    ],
+  );
+  assert.equal(decorations[1].decoration.spec.class, "cm-live-strikethrough");
+});
+
+test("renders inline code without interpreting Markdown inside it", () => {
+  const decorations = previewDecorationsForLine("`**literal** ~~raw~~`");
+
+  assert.deepEqual(
+    decorations.map(({ from, to }) => ({ from, to })),
+    [
+      { from: 0, to: 1 },
+      { from: 1, to: 20 },
+      { from: 20, to: 21 },
+    ],
+  );
+  assert.equal(decorations[1].decoration.spec.class, "cm-live-inline-code");
+});
+
+test("supports matching multi-backtick delimiters for inline code", () => {
+  const decorations = previewDecorationsForLine("``code ` tick``");
+
+  assert.deepEqual(
+    decorations.map(({ from, to }) => ({ from, to })),
+    [
+      { from: 0, to: 2 },
+      { from: 2, to: 13 },
+      { from: 13, to: 15 },
     ],
   );
 });

@@ -52,6 +52,8 @@ Changes since `v0.7.1`.
 - Fixed editor live-preview handling for mixed or different-length code fences,
   unclosed block formulas, escaped emphasis, inline-code emphasis, intraword
   underscores, and `__strong__` syntax.
+- Added the missing editor live-preview rendering for `***bold italic***`,
+  `~~strikethrough~~`, and inline code spans.
 - Preserved complete wiki-link aliases containing additional pipe characters
   and prevented wiki syntax from corrupting standard Markdown links.
 - Made wide rendered Markdown tables horizontally scrollable.

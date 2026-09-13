@@ -235,6 +235,12 @@ Use `View > Plain markdown edit` or `Cmd/Ctrl+Shift+L` to switch between live
 preview and plain Markdown. In live preview, Markdown markers are reduced on
 inactive lines and restored when editing requires their source.
 
+Inline live preview supports italic text (`*text*` or `_text_`), bold text
+(`**text**` or `__text__`), combined bold and italic text (`***text***`),
+strikethrough (`~~text~~`), and inline code (`` `code` ``). Inline code keeps
+Markdown-looking content literal and supports longer matching backtick markers
+when the code itself contains a backtick.
+
 ### Undo and Redo
 
 Direct editor changes use CodeMirror undo. Task and checkbox changes made in

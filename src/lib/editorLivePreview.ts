@@ -73,6 +73,9 @@ type CheckboxAtPosition = {
 const hiddenMarkdown = Decoration.replace({});
 const strongText = Decoration.mark({ class: "cm-live-strong" });
 const emphasisText = Decoration.mark({ class: "cm-live-emphasis" });
+const strongEmphasisText = Decoration.mark({ class: "cm-live-strong-emphasis" });
+const strikethroughText = Decoration.mark({ class: "cm-live-strikethrough" });
+const inlineCodeText = Decoration.mark({ class: "cm-live-inline-code" });
 const taskPriority = Decoration.mark({ class: "cm-live-priority" });
 const latexSource = Decoration.mark({ class: "cm-live-latex-source" });
 const latexBlockSourceLine = Decoration.line({ class: "cm-live-latex-block-source" });
@@ -114,8 +117,11 @@ export function previewDecorationsForLine(
   addCheckboxDecorations(lineText, lineFrom, decorations);
   addTaskDecorations(lineText, lineFrom, decorations, taskStates, taskStateColors);
   addWikiLinkDecorations(lineText, lineFrom, decorations, pages, folderColors);
+  addInlineCodeDecorations(lineText, lineFrom, decorations);
+  addStrongEmphasisDecorations(lineText, lineFrom, decorations);
   addStrongDecorations(lineText, lineFrom, decorations);
   addEmphasisDecorations(lineText, lineFrom, decorations);
+  addStrikethroughDecorations(lineText, lineFrom, decorations);
 
   const latexSpans = inlineLatexSourceSpans(lineText);
   const markdownDecorations = decorations.filter(
@@ -298,6 +304,19 @@ const livePreviewTheme = EditorView.baseTheme({
   },
   ".cm-live-emphasis": {
     fontStyle: "italic",
+  },
+  ".cm-live-strong-emphasis": {
+    fontStyle: "italic",
+    fontWeight: "700",
+  },
+  ".cm-live-strikethrough": {
+    textDecoration: "line-through",
+  },
+  ".cm-live-inline-code": {
+    borderRadius: "3px",
+    backgroundColor: "var(--code-bg)",
+    fontFamily: '\"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace',
+    padding: "0 0.15em",
   },
   ".cm-live-latex-source": {
     borderRadius: "3px",
@@ -963,49 +982,57 @@ function addWikiLinkDecorations(
   }
 }
 
+function addInlineCodeDecorations(
+  lineText: string,
+  lineFrom: number,
+  decorations: PreviewDecoration[],
+) {
+  for (const span of markdownInlineCodeSpans(lineText)) {
+    addDelimitedTextDecorations(
+      lineFrom,
+      span.start,
+      span.contentStart,
+      span.contentEnd,
+      span.end,
+      inlineCodeText,
+      decorations,
+    );
+  }
+}
+
+function addStrongEmphasisDecorations(
+  lineText: string,
+  lineFrom: number,
+  decorations: PreviewDecoration[],
+) {
+  for (const span of delimitedInlineSpans(lineText, ["***", "___"])) {
+    addDelimitedTextDecorations(
+      lineFrom,
+      span.start,
+      span.contentStart,
+      span.contentEnd,
+      span.end,
+      strongEmphasisText,
+      decorations,
+    );
+  }
+}
+
 function addStrongDecorations(
   lineText: string,
   lineFrom: number,
   decorations: PreviewDecoration[],
 ) {
-  const matcher = /(\*\*|__)([^\n]+?)\1/g;
-  const codeRanges = markdownInlineCodeRanges(lineText);
-
-  for (const match of lineText.matchAll(matcher)) {
-    const start = match.index ?? 0;
-    const marker = match[1];
-    const content = match[2];
-    const closingStart = start + marker.length + content.length;
-    if (
-      isEscapedMarkdownCharacter(lineText, start) ||
-      isEscapedMarkdownCharacter(lineText, closingStart) ||
-      codeRanges.some(({ from, to }) => start >= from && start < to) ||
-      isWhitespace(content[0]) ||
-      isWhitespace(content.at(-1)) ||
-      (marker === "__" &&
-        isMarkdownWordCharacter(lineText[start - 1]) &&
-        isMarkdownWordCharacter(lineText[closingStart + marker.length]))
-    ) {
-      continue;
-    }
-    const contentStart = start + marker.length;
-    const contentEnd = contentStart + content.length;
-
-    decorations.push({
-      from: lineFrom + start,
-      to: lineFrom + contentStart,
-      decoration: hiddenMarkdown,
-    });
-    decorations.push({
-      from: lineFrom + contentStart,
-      to: lineFrom + contentEnd,
-      decoration: strongText,
-    });
-    decorations.push({
-      from: lineFrom + contentEnd,
-      to: lineFrom + contentEnd + marker.length,
-      decoration: hiddenMarkdown,
-    });
+  for (const span of delimitedInlineSpans(lineText, ["**", "__"])) {
+    addDelimitedTextDecorations(
+      lineFrom,
+      span.start,
+      span.contentStart,
+      span.contentEnd,
+      span.end,
+      strongText,
+      decorations,
+    );
   }
 }
 
@@ -1018,22 +1045,147 @@ function addEmphasisDecorations(
     const contentStart = match.start + 1;
     const contentEnd = match.end;
 
-    decorations.push({
-      from: lineFrom + match.start,
-      to: lineFrom + contentStart,
-      decoration: hiddenMarkdown,
-    });
-    decorations.push({
-      from: lineFrom + contentStart,
-      to: lineFrom + contentEnd,
-      decoration: emphasisText,
-    });
-    decorations.push({
-      from: lineFrom + contentEnd,
-      to: lineFrom + contentEnd + 1,
-      decoration: hiddenMarkdown,
-    });
+    addDelimitedTextDecorations(
+      lineFrom,
+      match.start,
+      contentStart,
+      contentEnd,
+      contentEnd + 1,
+      emphasisText,
+      decorations,
+    );
   }
+}
+
+function addStrikethroughDecorations(
+  lineText: string,
+  lineFrom: number,
+  decorations: PreviewDecoration[],
+) {
+  for (const span of delimitedInlineSpans(lineText, ["~~"])) {
+    addDelimitedTextDecorations(
+      lineFrom,
+      span.start,
+      span.contentStart,
+      span.contentEnd,
+      span.end,
+      strikethroughText,
+      decorations,
+    );
+  }
+}
+
+function addDelimitedTextDecorations(
+  lineFrom: number,
+  start: number,
+  contentStart: number,
+  contentEnd: number,
+  end: number,
+  textDecoration: Decoration,
+  decorations: PreviewDecoration[],
+) {
+  decorations.push({
+    from: lineFrom + start,
+    to: lineFrom + contentStart,
+    decoration: hiddenMarkdown,
+  });
+  decorations.push({
+    from: lineFrom + contentStart,
+    to: lineFrom + contentEnd,
+    decoration: textDecoration,
+  });
+  decorations.push({
+    from: lineFrom + contentEnd,
+    to: lineFrom + end,
+    decoration: hiddenMarkdown,
+  });
+}
+
+type DelimitedInlineSpan = {
+  start: number;
+  contentStart: number;
+  contentEnd: number;
+  end: number;
+};
+
+function delimitedInlineSpans(lineText: string, markers: string[]): DelimitedInlineSpan[] {
+  const spans: DelimitedInlineSpan[] = [];
+  const codeRanges = markdownInlineCodeRanges(lineText);
+
+  for (let start = 0; start < lineText.length; start += 1) {
+    const marker = markers.find((candidate) => lineText.startsWith(candidate, start));
+    if (!marker || !isExactDelimiterRun(lineText, start, marker)) {
+      continue;
+    }
+    if (
+      isEscapedMarkdownCharacter(lineText, start) ||
+      codeRanges.some(({ from, to }) => start >= from && start < to) ||
+      isWhitespace(lineText[start + marker.length]) ||
+      isIntrawordUnderscoreDelimiter(lineText, start, marker)
+    ) {
+      continue;
+    }
+
+    const closingStart = closingDelimiterIndex(
+      lineText,
+      start + marker.length,
+      marker,
+      codeRanges,
+    );
+    if (closingStart === -1) {
+      continue;
+    }
+
+    spans.push({
+      start,
+      contentStart: start + marker.length,
+      contentEnd: closingStart,
+      end: closingStart + marker.length,
+    });
+    start = closingStart + marker.length - 1;
+  }
+
+  return spans;
+}
+
+function closingDelimiterIndex(
+  lineText: string,
+  from: number,
+  marker: string,
+  codeRanges: Array<{ from: number; to: number }>,
+) {
+  for (let closingStart = from; closingStart < lineText.length; closingStart += 1) {
+    if (
+      lineText.startsWith(marker, closingStart) &&
+      isExactDelimiterRun(lineText, closingStart, marker) &&
+      !isEscapedMarkdownCharacter(lineText, closingStart) &&
+      !codeRanges.some(({ from: codeFrom, to }) =>
+        closingStart >= codeFrom && closingStart < to
+      ) &&
+      !isWhitespace(lineText[closingStart - 1]) &&
+      !isIntrawordUnderscoreDelimiter(lineText, closingStart, marker)
+    ) {
+      return closingStart;
+    }
+  }
+
+  return -1;
+}
+
+function isExactDelimiterRun(lineText: string, start: number, marker: string) {
+  const delimiter = marker[0];
+  return (
+    lineText[start - 1] !== delimiter &&
+    lineText[start + marker.length] !== delimiter
+  );
+}
+
+function isIntrawordUnderscoreDelimiter(lineText: string, start: number, marker: string) {
+  return (
+    marker[0] === "_" &&
+    isMarkdownWordCharacter(lineText[start - 1]) &&
+    isMarkdownWordCharacter(lineText[start + marker.length])
+  );
 }
 
 type EmphasisSpan = {
@@ -1137,7 +1289,14 @@ function isEscapedMarkdownCharacter(source: string, position: number) {
 }
 
 function markdownInlineCodeRanges(source: string) {
-  const ranges: Array<{ from: number; to: number }> = [];
+  return markdownInlineCodeSpans(source).map(({ start, end }) => ({
+    from: start,
+    to: end,
+  }));
+}
+
+function markdownInlineCodeSpans(source: string): DelimitedInlineSpan[] {
+  const spans: DelimitedInlineSpan[] = [];
 
   for (let start = 0; start < source.length; start += 1) {
     if (source[start] !== "`" || isEscapedMarkdownCharacter(source, start)) {
@@ -1148,18 +1307,42 @@ function markdownInlineCodeRanges(source: string) {
     while (source[openingEnd] === "`") {
       openingEnd += 1;
     }
-    const marker = source.slice(start, openingEnd);
-    const close = source.indexOf(marker, openingEnd);
-    if (close === -1) {
+    const markerLength = openingEnd - start;
+    const closingStart = closingBacktickRun(source, openingEnd, markerLength);
+    if (closingStart === -1) {
       start = openingEnd - 1;
       continue;
     }
 
-    ranges.push({ from: start, to: close + marker.length });
-    start = close + marker.length - 1;
+    spans.push({
+      start,
+      contentStart: openingEnd,
+      contentEnd: closingStart,
+      end: closingStart + markerLength,
+    });
+    start = closingStart + markerLength - 1;
   }
 
-  return ranges;
+  return spans;
+}
+
+function closingBacktickRun(source: string, from: number, markerLength: number) {
+  for (let start = from; start < source.length; start += 1) {
+    if (source[start] !== "`") {
+      continue;
+    }
+
+    let end = start + 1;
+    while (source[end] === "`") {
+      end += 1;
+    }
+    if (end - start === markerLength) {
+      return start;
+    }
+    start = end - 1;
+  }
+
+  return -1;
 }
 
 export function renderLatexPreview(source: string, displayMode: boolean) {
