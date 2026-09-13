@@ -729,7 +729,7 @@ fn media_folder_error(media_folder: &str) -> AppError {
     ))
 }
 
-fn is_valid_journal_file_name(file_name: &str) -> bool {
+pub(crate) fn is_valid_journal_file_name(file_name: &str) -> bool {
     let Some(date) = file_name.strip_suffix(".md") else {
         return false;
     };

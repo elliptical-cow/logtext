@@ -26,6 +26,7 @@ import type {
   ToggleCheckboxResult,
   UpdateTaskStatusResult,
   WorkspaceState,
+  WorkspacePreferences,
   MediaCleanupCandidate,
   MediaTrashResult,
 } from "./types.js";
@@ -92,6 +93,10 @@ export function updateEditorModeMenuLabel(isLivePreview: boolean): Promise<void>
   return invokeTauri<void>("update_editor_mode_menu_label", { isLivePreview });
 }
 
+export function updatePreferencesMenuEnabled(enabled: boolean): Promise<void> {
+  return invokeTauri<void>("update_preferences_menu_enabled", { enabled });
+}
+
 export function openWorkspace(path: string): Promise<WorkspaceState> {
   return invokeTauri<WorkspaceState>("open_workspace", { path });
 }
@@ -130,6 +135,12 @@ export function saveBacklinkViewConfig(
 
 export function saveThemeConfig(themeMode: ThemeMode): Promise<ThemeMode> {
   return invokeTauri<ThemeMode>("save_theme_config", { themeMode });
+}
+
+export function saveWorkspacePreferences(
+  preferences: WorkspacePreferences,
+): Promise<WorkspaceState> {
+  return invokeTauri<WorkspaceState>("save_workspace_preferences", { preferences });
 }
 
 export function savePageSortConfig(

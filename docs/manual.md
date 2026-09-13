@@ -494,6 +494,7 @@ Open `Help > Keyboard Shortcuts` for the list shipped with the running version.
 | Open workspace | `Cmd/Ctrl+O` |
 | Close workspace | `Cmd/Ctrl+Shift+W` |
 | Save | `Cmd/Ctrl+S` |
+| Workspace preferences | `Cmd/Ctrl+,` |
 | Undo | `Cmd/Ctrl+Z` |
 | Redo | `Cmd/Ctrl+Shift+Z` or `Cmd/Ctrl+Y` |
 | Search current file | `Cmd/Ctrl+F` |
@@ -514,6 +515,17 @@ Open `Help > Keyboard Shortcuts` for the list shipped with the running version.
 Workspace settings are stored as JSON in `.config` at the workspace root.
 Logtext creates the file when a workspace is first opened and updates UI state
 there as it changes.
+
+Open the workspace preferences with `Logtext > Preferences` on macOS or
+`Edit > Preferences` on Windows and Linux. The dialog edits the user-facing
+settings below and saves them together. It is available only while a workspace
+is open.
+
+Changing the journal or media folder does not move existing files. New journal
+pages and pasted images use the new locations immediately. A journal target
+must be empty or contain only valid `YYYY-MM-DD.md` files and no subfolders. A
+media target must not contain Markdown pages. Logtext also refuses to remove or
+rename task states that are still used in the workspace.
 
 A representative configuration:
 
@@ -557,6 +569,9 @@ A representative configuration:
 | `folderPageSort` | Folder-path-to-sort-mode map. |
 | `folderColors` | Folder-path-to-color map using the task color names. |
 | `themeMode` | `light` or `dark`. |
+
+Folder-specific sort modes and colors continue to be managed from folder
+context menus in the file tree rather than from Preferences.
 
 The journal and media folders must not be the same folder, ancestors, or
 descendants of each other.

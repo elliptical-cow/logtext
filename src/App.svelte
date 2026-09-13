@@ -1,10 +1,12 @@
 <script lang="ts">
   import { getVersion } from "@tauri-apps/api/app";
   import { onDestroy, onMount } from "svelte";
+  import { get } from "svelte/store";
   import EditorPane from "./lib/components/EditorPane.svelte";
   import ErrorDialog from "./lib/components/ErrorDialog.svelte";
   import FileTree from "./lib/components/FileTree.svelte";
   import MediaCleanupDialog from "./lib/components/MediaCleanupDialog.svelte";
+  import PreferencesDialog from "./lib/components/PreferencesDialog.svelte";
   import RightPane from "./lib/components/RightPane.svelte";
   import TaskOverview from "./lib/components/TaskOverview.svelte";
   import { listUnusedMedia, moveUnusedMediaToTrash, setWindowTitle } from "./lib/api";
@@ -16,9 +18,11 @@
   import { editorSessionStore } from "./lib/stores/editorSession";
   import { mainViewStore } from "./lib/stores/mainView";
   import { rightPaneStore } from "./lib/stores/rightPane";
+  import { taskStore } from "./lib/stores/tasks";
   import { workspaceStore } from "./lib/stores/workspace";
   import { zoomStore } from "./lib/stores/zoom";
-  import type { MediaCleanupCandidate } from "./lib/types";
+  import type { MediaCleanupCandidate, WorkspacePreferences } from "./lib/types";
+  import { workspacePreferencesFromState } from "./lib/workspacePreferences";
 
   const layoutStorageKey = "logtext:layout:columns";
   const defaultLeftWidth = 280;
@@ -34,6 +38,10 @@
   let showAbout = false;
   let showKeyboardShortcuts = false;
   let showMediaCleanup = false;
+  let showPreferences = false;
+  let preferences: WorkspacePreferences | null = null;
+  let preferencesError: string | null = null;
+  let preferencesErrorDetail: string | null = null;
   let mediaCleanupCandidates: MediaCleanupCandidate[] = [];
   let mediaCleanupScanning = false;
   let mediaCleanupMoving = false;
@@ -53,6 +61,7 @@
     window.addEventListener("logtext-show-about", openAboutDialog);
     window.addEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.addEventListener("logtext-clean-media", handleCleanMediaRequest);
+    window.addEventListener("logtext-show-preferences", openPreferencesDialog);
     window.addEventListener("wheel", handleWheel, { passive: false });
   });
 
@@ -169,6 +178,65 @@
     showMediaCleanup = false;
     mediaCleanupScanning = false;
     mediaCleanupCandidates = [];
+  }
+
+  function openPreferencesDialog() {
+    const workspace = get(workspaceStore);
+    if (!workspace.root) {
+      return;
+    }
+    workspaceStore.clearError();
+    preferences = workspacePreferencesFromState(workspace);
+    preferencesError = null;
+    preferencesErrorDetail = null;
+    showPreferences = true;
+  }
+
+  function closePreferencesDialog() {
+    showPreferences = false;
+    preferences = null;
+    preferencesError = null;
+    preferencesErrorDetail = null;
+    workspaceStore.clearError();
+  }
+
+  async function savePreferences(nextPreferences: WorkspacePreferences) {
+    const workspace = get(workspaceStore);
+    const taskStatesChanged =
+      JSON.stringify(workspace.taskStates) !== JSON.stringify(nextPreferences.taskStates);
+
+    if (taskStatesChanged) {
+      let editor = get(editorSessionStore);
+      if (editor.saving || editor.conflict) {
+        preferencesError = editor.conflict
+          ? "Resolve the current editor conflict before changing task states."
+          : "Wait for the current page save to finish before changing task states.";
+        return false;
+      }
+      if (editor.dirty) {
+        await editorSessionStore.save();
+        editor = get(editorSessionStore);
+        if (editor.dirty || editor.conflict || editor.saving) {
+          preferencesError = "Save the current page successfully before changing task states.";
+          return false;
+        }
+      }
+    }
+
+    preferencesError = null;
+    preferencesErrorDetail = null;
+    const saved = await workspaceStore.savePreferences(nextPreferences);
+    if (!saved) {
+      const failed = get(workspaceStore);
+      preferencesError = failed.error ?? "Could not save workspace preferences.";
+      preferencesErrorDetail = failed.errorDetail;
+      workspaceStore.clearError();
+      return false;
+    }
+
+    await Promise.all([taskStore.refresh(), rightPaneStore.refresh()]);
+    closePreferencesDialog();
+    return true;
   }
 
   function handleMoveMediaToTrash() {
@@ -345,6 +413,7 @@
     window.removeEventListener("logtext-show-about", openAboutDialog);
     window.removeEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.removeEventListener("logtext-clean-media", handleCleanMediaRequest);
+    window.removeEventListener("logtext-show-preferences", openPreferencesDialog);
     window.removeEventListener("wheel", handleWheel);
   });
 </script>
@@ -393,6 +462,18 @@
     moving={mediaCleanupMoving}
     onCancel={closeMediaCleanupDialog}
     onMoveToTrash={handleMoveMediaToTrash}
+  />
+{/if}
+
+{#if showPreferences && preferences && $workspaceStore.root}
+  <PreferencesDialog
+    root={$workspaceStore.root}
+    folders={$workspaceStore.folders}
+    {preferences}
+    saveError={preferencesError}
+    saveErrorDetail={preferencesErrorDetail}
+    onCancel={closePreferencesDialog}
+    onSave={savePreferences}
   />
 {/if}
 

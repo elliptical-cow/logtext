@@ -2,6 +2,7 @@ import {
   closeWorkspace,
   onCoreEvent,
   updateEditorModeMenuLabel,
+  updatePreferencesMenuEnabled,
   updateEditMenuLabels,
   updateTaskOverviewMenuLabel,
   updateThemeMenuLabel,
@@ -162,6 +163,7 @@ export async function setupCoreEvents() {
   setupThemeMenuLabel();
   setupTaskOverviewMenuLabel();
   setupEditorModeMenuLabel();
+  setupPreferencesMenuState();
   window.addEventListener("logtext-editor-history-availability", handleEditorHistoryAvailability);
 
   await onCoreEvent(
@@ -231,6 +233,22 @@ export async function setupCoreEvents() {
 
   await onCoreEvent("menu-keyboard-shortcuts", async () => {
     window.dispatchEvent(new CustomEvent("logtext-show-keyboard-shortcuts"));
+  });
+
+  await onCoreEvent("menu-preferences", async () => {
+    window.dispatchEvent(new CustomEvent("logtext-show-preferences"));
+  });
+}
+
+function setupPreferencesMenuState() {
+  let lastEnabled: boolean | undefined;
+  workspaceStore.subscribe((workspace) => {
+    const enabled = Boolean(workspace.root);
+    if (enabled === lastEnabled) {
+      return;
+    }
+    lastEnabled = enabled;
+    void updatePreferencesMenuEnabled(enabled).catch(() => {});
   });
 }
 

@@ -18,6 +18,7 @@ import {
   saveNavigationLayoutConfig as saveNavigationLayoutConfigCommand,
   savePageSortConfig as savePageSortConfigCommand,
   saveThemeConfig as saveThemeConfigCommand,
+  saveWorkspacePreferences as saveWorkspacePreferencesCommand,
   saveTaskOverviewConfig as saveTaskOverviewConfigCommand,
   saveWorkspaceSessionConfig,
 } from "../api.js";
@@ -38,6 +39,8 @@ import type {
   TaskStateColors,
   TaskStatus,
   ThemeMode,
+  WorkspacePreferences,
+  WorkspaceState as WorkspaceStateDto,
 } from "../types.js";
 
 const DEFAULT_TASK_OVERVIEW_CONFIG: TaskOverviewConfig = {
@@ -128,6 +131,42 @@ const initialState: WorkspaceStoreState = {
   errorDetail: null,
 };
 
+function storeStateFromWorkspace(workspace: WorkspaceStateDto): WorkspaceStoreState {
+  const themeMode = workspace.themeMode ?? DEFAULT_THEME_MODE;
+  return {
+    root: workspace.root,
+    journalFolder: workspace.journalFolder ?? DEFAULT_JOURNAL_FOLDER,
+    mediaFolder: workspace.mediaFolder ?? "media",
+    journalEditorContinuousScrolling: workspace.journalEditorContinuousScrolling ?? true,
+    journalRightPaneContinuousScrolling: workspace.journalRightPaneContinuousScrolling ?? true,
+    pages: workspace.pages,
+    folders: workspace.folders ?? [],
+    diagnostics: workspace.diagnostics,
+    taskStates: workspace.taskStates.length > 0 ? workspace.taskStates : DEFAULT_TASK_STATES,
+    taskStateColors:
+      Object.keys(workspace.taskStateColors).length > 0
+        ? workspace.taskStateColors
+        : DEFAULT_TASK_STATE_COLORS,
+    taskDoneSoundEnabled: workspace.taskDoneSoundEnabled ?? true,
+    defaultPageSort: workspace.defaultPageSort ?? DEFAULT_PAGE_SORT,
+    folderPageSort: workspace.folderPageSort ?? {},
+    manualPageOrder: workspace.manualPageOrder ?? {},
+    folderColors: workspace.folderColors ?? {},
+    expandedFolders: workspace.expandedFolders,
+    pageFavorites: workspace.pageFavorites ?? [],
+    recentPages: workspace.recentPages ?? [],
+    navigationLayout: workspace.navigationLayout ?? DEFAULT_NAVIGATION_LAYOUT,
+    taskOverview: workspace.taskOverview ?? DEFAULT_TASK_OVERVIEW_CONFIG,
+    backlinkView: workspace.backlinkView ?? DEFAULT_BACKLINK_VIEW_CONFIG,
+    themeMode,
+    lastEditorPath: workspace.lastEditorPath ?? null,
+    lastRightPanePath: workspace.lastRightPanePath ?? null,
+    loading: false,
+    error: null,
+    errorDetail: null,
+  };
+}
+
 function createWorkspaceStore() {
   const { subscribe, set, update } = writable<WorkspaceStoreState>(initialState);
 
@@ -152,42 +191,8 @@ function createWorkspaceStore() {
 
       try {
         const workspace = await openWorkspaceCommand(trimmed);
-        const themeMode = workspace.themeMode ?? DEFAULT_THEME_MODE;
-        themeStore.set(themeMode);
-        set({
-          root: workspace.root,
-          journalFolder: workspace.journalFolder ?? DEFAULT_JOURNAL_FOLDER,
-          mediaFolder: workspace.mediaFolder ?? "media",
-          journalEditorContinuousScrolling:
-            workspace.journalEditorContinuousScrolling ?? true,
-          journalRightPaneContinuousScrolling:
-            workspace.journalRightPaneContinuousScrolling ?? true,
-          pages: workspace.pages,
-          folders: workspace.folders ?? [],
-          diagnostics: workspace.diagnostics,
-          taskStates: workspace.taskStates.length > 0 ? workspace.taskStates : DEFAULT_TASK_STATES,
-          taskStateColors:
-            Object.keys(workspace.taskStateColors).length > 0
-              ? workspace.taskStateColors
-              : DEFAULT_TASK_STATE_COLORS,
-          taskDoneSoundEnabled: workspace.taskDoneSoundEnabled ?? true,
-          defaultPageSort: workspace.defaultPageSort ?? DEFAULT_PAGE_SORT,
-          folderPageSort: workspace.folderPageSort ?? {},
-          manualPageOrder: workspace.manualPageOrder ?? {},
-          folderColors: workspace.folderColors ?? {},
-          expandedFolders: workspace.expandedFolders,
-          pageFavorites: workspace.pageFavorites ?? [],
-          recentPages: workspace.recentPages ?? [],
-          navigationLayout: workspace.navigationLayout ?? DEFAULT_NAVIGATION_LAYOUT,
-          taskOverview: workspace.taskOverview ?? DEFAULT_TASK_OVERVIEW_CONFIG,
-          backlinkView: workspace.backlinkView ?? DEFAULT_BACKLINK_VIEW_CONFIG,
-          themeMode,
-          lastEditorPath: workspace.lastEditorPath ?? null,
-          lastRightPanePath: workspace.lastRightPanePath ?? null,
-          loading: false,
-          error: null,
-          errorDetail: null,
-        });
+        themeStore.set(workspace.themeMode ?? DEFAULT_THEME_MODE);
+        set(storeStateFromWorkspace(workspace));
       } catch (error) {
         update((state) => ({
           ...state,
@@ -482,6 +487,20 @@ function createWorkspaceStore() {
             ...configSaveError("theme setting", error),
           };
         });
+        return null;
+      }
+    },
+    async savePreferences(preferences: WorkspacePreferences) {
+      try {
+        const workspace = await saveWorkspacePreferencesCommand(preferences);
+        themeStore.set(workspace.themeMode ?? DEFAULT_THEME_MODE);
+        set(storeStateFromWorkspace(workspace));
+        return workspace;
+      } catch (error) {
+        update((state) => ({
+          ...state,
+          ...configSaveError("workspace preferences", error),
+        }));
         return null;
       }
     },

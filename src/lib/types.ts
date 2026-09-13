@@ -69,6 +69,18 @@ export type PageSortMode = "name-desc" | "name-asc" | "modified-desc" | "modifie
 export type ManualPageOrder = Record<string, string[]>;
 export type ThemeMode = "light" | "dark";
 
+export type WorkspacePreferences = {
+  journalFolder: string;
+  mediaFolder: string;
+  journalEditorContinuousScrolling: boolean;
+  journalRightPaneContinuousScrolling: boolean;
+  taskStates: TaskStatus[];
+  taskStateColors: TaskStateColors;
+  taskDoneSoundEnabled: boolean;
+  defaultPageSort: PageSortMode;
+  themeMode: ThemeMode;
+};
+
 export type TaskOverviewConfig = {
   statusFilter: string;
   priorityFilter: string;

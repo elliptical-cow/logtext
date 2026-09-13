@@ -32,6 +32,7 @@ const MENU_SAVE: &str = "file.save";
 const MENU_CLEAN_MEDIA: &str = "file.clean_media";
 const MENU_UNDO: &str = "edit.undo";
 const MENU_REDO: &str = "edit.redo";
+const MENU_PREFERENCES: &str = "app.preferences";
 const MENU_TOGGLE_DARK_MODE: &str = "view.toggle_dark_mode";
 const MENU_TOGGLE_TASK_OVERVIEW: &str = "view.toggle_task_overview";
 const MENU_TOGGLE_EDITOR_MODE: &str = "view.toggle_editor_mode";
@@ -138,6 +139,14 @@ fn update_editor_mode_menu_label(app: AppHandle, is_live_preview: bool) -> Resul
     )
 }
 
+#[tauri::command]
+fn update_preferences_menu_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let menu = app
+        .menu()
+        .ok_or_else(|| "Application menu is not available".to_string())?;
+    set_menu_item_enabled(&menu, MENU_PREFERENCES, enabled)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -156,6 +165,7 @@ pub fn run() {
                 MENU_CLEAN_MEDIA => Some("menu-clean-media"),
                 MENU_UNDO => Some("menu-undo"),
                 MENU_REDO => Some("menu-redo"),
+                MENU_PREFERENCES => Some("menu-preferences"),
                 MENU_TOGGLE_DARK_MODE => Some("menu-toggle-dark-mode"),
                 MENU_TOGGLE_TASK_OVERVIEW => Some("menu-toggle-task-overview"),
                 MENU_TOGGLE_EDITOR_MODE => Some("menu-toggle-editor-mode"),
@@ -184,6 +194,7 @@ pub fn run() {
             update_theme_menu_label,
             update_task_overview_menu_label,
             update_editor_mode_menu_label,
+            update_preferences_menu_enabled,
             commands::get_last_workspace,
             commands::open_workspace,
             commands::close_workspace,
@@ -197,6 +208,7 @@ pub fn run() {
             config_commands::save_task_overview_config,
             config_commands::save_backlink_view_config,
             config_commands::save_theme_config,
+            config_commands::save_workspace_preferences,
             commands::list_pages,
             commands::create_page,
             commands::create_folder,
@@ -226,9 +238,35 @@ fn build_app_menu(handle: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let menu = Menu::default(handle)?;
     ensure_file_menu(handle, &menu)?;
     ensure_edit_menu(handle, &menu)?;
+    ensure_preferences_menu(handle, &menu)?;
     ensure_view_menu(handle, &menu)?;
     ensure_help_menu(handle, &menu)?;
     Ok(menu)
+}
+
+fn ensure_preferences_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri::Result<()> {
+    let preferences = MenuItemBuilder::with_id(MENU_PREFERENCES, "Preferences...")
+        .accelerator("CmdOrCtrl+,")
+        .enabled(false)
+        .build(handle)?;
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(app_menu) = find_submenu(menu, &handle.package_info().name)? {
+            let separator = PredefinedMenuItem::separator(handle)?;
+            app_menu.insert_items(&[&separator, &preferences], 1)?;
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Some(edit_menu) = find_submenu(menu, "Edit")? {
+            let separator = PredefinedMenuItem::separator(handle)?;
+            edit_menu.append_items(&[&separator, &preferences])?;
+        }
+    }
+
+    Ok(())
 }
 
 fn ensure_file_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri::Result<()> {
