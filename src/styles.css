@@ -2665,7 +2665,12 @@ textarea {
   display: none;
 }
 
-.right-pane .markdown-view li.task-list-item > .task-list-checkbox:first-child {
+.right-pane .markdown-view li.task-list-item > .task-list-checkbox:first-child,
+.right-pane
+  .markdown-view
+  li.task-list-item
+  > p:first-child
+  > .task-list-checkbox:first-child {
   position: absolute;
   top: 0.775em;
   left: var(--markdown-list-marker-axis);

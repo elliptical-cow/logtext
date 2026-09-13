@@ -52,6 +52,6 @@ test("places task checkboxes on the same marker axis without an extra bullet", (
   );
   assert.match(
     styles,
-    /\.right-pane \.markdown-view li\.task-list-item > \.task-list-checkbox:first-child\s*\{[^}]*left: var\(--markdown-list-marker-axis\);/s,
+    /\.right-pane \.markdown-view li\.task-list-item > \.task-list-checkbox:first-child,[\s\S]*?li\.task-list-item[\s\S]*?> p:first-child[\s\S]*?> \.task-list-checkbox:first-child\s*\{[^}]*left: var\(--markdown-list-marker-axis\);/,
   );
 });
