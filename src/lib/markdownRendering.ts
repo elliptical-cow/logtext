@@ -5,7 +5,7 @@ export function renderCheckboxItems(html: string, markdown = "", sourceLineNumbe
   let checkboxIndex = 0;
 
   return html.replaceAll(
-    /<li([^>]*)>(\s*<p>)?\[([ xX])\]\s*/g,
+    /<li([^>]*)>(\s*<p(?:\s[^>]*)?>)?\[([ xX])\]\s*/g,
     (_match, attributes: string, paragraphOpen: string | undefined, marker: string) => {
       const checked = marker.toLowerCase() === "x";
       const localLine = lines[checkboxIndex++]?.lineNumber;

@@ -48,7 +48,8 @@ Changes since `v0.7.1`.
 - Kept task markers, wiki links, and LaTeX inside Markdown code or formula
   contexts from being interpreted as interactive Logtext content.
 - Fixed checkbox source-line mapping in blockquotes and made checkboxes in loose
-  list items interactive.
+  list items interactive even when their rendered paragraph carries source-line
+  metadata.
 - Fixed editor live-preview handling for mixed or different-length code fences,
   unclosed block formulas, escaped emphasis, inline-code emphasis, intraword
   underscores, and `__strong__` syntax.
