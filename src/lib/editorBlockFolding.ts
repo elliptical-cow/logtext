@@ -8,10 +8,8 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import {
-  blockRangeForLines,
-  collapsibleBlockRangeForLines,
-  collapsibleBlockRangesBelowLevel,
-  listBlockLevelForLine,
+  listBlockMetadataForLines,
+  type ListBlockMetadata,
 } from "./editorBlockCommands.js";
 
 type FoldedRange = {
@@ -24,6 +22,19 @@ export const collapseBlockEffect = StateEffect.define<number>();
 export const expandBlockEffect = StateEffect.define<number>();
 export const collapseBelowLevelEffect = StateEffect.define<number>();
 export const expandAllBlockFoldsEffect = StateEffect.define<void>();
+
+const listBlockMetadataField = StateField.define<ListBlockMetadata>({
+  create(state) {
+    return listBlockMetadataForLines(documentLines(state));
+  },
+  update(metadata, transaction) {
+    // Viewport and selection transactions are common while navigating. They can
+    // safely share this immutable snapshot until the Markdown source changes.
+    return transaction.docChanged
+      ? listBlockMetadataForLines(documentLines(transaction.state))
+      : metadata;
+  },
+});
 
 const foldedBlockRangesField = StateField.define<FoldedRange[]>({
   create() {
@@ -93,6 +104,7 @@ const expandedMarker = new BlockFoldMarker(false);
 const collapsedMarker = new BlockFoldMarker(true);
 
 export const blockFoldingExtension = [
+  listBlockMetadataField,
   foldedBlockRangesField,
   foldedBlockDecorationsField,
   gutter({
@@ -140,7 +152,11 @@ export function collapsibleBlockAtLine(state: EditorState, lineNumber: number) {
 }
 
 export function foldableBlockLevelAtLine(state: EditorState, lineNumber: number) {
-  return listBlockLevelForLine(documentLines(state), lineNumber);
+  return blockFoldingMetadata(state).levelByLine.get(lineNumber) ?? null;
+}
+
+export function blockFoldingMetadata(state: EditorState) {
+  return state.field(listBlockMetadataField);
 }
 
 export function ensureLineVisible(view: EditorView, lineNumber: number) {
@@ -210,9 +226,11 @@ function expandFoldedBlock(
 }
 
 function collapseFoldedBlocksBelowLevel(state: EditorState, level: number) {
-  const lines = documentLines(state);
   return normalizeFoldedRanges(
-    collapsibleBlockRangesBelowLevel(lines, level).flatMap((range) => {
+    blockFoldingMetadata(state).collapsibleRanges.flatMap((range) => {
+      if (range.level !== level) {
+        return [];
+      }
       const foldedRange = foldedRangeFromBlockRange(state, range.startLine, range.endLine);
       return foldedRange ? [foldedRange] : [];
     }),
@@ -231,8 +249,7 @@ function foldedRangeForBlock(state: EditorState, lineNumber: number) {
 }
 
 function foldedRangeForBlockLine(state: EditorState, lineNumber: number) {
-  const lines = documentLines(state);
-  const range = collapsibleBlockRangeForLines(lines, lineNumber);
+  const range = blockFoldingMetadata(state).collapsibleRangeByStartLine.get(lineNumber);
   return range ? foldedRangeFromBlockRange(state, range.startLine, range.endLine) : null;
 }
 
@@ -254,7 +271,7 @@ function foldedRangeContainingLine(state: EditorState, lineNumber: number) {
 }
 
 function collapsibleBlockRangeForStateLine(state: EditorState, lineNumber: number) {
-  return collapsibleBlockRangeForLines(documentLines(state), lineNumber);
+  return blockFoldingMetadata(state).collapsibleRangeByStartLine.get(lineNumber) ?? null;
 }
 
 function foldedRangeFromBlockRange(

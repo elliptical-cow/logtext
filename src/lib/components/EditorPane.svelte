@@ -10,7 +10,11 @@
   import { appUndoStore } from "../stores/appUndo";
   import { linkOperations, type LinkTargetPane } from "../stores/linkOperations";
   import { workspaceStore } from "../stores/workspace";
-  import { createJournalScrollNavigation } from "../journalScrollNavigation";
+  import {
+    createJournalScrollNavigation,
+    type JournalScrollContext,
+  } from "../journalScrollNavigation";
+  import { orderedJournalPaths, shouldUseContinuousJournalView } from "../journals";
   import type { BacklinkView, PageView } from "../types";
 
   let editor: { saveCurrentDocument: () => void } | null = null;
@@ -21,6 +25,7 @@
   let pageViewRequestSequence = 0;
   let missingLinkPath: string | null = null;
   let editorScroll: HTMLDivElement;
+  let journalScrollContext: JournalScrollContext;
   const journalScrollNavigation = createJournalScrollNavigation({
     openPage: (path) => editorSessionStore.open(path),
     afterOpen: tick,
@@ -35,6 +40,25 @@
     pageViewRequestKey = nextPageViewRequestKey;
     void loadEditorPageView($editorSessionStore.path);
   }
+
+  $: journalSortDescending = (
+    $workspaceStore.folderPageSort[$workspaceStore.journalFolder] ??
+    $workspaceStore.defaultPageSort
+  ).endsWith("-desc");
+  $: editorJournalPaths = orderedJournalPaths(
+    $workspaceStore.pages.map((page) => page.path),
+    $workspaceStore.journalFolder,
+    journalSortDescending ? "desc" : "asc",
+  );
+  $: journalScrollContext = {
+    enabled: shouldUseContinuousJournalView(
+      $editorSessionStore.path,
+      $workspaceStore.journalFolder,
+      $workspaceStore.journalEditorContinuousScrolling,
+    ),
+    currentPath: $editorSessionStore.path,
+    journalPaths: editorJournalPaths,
+  };
 
   async function loadEditorPageView(path: string | null) {
     const requestId = ++pageViewRequestSequence;
@@ -126,33 +150,14 @@
   }
 
   function handleJournalWheel(event: WheelEvent) {
-    void journalScrollNavigation.handleWheel(event, editorScroll, {
-      enabled: $workspaceStore.journalEditorContinuousScrolling,
-      currentPath: $editorSessionStore.path,
-      pagePaths: $workspaceStore.pages.map((page) => page.path),
-      journalFolder: $workspaceStore.journalFolder,
-      sortDescending: journalSortDescending(),
-    });
+    void journalScrollNavigation.handleWheel(event, editorScroll, journalScrollContext);
   }
 
   function handleJournalPageKey(event: KeyboardEvent) {
     if (!(event.target instanceof Node) || !editorScroll?.contains(event.target)) {
       return;
     }
-    void journalScrollNavigation.handlePageKey(event, editorScroll, {
-      enabled: $workspaceStore.journalEditorContinuousScrolling,
-      currentPath: $editorSessionStore.path,
-      pagePaths: $workspaceStore.pages.map((page) => page.path),
-      journalFolder: $workspaceStore.journalFolder,
-      sortDescending: journalSortDescending(),
-    });
-  }
-
-  function journalSortDescending() {
-    return (
-      $workspaceStore.folderPageSort[$workspaceStore.journalFolder] ??
-      $workspaceStore.defaultPageSort
-    ).endsWith("-desc");
+    void journalScrollNavigation.handlePageKey(event, editorScroll, journalScrollContext);
   }
 
   onDestroy(() => {

@@ -527,6 +527,19 @@ forms without relying only on rendered order. The loose-list transformation
 preserves and accepts source-line attributes on Markdown-it's intermediate
 paragraph element.
 
+Block-folding metadata is computed once per CodeMirror document version in a
+state field. Gutter rendering, context-menu checks, and collapse commands use
+line-number maps from that snapshot instead of rebuilding the document line
+array and rescanning the hierarchy for every visible gutter marker. Selection,
+viewport, and scroll-only updates reuse the same metadata object; document
+changes rebuild it in one pass.
+
+Editor journal navigation receives an already filtered and ordered journal-path
+list from `EditorPane`. The list changes reactively with workspace pages,
+journal-folder configuration, or sort order, but is not rebuilt for individual
+wheel or Page Up/Page Down events. Disabled navigation and non-journal pages are
+rejected before scroll geometry is read.
+
 Right-pane `mermaid` fences are emitted as escaped source
 placeholders and rendered asynchronously as SVG only when an IntersectionObserver
 reports that they are near the viewport. The official Mermaid dependency is
