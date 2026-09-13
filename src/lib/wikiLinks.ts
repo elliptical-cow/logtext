@@ -24,6 +24,13 @@ export type WikiLinkMatch = {
   syntax: WikiLinkSyntax;
 };
 
+export type MarkdownInlineLinkMatch = {
+  from: number;
+  to: number;
+  labelFrom: number;
+  labelTo: number;
+};
+
 const compactSegmentPattern = String.raw`[\p{L}\p{N}_](?:[\p{L}\p{N}_-]|\.(?=[\p{L}\p{N}_]))*`;
 const compactTargetPattern = `${compactSegmentPattern}(?:/${compactSegmentPattern})*`;
 const wikiLinkPattern = new RegExp(
@@ -123,15 +130,19 @@ export function wikiLinksInText(source: string): WikiLinkMatch[] {
     const syntax: WikiLinkSyntax = compactTarget ? "compact" : "square";
 
     if (
+      isEscapedMarkdownPosition(source, from) ||
       isMarkdownCodePosition(source, from) ||
-      (syntax === "compact" && isMarkdownLinkLabelPosition(source, from)) ||
+      isMarkdownLatexPosition(source, from) ||
+      isMarkdownLinkPosition(source, from) ||
       (syntax === "compact" && !isCompactWikiLinkStart(source, from))
     ) {
       continue;
     }
 
     const inner = compactTarget ?? match[1];
-    const [rawTarget, rawAlias] = inner.split("|", 2);
+    const aliasSeparator = inner.indexOf("|");
+    const rawTarget = aliasSeparator === -1 ? inner : inner.slice(0, aliasSeparator);
+    const rawAlias = aliasSeparator === -1 ? undefined : inner.slice(aliasSeparator + 1);
     const target = rawTarget.trim();
     if (!isValidWikiTarget(target)) {
       continue;
@@ -145,6 +156,44 @@ export function wikiLinksInText(source: string): WikiLinkMatch[] {
       alias: syntax === "compact" ? null : rawAlias?.trim() || null,
       syntax,
     });
+  }
+
+  return links;
+}
+
+export function markdownInlineLinksInText(source: string): MarkdownInlineLinkMatch[] {
+  const links: MarkdownInlineLinkMatch[] = [];
+
+  for (let open = 0; open < source.length; open += 1) {
+    if (
+      source[open] !== "[" ||
+      source[open + 1] === "[" ||
+      (source[open - 1] === "!" && !isEscapedMarkdownPosition(source, open - 1)) ||
+      isEscapedMarkdownPosition(source, open) ||
+      isMarkdownCodePosition(source, open) ||
+      isMarkdownLatexPosition(source, open)
+    ) {
+      continue;
+    }
+
+    const labelClose = matchingMarkdownLabelClose(source, open);
+    const targetOpen = labelClose + 1;
+    if (labelClose === -1 || source[targetOpen] !== "(") {
+      continue;
+    }
+
+    const targetClose = closingMarkdownLinkTarget(source, targetOpen);
+    if (targetClose >= source.length || source[targetClose] !== ")") {
+      continue;
+    }
+
+    links.push({
+      from: open,
+      to: targetClose + 1,
+      labelFrom: open + 1,
+      labelTo: labelClose,
+    });
+    open = targetClose;
   }
 
   return links;
@@ -268,23 +317,157 @@ function isMarkdownCodePosition(source: string, position: number) {
   return Boolean(fence || markdownFenceMarker(linePrefix) || hasUnclosedInlineCode(linePrefix));
 }
 
-function isMarkdownLinkLabelPosition(source: string, position: number) {
+function isMarkdownLinkPosition(source: string, position: number) {
   const lineStart = source.lastIndexOf("\n", position - 1) + 1;
   const lineEnd = source.indexOf("\n", position);
   const line = source.slice(lineStart, lineEnd === -1 ? source.length : lineEnd);
   const relativePosition = position - lineStart;
-  const openBracket = line.lastIndexOf("[", relativePosition);
-  if (openBracket === -1) {
-    return false;
+
+  if (
+    markdownInlineLinksInText(line).some(
+      (link) => relativePosition > link.from && relativePosition < link.to,
+    )
+  ) {
+    return true;
   }
 
-  const closeBracket = line.indexOf("]", relativePosition);
-  if (closeBracket === -1) {
-    return false;
+  for (let index = 0; index < relativePosition; index += 1) {
+    if (line[index] !== "]" || (line[index + 1] !== "(" && line[index + 1] !== "[")) {
+      continue;
+    }
+
+    const close = closingMarkdownLinkTarget(line, index + 1);
+    if (relativePosition > index + 1 && relativePosition < close) {
+      return true;
+    }
   }
 
-  const afterLabel = line.slice(closeBracket + 1);
-  return afterLabel.startsWith("(") || afterLabel.startsWith("[");
+  for (let open = 0; open < relativePosition; open += 1) {
+    if (line[open] !== "[" || line[open + 1] === "[" || isEscapedMarkdownPosition(line, open)) {
+      continue;
+    }
+
+    const close = matchingMarkdownLabelClose(line, open);
+    if (
+      close > relativePosition &&
+      (line[close + 1] === "(" || line[close + 1] === "[")
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function matchingMarkdownLabelClose(line: string, open: number) {
+  let depth = 1;
+
+  for (let index = open + 1; index < line.length; index += 1) {
+    if (line[index] === "\\") {
+      index += 1;
+      continue;
+    }
+    if (line.slice(index, index + 2) === "[[") {
+      const wikiClose = line.indexOf("]]", index + 2);
+      if (wikiClose === -1) {
+        return -1;
+      }
+      index = wikiClose + 1;
+      continue;
+    }
+    if (line[index] === "[") {
+      depth += 1;
+    } else if (line[index] === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+
+  return -1;
+}
+
+function closingMarkdownLinkTarget(line: string, delimiter: number) {
+  const open = line[delimiter];
+  const close = open === "(" ? ")" : "]";
+  let depth = 1;
+
+  for (let index = delimiter + 1; index < line.length; index += 1) {
+    if (line[index] === "\\") {
+      index += 1;
+      continue;
+    }
+    if (line[index] === open) {
+      depth += 1;
+    } else if (line[index] === close) {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+
+  return line.length;
+}
+
+function isEscapedMarkdownPosition(source: string, position: number) {
+  let backslashes = 0;
+  for (let index = position - 1; index >= 0 && source[index] === "\\"; index -= 1) {
+    backslashes += 1;
+  }
+  return backslashes % 2 === 1;
+}
+
+function isMarkdownLatexPosition(source: string, position: number) {
+  let blockOpen: number | null = null;
+  for (let index = 0; index < source.length - 1; index += 1) {
+    if (
+      source.slice(index, index + 2) !== "$$" ||
+      isEscapedMarkdownPosition(source, index) ||
+      isMarkdownCodePosition(source, index)
+    ) {
+      continue;
+    }
+
+    if (blockOpen === null) {
+      blockOpen = index;
+    } else {
+      if (position > blockOpen && position < index + 2) {
+        return true;
+      }
+      blockOpen = null;
+    }
+    index += 1;
+  }
+
+  const lineStart = source.lastIndexOf("\n", position - 1) + 1;
+  const lineEnd = source.indexOf("\n", position);
+  const line = source.slice(lineStart, lineEnd === -1 ? source.length : lineEnd);
+  const relativePosition = position - lineStart;
+  let inlineOpen: number | null = null;
+
+  for (let index = 0; index < line.length; index += 1) {
+    if (
+      line[index] !== "$" ||
+      line[index - 1] === "$" ||
+      line[index + 1] === "$" ||
+      isEscapedMarkdownPosition(line, index)
+    ) {
+      continue;
+    }
+
+    if (inlineOpen === null) {
+      inlineOpen = index;
+    } else {
+      if (relativePosition > inlineOpen && relativePosition < index) {
+        return true;
+      }
+      inlineOpen = null;
+    }
+  }
+
+  return false;
 }
 
 function markdownFenceMarker(line: string) {

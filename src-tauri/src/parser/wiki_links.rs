@@ -112,9 +112,10 @@ fn next_wiki_link_range(text: &str, search_start: usize) -> Option<WikiLinkRange
             (None, None) => return None,
         };
 
-        if !is_markdown_code_position(text, candidate.open)
-            && (candidate.syntax != WikiLinkSyntax::Compact
-                || !is_markdown_link_label_position(text, candidate.open))
+        if !is_escaped_markdown_position(text, candidate.open)
+            && !is_markdown_code_position(text, candidate.open)
+            && !is_markdown_latex_position(text, candidate.open)
+            && !is_markdown_link_position(text, candidate.open)
         {
             return Some(candidate);
         }
@@ -310,23 +311,169 @@ pub(crate) fn is_markdown_code_position(text: &str, position: usize) -> bool {
     has_unclosed_inline_code(&text[line_start..position])
 }
 
-fn is_markdown_link_label_position(text: &str, position: usize) -> bool {
+fn is_markdown_link_position(text: &str, position: usize) -> bool {
     let line_start = text[..position].rfind('\n').map_or(0, |index| index + 1);
     let line_end = text[position..]
         .find('\n')
         .map_or(text.len(), |index| position + index);
-    let line = &text[line_start..line_end];
+    let line = text[line_start..line_end].as_bytes();
     let relative_position = position - line_start;
-    let Some(open_bracket) = line[..relative_position].rfind('[') else {
-        return false;
-    };
-    let Some(close_offset) = line[relative_position..].find(']') else {
-        return false;
-    };
-    let close_bracket = relative_position + close_offset;
 
-    open_bracket < relative_position
-        && matches!(line[close_bracket + 1..].chars().next(), Some('(' | '['))
+    for index in 0..relative_position {
+        if line.get(index) != Some(&b']') || !matches!(line.get(index + 1), Some(b'(' | b'[')) {
+            continue;
+        }
+
+        let close = closing_markdown_link_target(line, index + 1);
+        if relative_position > index + 1 && relative_position < close {
+            return true;
+        }
+    }
+
+    for open in 0..relative_position {
+        if line.get(open) != Some(&b'[')
+            || line.get(open + 1) == Some(&b'[')
+            || is_escaped_bytes_position(line, open)
+        {
+            continue;
+        }
+
+        let Some(close) = matching_markdown_label_close(line, open) else {
+            continue;
+        };
+        if close > relative_position && matches!(line.get(close + 1), Some(b'(' | b'[')) {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn matching_markdown_label_close(line: &[u8], open: usize) -> Option<usize> {
+    let mut depth = 1;
+    let mut index = open + 1;
+
+    while index < line.len() {
+        if line[index] == b'\\' {
+            index += 2;
+            continue;
+        }
+        if line.get(index..index + 2) == Some(b"[[") {
+            let mut wiki_close = index + 2;
+            while line.get(wiki_close..wiki_close + 2) != Some(b"]]") {
+                wiki_close += 1;
+                if wiki_close + 1 >= line.len() {
+                    return None;
+                }
+            }
+            index = wiki_close + 2;
+            continue;
+        }
+        if line[index] == b'[' {
+            depth += 1;
+        } else if line[index] == b']' {
+            depth -= 1;
+            if depth == 0 {
+                return Some(index);
+            }
+        }
+        index += 1;
+    }
+
+    None
+}
+
+fn closing_markdown_link_target(line: &[u8], delimiter: usize) -> usize {
+    let open = line[delimiter];
+    let close = if open == b'(' { b')' } else { b']' };
+    let mut depth = 1;
+    let mut index = delimiter + 1;
+
+    while index < line.len() {
+        if line[index] == b'\\' {
+            index += 2;
+            continue;
+        }
+        if line[index] == open {
+            depth += 1;
+        } else if line[index] == close {
+            depth -= 1;
+            if depth == 0 {
+                return index;
+            }
+        }
+        index += 1;
+    }
+
+    line.len()
+}
+
+fn is_escaped_markdown_position(text: &str, position: usize) -> bool {
+    is_escaped_bytes_position(text.as_bytes(), position)
+}
+
+fn is_escaped_bytes_position(text: &[u8], position: usize) -> bool {
+    let mut backslashes = 0;
+    let mut index = position;
+    while index > 0 && text[index - 1] == b'\\' {
+        backslashes += 1;
+        index -= 1;
+    }
+    backslashes % 2 == 1
+}
+
+fn is_markdown_latex_position(text: &str, position: usize) -> bool {
+    let bytes = text.as_bytes();
+    let mut block_open = None;
+    let mut index = 0;
+    while index + 1 < bytes.len() {
+        if &bytes[index..index + 2] != b"$$"
+            || is_escaped_bytes_position(bytes, index)
+            || is_markdown_code_position(text, index)
+        {
+            index += 1;
+            continue;
+        }
+
+        if let Some(open) = block_open {
+            if position > open && position < index + 2 {
+                return true;
+            }
+            block_open = None;
+        } else {
+            block_open = Some(index);
+        }
+        index += 2;
+    }
+
+    let line_start = text[..position].rfind('\n').map_or(0, |offset| offset + 1);
+    let line_end = text[position..]
+        .find('\n')
+        .map_or(text.len(), |offset| position + offset);
+    let line = &bytes[line_start..line_end];
+    let relative_position = position - line_start;
+    let mut inline_open = None;
+
+    for index in 0..line.len() {
+        if line[index] != b'$'
+            || line.get(index.wrapping_sub(1)) == Some(&b'$')
+            || line.get(index + 1) == Some(&b'$')
+            || is_escaped_bytes_position(line, index)
+        {
+            continue;
+        }
+
+        if let Some(open) = inline_open {
+            if relative_position > open && relative_position < index {
+                return true;
+            }
+            inline_open = None;
+        } else {
+            inline_open = Some(index);
+        }
+    }
+
+    false
 }
 
 pub(crate) fn markdown_fence_marker(line: &str) -> Option<(char, usize)> {

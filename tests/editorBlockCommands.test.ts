@@ -162,7 +162,8 @@ test("uses Markdown hard breaks for shift-enter continuation lines", () => {
   assert.equal(blockLineBreakText(["Plain paragraph"], 1), null);
 });
 
-test("toggles task status for list blocks", () => {
+test("toggles task status for task lines and list blocks", () => {
+  assert.equal(nextTaskLineText("TODO Write notes"), "INPROGRESS Write notes");
   assert.equal(nextTaskLineText("- TODO Write notes"), "- INPROGRESS Write notes");
   assert.equal(nextTaskLineText("- INPROGRESS Write notes"), "- WAITING Write notes");
   assert.equal(nextTaskLineText("- WAITING Write notes"), "- DONE Write notes");

@@ -2776,6 +2776,21 @@ textarea {
   background: var(--code-bg);
 }
 
+.markdown-view table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.markdown-view th,
+.markdown-view td {
+  padding: 0.35em 0.55em;
+  border: 1px solid var(--border-control);
+  text-align: left;
+}
+
 .markdown-view a {
   color: var(--link-color);
   cursor: pointer;

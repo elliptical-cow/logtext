@@ -182,7 +182,8 @@ Rules:
 - Selecting a page with spaces from `#` autocomplete replaces the input with a
   `[[target]]` link.
 - Markdown headings, task priorities such as `[#A]`, URL fragments, escaped
-  hashes, and code are not interpreted as compact links.
+  links, standard Markdown link labels and targets, LaTeX, and code are not
+  interpreted as page links.
 - `((...))` is ordinary text and is not an alias for `[[...]]`.
 
 Typing `[[` or a compact `#` target opens page suggestions. Suggestions show
@@ -234,6 +235,23 @@ Use `View > Plain markdown edit` or `Cmd/Ctrl+Shift+L` to switch between live
 preview and plain Markdown. In live preview, Markdown markers are reduced on
 inactive lines and restored when editing requires their source.
 
+Inline live preview supports italic text (`*text*` or `_text_`), bold text
+(`**text**` or `__text__`), combined bold and italic text (`***text***`),
+strikethrough (`~~text~~`), and inline code (`` `code` ``). Inline code keeps
+Markdown-looking content literal and supports longer matching backtick markers
+when the code itself contains a backtick. Inline Markdown links such as
+`[Website](https://example.com)` show their linked label while their source line
+is inactive. Wiki-like text inside the label or target remains part of the
+standard Markdown link and does not become a Logtext page link.
+
+Backslash escapes follow normal Markdown rules and escape one immediately
+following punctuation character. For example, use
+`\*\*literal asterisks\*\*` to display `**literal asterisks**` without bold
+formatting. Fenced and four-space-indented code remains literal and does not
+render links, tasks, checkboxes, formatting, or formulas. Unordered list items
+may start with `-`, `*`, or `+`; live preview displays the two alternative
+markers like `-` without changing the stored Markdown.
+
 ### Undo and Redo
 
 Direct editor changes use CodeMirror undo. Task and checkbox changes made in
@@ -245,14 +263,18 @@ the next application action when available.
 
 ## Tasks
 
-Tasks are Markdown list items beginning with a configured state:
+Tasks are Markdown lines or list items beginning with a configured state:
 
 ```md
+TODO Capture a task without a list marker
 - TODO Prepare project review
 - INPROGRESS [#A] Write decision note
 - WAITING[#B] Feedback from stakeholder
 - DONE Close release checklist
 ```
+
+The state must begin the line or the text of a list item. A keyword later in an
+ordinary sentence is not interpreted as a task.
 
 Default states:
 
@@ -302,6 +324,8 @@ panes:
 ```
 
 Clicking a rendered checkbox updates the source Markdown file.
+Checkboxes also remain interactive in blockquotes and in loose list items that
+contain additional paragraphs.
 
 ## Images and Media
 
@@ -371,6 +395,8 @@ $$
 
 Invalid formulas remain visible as source text without preventing the rest of
 the page from rendering.
+An unfinished `$$` block remains editable source and does not consume the rest
+of the document as a preview formula.
 
 In editor live preview, formulas are rendered on inactive lines. Selecting an
 inline formula restores its source line. Selecting any line in a block formula

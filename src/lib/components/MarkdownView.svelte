@@ -3,7 +3,7 @@
   import { writeText } from "@tauri-apps/plugin-clipboard-manager";
   import ContextMenuShell from "./ContextMenuShell.svelte";
   import ImageContextMenu from "./ImageContextMenu.svelte";
-  import { createMarkdownRenderer } from "../markdownRenderer";
+  import { createMarkdownRenderer, markdownCodeLineNumbers } from "../markdownRenderer";
   import { renderCheckboxItems } from "../markdownRendering";
   import {
     renderedListMarker,
@@ -25,9 +25,13 @@
   import {
     DEFAULT_TASK_STATES,
     priorityCookieMatch,
-    taskKeywordMatch,
   } from "../taskKeywords";
-  import { applyWikiLinkColorStyles, renderWikiLinks } from "../wikiLinks";
+  import {
+    markTaskKeywordsForRendering,
+    type TaskKeywordToken,
+    type TaskPriorityToken,
+  } from "../taskMarkdownRendering";
+  import { applyWikiLinkColorStyles } from "../wikiLinks";
   import type { LinkTargetPane } from "../stores/linkOperations";
   import type { FolderColors, PageSummary, TaskStateColors, ThemeMode } from "../types";
   import type { ImageContextMenuTarget } from "../imageClipboard";
@@ -97,15 +101,21 @@
     breaks: true,
     workspaceImages: true,
     mermaidCodeBlocks: enableMermaid,
+    logtextWikiLinks: true,
   });
   const markdownWithSourceLines = markdown as unknown as MarkdownItWithSourceLines;
 
-  $: taskRender = markTaskKeywordsForRendering(content, taskStates, sourceLineNumbers);
+  $: taskRender = markTaskKeywordsForRendering(
+    content,
+    taskStates,
+    sourceLineNumbers,
+    markdownCodeLineNumbers(markdown, content),
+  );
   $: rendered = renderTaskPriorityMarkers(
     renderTaskKeywordMarkers(
       renderCheckboxItems(
         applyWikiLinkColorStyles(
-          renderMarkdownWithSourceLines(renderWikiLinks(taskRender.markdown, pages)),
+          renderMarkdownWithSourceLines(taskRender.markdown),
           pages,
           folderColors,
         ),
@@ -281,7 +291,7 @@
   }
 
   function renderMarkdownWithSourceLines(markdownContent: string) {
-    return markdownWithSourceLines.render(markdownContent, { sourceLineNumbers, sourcePath });
+    return markdownWithSourceLines.render(markdownContent, { sourceLineNumbers, sourcePath, pages });
   }
 
   function renderTaskKeywordMarkers(html: string, tokens: TaskKeywordToken[]) {
@@ -308,59 +318,6 @@
     }
 
     return renderedHtml;
-  }
-
-  function renderTaskMarkers(
-    line: string,
-    index: number,
-    states: string[],
-    lineNumbers: number[],
-    taskTokens: TaskKeywordToken[],
-    priorityTokens: TaskPriorityToken[],
-  ) {
-    const taskMatch = taskKeywordMatch(line, 0, states);
-    if (!taskMatch) {
-      return line;
-    }
-
-    const replacements = [];
-    const localLine = index + 1;
-    const sourceLine = lineNumbers[index] ?? localLine;
-    const taskMarker = `LOGTEXT_TASK_${taskTokens.length}_TOKEN`;
-    taskTokens.push({
-      line: sourceLine,
-      localLine,
-      status: taskMatch.status,
-      marker: taskMarker,
-    });
-    replacements.push({ from: taskMatch.from, to: taskMatch.to, marker: taskMarker });
-
-    const priorityMatch = priorityCookieMatch(line, 0, states);
-    if (priorityMatch) {
-      const priorityMarker = `LOGTEXT_PRIORITY_${priorityTokens.length}_TOKEN`;
-      priorityTokens.push({
-        line: sourceLine,
-        localLine,
-        status: taskMatch.status,
-        priority: priorityMatch.priority,
-        marker: priorityMarker,
-      });
-      replacements.push({
-        from: priorityMatch.from,
-        to: priorityMatch.to,
-        marker: priorityMarker,
-      });
-    }
-
-    return replacements
-      .sort((left, right) => right.from - left.from)
-      .reduce(
-        (markedLine, replacement) =>
-          `${markedLine.slice(0, replacement.from)}${replacement.marker}${markedLine.slice(
-            replacement.to,
-          )}`,
-        line,
-      );
   }
 
   function handleClick(event: MouseEvent) {
@@ -661,38 +618,6 @@
       .forEach((element) => element.classList.remove("markdown-line-highlight"));
   }
 
-  function markTaskKeywordsForRendering(
-    markdownContent: string,
-    states: string[],
-    lineNumbers: number[],
-  ) {
-    const taskTokens: TaskKeywordToken[] = [];
-    const priorityTokens: TaskPriorityToken[] = [];
-    const markedMarkdown = markdownContent
-      .split("\n")
-      .map((line, index) =>
-        renderTaskMarkers(line, index, states, lineNumbers, taskTokens, priorityTokens),
-      )
-      .join("\n");
-
-    return {
-      markdown: markedMarkdown,
-      taskTokens,
-      priorityTokens,
-    };
-  }
-
-  type TaskKeywordToken = {
-    line: number;
-    localLine: number;
-    status: string;
-    marker: string;
-  };
-
-  type TaskPriorityToken = TaskKeywordToken & {
-    priority: string;
-  };
-
   type MarkdownToken = {
     type: string;
     info: string;
@@ -704,6 +629,7 @@
   type MarkdownRenderEnv = {
     sourceLineNumbers: number[];
     sourcePath: string;
+    pages: PageSummary[];
   };
 
   type MarkdownRenderer = {

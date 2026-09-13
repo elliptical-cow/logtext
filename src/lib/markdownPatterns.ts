@@ -50,8 +50,33 @@ export function parseListItemPrefix(lineText: string): ParsedListItemPrefix | nu
 }
 
 export function parseCheckboxListItem(lineText: string) {
-  const listItem = parseListItemPrefix(lineText);
+  const quotePrefix = /^(?: {0,3}>[ \t]?)+/.exec(lineText)?.[0] ?? "";
+  const parsedListItem = parseListItemPrefix(lineText.slice(quotePrefix.length));
+  const listItem = parsedListItem ? offsetListItemPrefix(parsedListItem, quotePrefix) : null;
   return listItem?.checkbox ? { listItem, checkbox: listItem.checkbox } : null;
+}
+
+function offsetListItemPrefix(prefix: ParsedListItemPrefix, leadingText: string) {
+  if (!leadingText) {
+    return prefix;
+  }
+
+  const offset = leadingText.length;
+  return {
+    ...prefix,
+    indentation: `${leadingText}${prefix.indentation}`,
+    markerFrom: prefix.markerFrom + offset,
+    markerTo: prefix.markerTo + offset,
+    listContentFrom: prefix.listContentFrom + offset,
+    checkbox: prefix.checkbox
+      ? {
+          ...prefix.checkbox,
+          from: prefix.checkbox.from + offset,
+          to: prefix.checkbox.to + offset,
+          contentFrom: prefix.checkbox.contentFrom + offset,
+        }
+      : null,
+  };
 }
 
 export function listItemTextFrom(prefix: ParsedListItemPrefix) {

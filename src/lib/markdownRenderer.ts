@@ -6,17 +6,26 @@ import {
 } from "./imageSizing.js";
 import { isWorkspaceImageTarget, workspaceImageUrl } from "./mediaPaths.js";
 import { sourceLineForLocalLine } from "./markdownSourceLines.js";
+import {
+  wikiLinkDisplayLabel,
+  wikiLinkHref,
+  wikiLinksInText,
+  type WikiLinkMatch,
+} from "./wikiLinks.js";
+import type { PageSummary } from "./types.js";
 
 type MarkdownRendererOptions = {
   breaks: boolean;
   workspaceImages?: boolean;
   mermaidCodeBlocks?: boolean;
+  logtextWikiLinks?: boolean;
 };
 
 export function createMarkdownRenderer({
   breaks,
   workspaceImages = false,
   mermaidCodeBlocks = false,
+  logtextWikiLinks = false,
 }: MarkdownRendererOptions) {
   const markdown = new MarkdownIt({
     breaks,
@@ -27,6 +36,46 @@ export function createMarkdownRenderer({
     throwOnError: false,
     trust: false,
   });
+
+  if (logtextWikiLinks) {
+    const wikiLinksByInlineState = new WeakMap<object, Map<number, WikiLinkMatch>>();
+    markdown.inline.ruler.before("link", "logtext_wiki_link", (state, silent) => {
+      const candidate = state.src[state.pos];
+      if (candidate !== "#" && state.src.slice(state.pos, state.pos + 2) !== "[[") {
+        return false;
+      }
+      if ((state as typeof state & { linkLevel?: number }).linkLevel) {
+        return false;
+      }
+
+      let linksByPosition = wikiLinksByInlineState.get(state);
+      if (!linksByPosition) {
+        linksByPosition = new Map(wikiLinksInText(state.src).map((link) => [link.from, link]));
+        wikiLinksByInlineState.set(state, linksByPosition);
+      }
+      const match = linksByPosition.get(state.pos);
+      if (!match) {
+        return false;
+      }
+
+      const pages = Array.isArray(state.env?.pages) ? (state.env.pages as PageSummary[]) : [];
+      const href = wikiLinkHref(match.target, pages);
+      if (!href) {
+        return false;
+      }
+
+      if (!silent) {
+        const displayLabel = match.alias || wikiLinkDisplayLabel(match.target, pages);
+        const label = match.syntax === "compact" ? `#${displayLabel}` : displayLabel;
+        const open = state.push("link_open", "a", 1);
+        open.attrSet("href", href);
+        state.push("text", "", 0).content = label;
+        state.push("link_close", "a", -1);
+      }
+      state.pos = match.to;
+      return true;
+    });
+  }
 
   if (mermaidCodeBlocks) {
     const defaultFenceRenderer = markdown.renderer.rules.fence;
@@ -88,4 +137,20 @@ export function createMarkdownRenderer({
   }
 
   return markdown;
+}
+
+export function markdownCodeLineNumbers(markdown: MarkdownIt, source: string) {
+  const lines = new Set<number>();
+
+  for (const token of markdown.parse(source, {})) {
+    if ((token.type !== "fence" && token.type !== "code_block") || !token.map) {
+      continue;
+    }
+
+    for (let line = token.map[0]; line < token.map[1]; line += 1) {
+      lines.add(line + 1);
+    }
+  }
+
+  return lines;
 }

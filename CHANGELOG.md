@@ -45,7 +45,26 @@ Changes since `v0.7.1`.
 
 - Fixed Mermaid rendering on older WebKit-based desktop environments where the
   built-in `CSSStyleSheet` type exists but cannot be constructed.
-  
+- Kept task markers, wiki links, and LaTeX inside Markdown code or formula
+  contexts from being interpreted as interactive Logtext content.
+- Fixed checkbox source-line mapping in blockquotes and made checkboxes in loose
+  list items interactive even when their rendered paragraph carries source-line
+  metadata.
+- Fixed editor live-preview handling for mixed or different-length code fences,
+  unclosed block formulas, escaped emphasis, inline-code emphasis, intraword
+  underscores, and `__strong__` syntax.
+- Added the missing editor live-preview rendering for `***bold italic***`,
+  `~~strikethrough~~`, and inline code spans.
+- Normalized `*` and `+` unordered list markers to the default `-` appearance in
+  editor live preview while preserving their Markdown source.
+- Preserved complete wiki-link aliases containing additional pipe characters
+  and prevented wiki syntax from corrupting standard Markdown links.
+- Kept wiki links, tasks, checkboxes, and formulas literal inside indented code
+  in editor live preview.
+- Rendered standard inline Markdown links in editor live preview without
+  reinterpreting wiki-like label or target text, and aligned escaped emphasis
+  with CommonMark behavior in the right pane.
+- Made wide rendered Markdown tables horizontally scrollable.
 
 ## 0.7.1
 

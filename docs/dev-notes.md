@@ -249,10 +249,11 @@ Page links are recognized in square (`[[page]]`) and compact (`#page`) syntax.
 Round delimiters such as `((page))` are ordinary text. Compact targets are
 slash-separated, whitespace-free path segments. The Rust parser and TypeScript
 live-preview scanner deliberately share fixtures for valid links and exclusions
-such as headings, task priorities, URL fragments, escaped hashes, inline code,
-and fenced code. Rename and move operations preserve compact syntax when the
-replacement remains valid and fall back to square syntax when a new target
-contains spaces.
+such as headings, task priorities, URL fragments, escaped links, standard
+Markdown link labels and targets, LaTeX, inline code, and fenced code. Aliases
+retain every character after the first `|`. Rename and move operations preserve
+compact syntax when the replacement remains valid and fall back to square
+syntax when a new target contains spaces.
 
 ## File Operations
 
@@ -482,7 +483,18 @@ The middle editor is CodeMirror-based.
 
 In source mode, CodeMirror shows plain Markdown text. In live mode, inactive
 lines are visually rendered while the active line remains editable Markdown
-source. Inline LaTeX follows the same rule. Its Markdown range is hidden
+source. Inline emphasis, strong emphasis, combined strong emphasis,
+strikethrough, and code spans share one delimiter-decoration helper. Code-span
+ranges are detected once per line and protect their literal content from the
+other inline scanners. Standard inline Markdown links use the same context
+scanner that prevents their labels and targets from being reinterpreted as
+Logtext wiki links. CodeMirror syntax-tree `Escape` nodes hide only the
+backslash; an immediately following emphasis node preserves CommonMark delimiter
+semantics. Syntax-tree `CodeBlock` and `FencedCode` ranges protect both rendering
+and pointer interaction, including four-space-indented code. Alternative
+unordered list markers are parsed through the shared `markdownPatterns.ts`
+helper and normalized visually without changing the document. Inline LaTeX
+follows the same rule. Its Markdown range is hidden
 separately from a right-sided point widget at the opening delimiter, which
 keeps the widget's left edge anchored after preceding text. The widget is an
 atomic LTR inline-block; the hidden Markdown range adds no width, and a
@@ -500,11 +512,22 @@ every formula. This hybrid behavior is implemented mostly in:
 
 - `src/lib/editorLivePreview.ts`
 - `src/lib/markdownRendering.ts`
+- `src/lib/taskMarkdownRendering.ts`
 - `src/lib/editorBlockCommands.ts`
 - `src/lib/editorLineWrapping.ts`
 
 The right pane and backlink sections use rendered Markdown components rather
-than CodeMirror. Right-pane `mermaid` fences are emitted as escaped source
+than CodeMirror. Wiki links are emitted by a Markdown-it inline rule rather than
+by rewriting the Markdown source before parsing. This keeps wiki syntax inside
+code, LaTeX, images, and standard Markdown links in its original parsing
+context. Task preprocessing first asks Markdown-it for fenced and indented code
+line maps, so code examples cannot become interactive tasks. Checkbox controls
+prefer the list token's `data-source-line` and support blockquote and loose-list
+forms without relying only on rendered order. The loose-list transformation
+preserves and accepts source-line attributes on Markdown-it's intermediate
+paragraph element.
+
+Right-pane `mermaid` fences are emitted as escaped source
 placeholders and rendered asynchronously as SVG only when an IntersectionObserver
 reports that they are near the viewport. The official Mermaid dependency is
 loaded through a dynamic import on first use. Rendering is serialized because

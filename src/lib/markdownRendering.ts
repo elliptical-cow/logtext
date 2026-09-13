@@ -4,15 +4,24 @@ export function renderCheckboxItems(html: string, markdown = "", sourceLineNumbe
   const lines = checkboxLines(markdown);
   let checkboxIndex = 0;
 
-  return html.replaceAll(/<li([^>]*)>\[([ xX])\]\s*/g, (_match, attributes: string, marker: string) => {
-    const checked = marker.toLowerCase() === "x";
-    const localLine = lines[checkboxIndex++]?.lineNumber;
-    const line = localLine ? (sourceLineNumbers[localLine - 1] ?? localLine) : "";
-    const checkedAttribute = checked ? " checked" : "";
-    const label = checked ? "Checked task" : "Unchecked task";
+  return html.replaceAll(
+    /<li([^>]*)>(\s*<p(?:\s[^>]*)?>)?\[([ xX])\]\s*/g,
+    (_match, attributes: string, paragraphOpen: string | undefined, marker: string) => {
+      const checked = marker.toLowerCase() === "x";
+      const localLine = lines[checkboxIndex++]?.lineNumber;
+      const renderedLine = sourceLineAttribute(attributes);
+      const line = renderedLine ?? (localLine ? (sourceLineNumbers[localLine - 1] ?? localLine) : "");
+      const checkedAttribute = checked ? " checked" : "";
+      const label = checked ? "Checked task" : "Unchecked task";
 
-    return `${liOpenWithClass(attributes, "task-list-item")}<input class="task-list-checkbox" type="checkbox"${checkedAttribute} data-line="${line}" aria-label="${label}" /> `;
-  });
+      return `${liOpenWithClass(attributes, "task-list-item")}${paragraphOpen ?? ""}<input class="task-list-checkbox" type="checkbox"${checkedAttribute} data-line="${line}" aria-label="${label}" /> `;
+    },
+  );
+}
+
+function sourceLineAttribute(attributes: string) {
+  const match = /\sdata-source-line=(["'])(\d+)\1/.exec(attributes);
+  return match ? Number(match[2]) : null;
 }
 
 function liOpenWithClass(attributes: string, className: string) {

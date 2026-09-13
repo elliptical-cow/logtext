@@ -41,3 +41,14 @@ test("keeps a checkbox without a separator as ordinary list content", () => {
   assert.equal(parsed.checkbox.checked, false);
   assert.equal(listItemTextFrom(parsed.listItem), parsed.listItem.listContentFrom);
 });
+
+test("parses checkbox list markers inside blockquotes", () => {
+  const parsed = parseCheckboxListItem("> > - [ ] Quoted task");
+
+  if (!parsed) {
+    throw new Error("expected a parsed blockquote checkbox list item");
+  }
+  assert.equal(parsed.checkbox.from, 6);
+  assert.equal(parsed.checkbox.to, 9);
+  assert.equal(parsed.checkbox.checked, false);
+});

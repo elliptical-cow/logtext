@@ -5,6 +5,7 @@ import {
   applyWikiLinkColorStyles,
   compactPageFolderLabel,
   compactPageLabel,
+  markdownInlineLinksInText,
   renderWikiLinks,
   resolveWikiTarget,
   wikiLinksInText,
@@ -40,6 +41,71 @@ test("keeps explicit wiki link aliases", () => {
   assert.equal(
     renderWikiLinks("[[projects/forecasts.md|Forecast]]", pages),
     "[Forecast](logtext:Projects%2FForecasts.md)",
+  );
+});
+
+test("keeps additional pipe characters in wiki link aliases", () => {
+  assert.deepEqual(wikiLinksInText("[[projects/forecasts|Forecast | Q4]]")[0], {
+    from: 0,
+    to: 36,
+    raw: "[[projects/forecasts|Forecast | Q4]]",
+    target: "projects/forecasts",
+    alias: "Forecast | Q4",
+    syntax: "square",
+  });
+});
+
+test("ignores escaped wiki links and wiki syntax inside Markdown links", () => {
+  const source = [
+    String.raw`\[[Escaped]]`,
+    "[See [[Alpha]]](https://example.test)",
+    "[Example](https://example.test/[[Alpha]])",
+  ].join("\n");
+
+  assert.deepEqual(wikiLinksInText(source), []);
+  assert.equal(renderWikiLinks(source, pages), source);
+});
+
+test("finds inline Markdown links with wiki-like text in labels and targets", () => {
+  assert.deepEqual(
+    markdownInlineLinksInText(
+      "[Standardlink mit [[verschachteltem Wiki-Link]]](https://example.test)",
+    ),
+    [{ from: 0, to: 70, labelFrom: 1, labelTo: 47 }],
+  );
+  assert.deepEqual(
+    markdownInlineLinksInText(
+      "[Link mit problematischem Ziel](https://example.test/[[WikiTarget]])",
+    ),
+    [{ from: 0, to: 68, labelFrom: 1, labelTo: 30 }],
+  );
+});
+
+test("does not treat images, escaped labels, code, or LaTeX as inline Markdown links", () => {
+  const source = [
+    "![Image](media/image.png)",
+    String.raw`\[Escaped](https://example.test)`,
+    "`[Code](https://example.test)`",
+    String.raw`$\text{[Formula](https://example.test)}$`,
+  ];
+
+  for (const line of source) {
+    assert.deepEqual(markdownInlineLinksInText(line), []);
+  }
+});
+
+test("ignores wiki links inside inline and block LaTeX", () => {
+  const source = [
+    String.raw`$\text{[[Inline formula]]}$`,
+    "$$",
+    String.raw`\text{[[Block formula]]}`,
+    "$$",
+    "[[Real link]]",
+  ].join("\n");
+
+  assert.deepEqual(
+    wikiLinksInText(source).map((link) => link.target),
+    ["Real link"],
   );
 });
 
