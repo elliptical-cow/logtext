@@ -486,7 +486,9 @@ lines are visually rendered while the active line remains editable Markdown
 source. Inline emphasis, strong emphasis, combined strong emphasis,
 strikethrough, and code spans share one delimiter-decoration helper. Code-span
 ranges are detected once per line and protect their literal content from the
-other inline scanners. Inline LaTeX follows the same rule. Its Markdown range is hidden
+other inline scanners. Alternative unordered list markers are parsed through
+the shared `markdownPatterns.ts` helper and normalized visually without changing
+the document. Inline LaTeX follows the same rule. Its Markdown range is hidden
 separately from a right-sided point widget at the opening delimiter, which
 keeps the widget's left edge anchored after preceding text. The widget is an
 atomic LTR inline-block; the hidden Markdown range adds no width, and a

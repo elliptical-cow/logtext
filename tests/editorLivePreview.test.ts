@@ -276,6 +276,35 @@ test("creates preview decorations for headings without changing text", () => {
   );
 });
 
+test("normalizes alternative unordered list markers in live preview", () => {
+  const asterisk = previewDecorationsForLine("* First item");
+  const plus = previewDecorationsForLine("  + Nested item", 10);
+
+  assert.deepEqual(
+    asterisk.map(({ from, to }) => ({ from, to })),
+    [{ from: 0, to: 1 }],
+  );
+  assert.ok(asterisk[0].decoration.spec.widget);
+  assert.deepEqual(
+    plus.map(({ from, to }) => ({ from, to })),
+    [{ from: 12, to: 13 }],
+  );
+  assert.ok(plus[0].decoration.spec.widget);
+  assert.deepEqual(previewDecorationsForLine("- Default item"), []);
+});
+
+test("keeps alternative list markers compatible with checkbox preview", () => {
+  const decorations = previewDecorationsForLine("+ [ ] Open item");
+
+  assert.deepEqual(
+    decorations.map(({ from, to }) => ({ from, to })),
+    [
+      { from: 0, to: 1 },
+      { from: 2, to: 5 },
+    ],
+  );
+});
+
 test("creates preview decorations for wiki links and aliases", () => {
   const decorations = previewDecorationsForLine("See [[projects/alpha|Alpha]] and [[Beta]]");
 

@@ -239,7 +239,9 @@ Inline live preview supports italic text (`*text*` or `_text_`), bold text
 (`**text**` or `__text__`), combined bold and italic text (`***text***`),
 strikethrough (`~~text~~`), and inline code (`` `code` ``). Inline code keeps
 Markdown-looking content literal and supports longer matching backtick markers
-when the code itself contains a backtick.
+when the code itself contains a backtick. Unordered list items may start with
+`-`, `*`, or `+`; live preview displays the two alternative markers like `-`
+without changing the stored Markdown.
 
 ### Undo and Redo
 

@@ -54,6 +54,8 @@ Changes since `v0.7.1`.
   underscores, and `__strong__` syntax.
 - Added the missing editor live-preview rendering for `***bold italic***`,
   `~~strikethrough~~`, and inline code spans.
+- Normalized `*` and `+` unordered list markers to the default `-` appearance in
+  editor live preview while preserving their Markdown source.
 - Preserved complete wiki-link aliases containing additional pipe characters
   and prevented wiki syntax from corrupting standard Markdown links.
 - Made wide rendered Markdown tables horizontally scrollable.

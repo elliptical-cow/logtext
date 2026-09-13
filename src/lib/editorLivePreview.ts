@@ -9,7 +9,7 @@ import {
 } from "./taskKeywords.js";
 import { taskColorStyle } from "./taskColors.js";
 import { wikiLinkColorStyle } from "./folderColors.js";
-import { parseCheckboxListItem } from "./markdownPatterns.js";
+import { parseCheckboxListItem, parseListItemPrefix } from "./markdownPatterns.js";
 import { wikiLinkDisplayLabel, wikiLinksInText } from "./wikiLinks.js";
 import { isWorkspaceImageTarget, workspaceImageUrl } from "./mediaPaths.js";
 import {
@@ -114,6 +114,7 @@ export function previewDecorationsForLine(
   }
 
   addHeadingDecorations(lineText, lineFrom, decorations);
+  addAlternativeListMarkerDecoration(lineText, lineFrom, decorations);
   addCheckboxDecorations(lineText, lineFrom, decorations);
   addTaskDecorations(lineText, lineFrom, decorations, taskStates, taskStateColors);
   addWikiLinkDecorations(lineText, lineFrom, decorations, pages, folderColors);
@@ -877,6 +878,23 @@ function addTaskDecorations(
   }
 }
 
+function addAlternativeListMarkerDecoration(
+  lineText: string,
+  lineFrom: number,
+  decorations: PreviewDecoration[],
+) {
+  const prefix = parseListItemPrefix(lineText);
+  if (!prefix || (prefix.marker !== "*" && prefix.marker !== "+")) {
+    return;
+  }
+
+  decorations.push({
+    from: lineFrom + prefix.markerFrom,
+    to: lineFrom + prefix.markerTo,
+    decoration: Decoration.replace({ widget: new UnorderedListMarkerWidget() }),
+  });
+}
+
 function safeTaskClass(status: string) {
   return status.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
 }
@@ -1395,6 +1413,16 @@ class CheckboxWidget extends WidgetType {
       checkbox.appendChild(liveCheckboxCheckElement());
     }
     return checkbox;
+  }
+}
+
+class UnorderedListMarkerWidget extends WidgetType {
+  toDOM() {
+    const marker = document.createElement("span");
+    marker.className = "cm-live-list-marker";
+    marker.setAttribute("aria-hidden", "true");
+    marker.textContent = "-";
+    return marker;
   }
 }
 
