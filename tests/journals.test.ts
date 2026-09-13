@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  adjacentPathInOrderedJournalPaths,
   adjacentJournalPath,
   expandJournalFeedWindow,
   initialJournalFeedWindow,
@@ -71,6 +72,27 @@ test("finds existing adjacent journal pages in chronological order", () => {
   );
 });
 
+test("finds adjacent pages in an already ordered journal sequence", () => {
+  const orderedPaths = [
+    "daily/2026-08-10.md",
+    "daily/2026-08-09.md",
+    "daily/2026-08-08.md",
+  ];
+
+  assert.equal(
+    adjacentPathInOrderedJournalPaths(
+      "daily/2026-08-09.md",
+      orderedPaths,
+      "previous",
+    ),
+    "daily/2026-08-10.md",
+  );
+  assert.equal(
+    adjacentPathInOrderedJournalPaths("daily/2026-08-09.md", orderedPaths, "next"),
+    "daily/2026-08-08.md",
+  );
+});
+
 test("orders and expands the progressively loaded journal feed", () => {
   const pages = [
     "daily/2026-08-10.md",
@@ -120,7 +142,9 @@ test("wires boundary navigation to the editor scroll container", () => {
   assert.match(source, /createJournalScrollNavigation\(/);
   assert.match(source, /journalScrollNavigation\.handleWheel\(/);
   assert.match(source, /journalScrollNavigation\.handlePageKey\(/);
-  assert.match(source, /enabled: \$workspaceStore\.journalEditorContinuousScrolling/);
+  assert.match(source, /editorJournalPaths = orderedJournalPaths\(/);
+  assert.match(source, /journalPaths: editorJournalPaths/);
+  assert.match(source, /enabled: shouldUseContinuousJournalView\(/);
   assert.match(source, /folderPageSort\[\$workspaceStore\.journalFolder\]/);
 });
 
@@ -171,18 +195,14 @@ test("allows another boundary gesture without requiring a click", async () => {
   await navigation.handleWheel(event, container, {
     enabled: true,
     currentPath: paths[0],
-    pagePaths: paths,
-    journalFolder: "journal",
-    sortDescending: false,
+    journalPaths: paths,
   });
   await new Promise((resolve) => setTimeout(resolve, 0));
   container.scrollTop = 500;
   await navigation.handleWheel(event, container, {
     enabled: true,
     currentPath: paths[1],
-    pagePaths: paths,
-    journalFolder: "journal",
-    sortDescending: false,
+    journalPaths: paths,
   });
   navigation.destroy();
 
@@ -223,9 +243,7 @@ test("uses a second page key press at a boundary to open an adjacent journal", a
   const context = {
     enabled: true,
     currentPath: paths[1],
-    pagePaths: paths,
-    journalFolder: "journal",
-    sortDescending: false,
+    journalPaths: paths,
   };
 
   assert.equal(await navigation.handlePageKey(pageDown, container, context), false);
@@ -254,13 +272,25 @@ test("does not navigate journals for modified, repeated, or unrelated page keys"
     },
     async afterOpen() {},
   });
-  const container = { scrollTop: 500, scrollHeight: 900, clientHeight: 400 } as HTMLElement;
+  let geometryReads = 0;
+  const container = {
+    get scrollTop() {
+      geometryReads += 1;
+      return 500;
+    },
+    get scrollHeight() {
+      geometryReads += 1;
+      return 900;
+    },
+    get clientHeight() {
+      geometryReads += 1;
+      return 400;
+    },
+  } as HTMLElement;
   const context = {
     enabled: true,
     currentPath: "journal/2026-08-09.md",
-    pagePaths: ["journal/2026-08-09.md", "journal/2026-08-10.md"],
-    journalFolder: "journal",
-    sortDescending: false,
+    journalPaths: ["journal/2026-08-09.md", "journal/2026-08-10.md"],
   };
   const event = {
     key: "PageDown",
@@ -285,6 +315,7 @@ test("does not navigate journals for modified, repeated, or unrelated page keys"
   navigation.destroy();
 
   assert.deepEqual(openedPaths, []);
+  assert.equal(geometryReads, 0);
 });
 
 test("keeps editor journal boundary navigation disabled by workspace config", async () => {
@@ -296,13 +327,25 @@ test("keeps editor journal boundary navigation disabled by workspace config", as
     },
     async afterOpen() {},
   });
-  const container = { scrollTop: 500, scrollHeight: 900, clientHeight: 400 } as HTMLElement;
+  let geometryReads = 0;
+  const container = {
+    get scrollTop() {
+      geometryReads += 1;
+      return 500;
+    },
+    get scrollHeight() {
+      geometryReads += 1;
+      return 900;
+    },
+    get clientHeight() {
+      geometryReads += 1;
+      return 400;
+    },
+  } as HTMLElement;
   const context = {
     enabled: false,
     currentPath: "journal/2026-08-09.md",
-    pagePaths: ["journal/2026-08-09.md", "journal/2026-08-10.md"],
-    journalFolder: "journal",
-    sortDescending: false,
+    journalPaths: ["journal/2026-08-09.md", "journal/2026-08-10.md"],
   };
   let prevented = false;
   const wheelEvent = {
@@ -332,6 +375,7 @@ test("keeps editor journal boundary navigation disabled by workspace config", as
   navigation.destroy();
 
   assert.equal(prevented, false);
+  assert.equal(geometryReads, 0);
   assert.deepEqual(openedPaths, []);
 });
 
@@ -370,9 +414,7 @@ test("opens one adjacent journal and places the previous page at its end", async
   const opened = await navigation.handleWheel(event, container, {
     enabled: true,
     currentPath: "journal/2026-08-09.md",
-    pagePaths: ["journal/2026-08-08.md", "journal/2026-08-09.md"],
-    journalFolder: "journal",
-    sortDescending: false,
+    journalPaths: ["journal/2026-08-08.md", "journal/2026-08-09.md"],
   });
   navigation.destroy();
 

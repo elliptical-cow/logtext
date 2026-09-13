@@ -430,6 +430,12 @@ export type CollapsibleBlockRange = BlockLineRange & {
   level: number;
 };
 
+export type ListBlockMetadata = {
+  levelByLine: ReadonlyMap<number, number>;
+  collapsibleRangeByStartLine: ReadonlyMap<number, CollapsibleBlockRange>;
+  collapsibleRanges: readonly CollapsibleBlockRange[];
+};
+
 export function blockRangeForLines(lines: string[], lineNumber: number): BlockLineRange {
   const boundedLine = Math.min(Math.max(lineNumber, 1), lines.length);
   const current = listItemInfo(lines[boundedLine - 1] ?? "");
@@ -486,49 +492,86 @@ export function collapsibleBlockRangeForLines(
   lines: string[],
   lineNumber: number,
 ): CollapsibleBlockRange | null {
-  const range = blockRangeForLines(lines, lineNumber);
-  const level = listBlockLevelForLine(lines, range.startLine);
-  if (!range.isList || range.endLine <= range.startLine || level === null) {
-    return null;
-  }
-
-  for (let currentLine = range.startLine + 1; currentLine <= range.endLine; currentLine += 1) {
-    const child = listItemInfo(lines[currentLine - 1] ?? "");
-    if (child && child.indent > range.indent) {
-      return { ...range, level };
-    }
-  }
-
-  return null;
+  const boundedLine = Math.min(Math.max(lineNumber, 1), lines.length);
+  return listBlockMetadataForLines(lines).collapsibleRangeByStartLine.get(boundedLine) ?? null;
 }
 
 export function listBlockLevelForLine(lines: string[], lineNumber: number) {
   const boundedLine = Math.min(Math.max(lineNumber, 1), lines.length);
-  const current = listItemInfo(lines[boundedLine - 1] ?? "");
-  if (!current) {
-    return null;
-  }
-
-  const indents = listBlockIndents(lines);
-  const index = indents.indexOf(current.indent);
-  return index === -1 ? null : index + 1;
+  return listBlockMetadataForLines(lines).levelByLine.get(boundedLine) ?? null;
 }
 
 export function collapsibleBlockRangesBelowLevel(lines: string[], level: number) {
-  const ranges: CollapsibleBlockRange[] = [];
+  return listBlockMetadataForLines(lines).collapsibleRanges.filter(
+    (range) => range.level === level,
+  );
+}
+
+export function listBlockMetadataForLines(lines: string[]): ListBlockMetadata {
+  const items = lines.map(listItemInfo);
+  const indents = [
+    ...new Set(items.flatMap((item) => (item ? [item.indent] : []))),
+  ].sort((left, right) => left - right);
+  const levelByIndent = new Map(indents.map((indent, index) => [indent, index + 1]));
+  const levelByLine = new Map<number, number>();
+  const collapsibleRanges: CollapsibleBlockRange[] = [];
+  const openBlocks: Array<{ startLine: number; indent: number; hasChild: boolean }> = [];
+
+  function closeBlock(endLine: number) {
+    const block = openBlocks.pop();
+    if (!block || !block.hasChild || endLine <= block.startLine) {
+      return;
+    }
+
+    collapsibleRanges.push({
+      startLine: block.startLine,
+      endLine,
+      indent: block.indent,
+      isList: true,
+      level: levelByIndent.get(block.indent) ?? 1,
+    });
+  }
+
+  // Active blocks are strictly ordered by indentation. A blank line closes the
+  // stack; a list item closes siblings and deeper blocks before becoming active.
   for (let lineNumber = 1; lineNumber <= lines.length; lineNumber += 1) {
-    if (listBlockLevelForLine(lines, lineNumber) !== level) {
+    if ((lines[lineNumber - 1] ?? "").trim() === "") {
+      while (openBlocks.length > 0) {
+        closeBlock(lineNumber - 1);
+      }
       continue;
     }
 
-    const range = collapsibleBlockRangeForLines(lines, lineNumber);
-    if (range) {
-      ranges.push(range);
-      lineNumber = range.endLine;
+    const item = items[lineNumber - 1];
+    if (!item) {
+      continue;
     }
+
+    levelByLine.set(lineNumber, levelByIndent.get(item.indent) ?? 1);
+    while (
+      openBlocks.length > 0 &&
+      openBlocks[openBlocks.length - 1].indent >= item.indent
+    ) {
+      closeBlock(lineNumber - 1);
+    }
+    if (openBlocks.length > 0) {
+      openBlocks[openBlocks.length - 1].hasChild = true;
+    }
+    openBlocks.push({ startLine: lineNumber, indent: item.indent, hasChild: false });
   }
 
-  return ranges;
+  while (openBlocks.length > 0) {
+    closeBlock(lines.length);
+  }
+
+  collapsibleRanges.sort((left, right) => left.startLine - right.startLine);
+  return {
+    levelByLine,
+    collapsibleRangeByStartLine: new Map(
+      collapsibleRanges.map((range) => [range.startLine, range]),
+    ),
+    collapsibleRanges,
+  };
 }
 
 export function blockEditingKeymap(
@@ -647,16 +690,6 @@ function lineColumnToPosition(lines: string[], lineNumber: number, column: numbe
 function listItemInfo(lineText: string) {
   const prefix = parseListItemPrefix(lineText);
   return prefix ? { indent: blockIndentWidth(prefix.indentation) } : null;
-}
-
-function listBlockIndents(lines: string[]) {
-  return [
-    ...new Set(
-      lines
-        .map((line) => listItemInfo(line)?.indent)
-        .filter((indent): indent is number => typeof indent === "number"),
-    ),
-  ].sort((left, right) => left - right);
 }
 
 function orderedListItemInfo(lineText: string) {

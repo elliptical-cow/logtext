@@ -77,6 +77,14 @@ export function adjacentJournalPath(
   sortDirection: JournalSortDirection = "asc",
 ) {
   const journalPaths = orderedJournalPaths(pagePaths, root, sortDirection);
+  return adjacentPathInOrderedJournalPaths(currentPath, journalPaths, direction);
+}
+
+export function adjacentPathInOrderedJournalPaths(
+  currentPath: string,
+  journalPaths: readonly string[],
+  direction: JournalDirection,
+) {
   const currentIndex = journalPaths.findIndex(
     (path) => path.toLocaleLowerCase() === currentPath.toLocaleLowerCase(),
   );

@@ -1,17 +1,15 @@
 import {
-  adjacentJournalPath,
+  adjacentPathInOrderedJournalPaths,
   journalBoundaryDirection,
   type JournalDirection,
 } from "./journals.js";
 
 type ScrollContainer = Pick<HTMLElement, "scrollTop" | "scrollHeight" | "clientHeight">;
 
-type JournalScrollContext = {
+export type JournalScrollContext = {
   enabled: boolean;
   currentPath: string | null;
-  pagePaths: string[];
-  journalFolder: string;
-  sortDescending: boolean;
+  journalPaths: readonly string[];
 };
 
 type JournalScrollDependencies = {
@@ -33,10 +31,17 @@ export function createJournalScrollNavigation(dependencies: JournalScrollDepende
     container: ScrollContainer,
     context: JournalScrollContext,
   ) {
-    if (destroyed || event.ctrlKey || event.metaKey || navigationPending) {
+    if (
+      destroyed ||
+      !context.enabled ||
+      !context.currentPath ||
+      event.ctrlKey ||
+      event.metaKey ||
+      navigationPending
+    ) {
       return false;
     }
-    if (gestureLocked) {
+    if (gestureLocked || event.deltaY === 0) {
       return false;
     }
 
@@ -68,12 +73,17 @@ export function createJournalScrollNavigation(dependencies: JournalScrollDepende
       event.altKey ||
       event.ctrlKey ||
       event.metaKey ||
-      event.shiftKey
+      event.shiftKey ||
+      !context.enabled ||
+      !context.currentPath
     ) {
       return false;
     }
 
     const deltaY = event.key === "PageUp" ? -1 : event.key === "PageDown" ? 1 : 0;
+    if (deltaY === 0) {
+      return false;
+    }
     const direction = journalBoundaryDirection(
       container.scrollTop,
       container.scrollHeight,
@@ -97,15 +107,13 @@ export function createJournalScrollNavigation(dependencies: JournalScrollDepende
     direction: JournalDirection,
     options: { lockGesture: boolean; stopPropagation: boolean },
   ) {
-    if (!context.enabled || !context.currentPath) {
+    if (!context.currentPath) {
       return false;
     }
-    const targetPath = adjacentJournalPath(
+    const targetPath = adjacentPathInOrderedJournalPaths(
       context.currentPath,
-      context.pagePaths,
-      context.journalFolder,
+      context.journalPaths,
       direction,
-      context.sortDescending ? "desc" : "asc",
     );
     if (!targetPath) {
       return false;
