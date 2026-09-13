@@ -111,6 +111,19 @@ test("keeps rendering after malformed LaTeX and ignores formulas in Markdown cod
   assert.match(code, /\$\$x\^2\$\$/);
 });
 
+test("uses CommonMark escape behavior for emphasis delimiters", () => {
+  const markdown = createMarkdownRenderer({ breaks: true });
+
+  assert.equal(
+    markdown.render(String.raw`\**Nicht fett**`),
+    "<p>*<em>Nicht fett</em>*</p>\n",
+  );
+  assert.equal(
+    markdown.render(String.raw`\*\*Nicht fett\*\*`),
+    "<p>**Nicht fett**</p>\n",
+  );
+});
+
 test("renders Logtext wiki links as Markdown-it inline tokens", () => {
   const markdown = createMarkdownRenderer({ breaks: true, logtextWikiLinks: true });
   const pages = [

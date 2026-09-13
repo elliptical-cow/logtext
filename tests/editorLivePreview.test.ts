@@ -14,6 +14,7 @@ import {
   latexBlockLineNumbers,
   livePreviewExtension,
   liveCheckboxCheckClass,
+  markdownCodeLineNumbersInState,
   markdownFencedCodeLineNumbers,
   markdownImagesInState,
   previewDecorationsForLine,
@@ -154,6 +155,37 @@ test("matches fenced code by marker type and opening length", () => {
     to: source.indexOf("[[Beta]]") + "[[Beta]]".length,
     target: "Beta",
     label: "Beta",
+  });
+});
+
+test("keeps indented Markdown code as literal editor source", () => {
+  const source = [
+    "    [[Indented link]]",
+    "    - TODO [ ] Not a task",
+    "",
+    "[[Visible link]]",
+  ].join("\n");
+  const previewField = livePreviewExtension()[0] as StateField<DecorationSet>;
+  const state = EditorState.create({
+    doc: source,
+    selection: { anchor: source.indexOf("Visible") },
+    extensions: [markdown(), previewField],
+  });
+  const codeDecorations: Array<{ from: number; to: number }> = [];
+  state.field(previewField).between(0, source.indexOf("\n\n"), (from, to) => {
+    codeDecorations.push({ from, to });
+  });
+
+  assert.deepEqual([...markdownCodeLineNumbersInState(state)], [1, 2]);
+  assert.deepEqual(codeDecorations, []);
+  assert.equal(wikiLinkAtDocumentPosition(state, source.indexOf("Indented")), null);
+  assert.equal(taskKeywordAtDocumentPosition(state, source.indexOf("TODO")), null);
+  assert.equal(checkboxAtDocumentPosition(state, source.indexOf("[ ]") + 1), null);
+  assert.deepEqual(wikiLinkAtDocumentPosition(state, source.indexOf("Visible")), {
+    from: source.indexOf("[[Visible link]]"),
+    to: source.indexOf("[[Visible link]]") + "[[Visible link]]".length,
+    target: "Visible link",
+    label: "Visible link",
   });
 });
 
@@ -462,6 +494,26 @@ test("keeps escaped and intraword emphasis as source and isolates code spans", (
   assert.deepEqual(emphasisSpans("snake_case_value"), []);
 });
 
+test("renders Markdown escapes with CommonMark delimiter behavior", () => {
+  const decorations = livePreviewDecorationRanges(String.raw`\**Nicht fett**`);
+
+  assert.deepEqual(decorations, [
+    { from: 0, to: 1, className: null },
+    { from: 2, to: 3, className: null },
+    { from: 3, to: 13, className: "cm-live-emphasis" },
+    { from: 13, to: 14, className: null },
+  ]);
+});
+
+test("keeps fully escaped strong markers literal in live preview", () => {
+  assert.deepEqual(livePreviewDecorationRanges(String.raw`\*\*Nicht fett\*\*`), [
+    { from: 0, to: 1, className: null },
+    { from: 2, to: 3, className: null },
+    { from: 14, to: 15, className: null },
+    { from: 16, to: 17, className: null },
+  ]);
+});
+
 test("renders underscore-delimited strong emphasis in live preview", () => {
   const decorations = previewDecorationsForLine("__strong__");
 
@@ -515,6 +567,36 @@ test("renders inline code without interpreting Markdown inside it", () => {
     ],
   );
   assert.equal(decorations[1].decoration.spec.class, "cm-live-inline-code");
+});
+
+test("renders standard Markdown links without treating nested wiki syntax as a page link", () => {
+  const labelLink = "[Standardlink mit [[verschachteltem Wiki-Link]]](https://example.test)";
+  const targetLink = "[Link mit problematischem Ziel](https://example.test/[[WikiTarget]])";
+
+  assert.deepEqual(
+    previewDecorationsForLine(labelLink).map(({ from, to, decoration }) => ({
+      from,
+      to,
+      className: decoration.spec.class ?? null,
+    })),
+    [
+      { from: 0, to: 1, className: null },
+      { from: 1, to: 47, className: "cm-live-markdown-link" },
+      { from: 47, to: 70, className: null },
+    ],
+  );
+  assert.deepEqual(
+    previewDecorationsForLine(targetLink).map(({ from, to, decoration }) => ({
+      from,
+      to,
+      className: decoration.spec.class ?? null,
+    })),
+    [
+      { from: 0, to: 1, className: null },
+      { from: 1, to: 30, className: "cm-live-markdown-link" },
+      { from: 30, to: 68, className: null },
+    ],
+  );
 });
 
 test("supports matching multi-backtick delimiters for inline code", () => {
@@ -619,6 +701,23 @@ test("keeps child list items rendered while editing a parent item", () => {
 
   assert.deepEqual([...activeBlockLineNumbers(state)], [1]);
 });
+
+function livePreviewDecorationRanges(source: string) {
+  const previewField = livePreviewExtension()[0] as StateField<DecorationSet>;
+  const document = `${source}\nactive line`;
+  const state = EditorState.create({
+    doc: document,
+    selection: { anchor: document.length },
+    extensions: [markdown(), previewField],
+  });
+  const ranges: Array<{ from: number; to: number; className: string | null }> = [];
+
+  state.field(previewField).between(0, source.length, (from, to, decoration) => {
+    ranges.push({ from, to, className: decoration.spec.class ?? null });
+  });
+
+  return ranges;
+}
 
 test("keeps only the nested task line active while editing it", () => {
   const state = EditorState.create({

@@ -239,9 +239,18 @@ Inline live preview supports italic text (`*text*` or `_text_`), bold text
 (`**text**` or `__text__`), combined bold and italic text (`***text***`),
 strikethrough (`~~text~~`), and inline code (`` `code` ``). Inline code keeps
 Markdown-looking content literal and supports longer matching backtick markers
-when the code itself contains a backtick. Unordered list items may start with
-`-`, `*`, or `+`; live preview displays the two alternative markers like `-`
-without changing the stored Markdown.
+when the code itself contains a backtick. Inline Markdown links such as
+`[Website](https://example.com)` show their linked label while their source line
+is inactive. Wiki-like text inside the label or target remains part of the
+standard Markdown link and does not become a Logtext page link.
+
+Backslash escapes follow normal Markdown rules and escape one immediately
+following punctuation character. For example, use
+`\*\*literal asterisks\*\*` to display `**literal asterisks**` without bold
+formatting. Fenced and four-space-indented code remains literal and does not
+render links, tasks, checkboxes, formatting, or formulas. Unordered list items
+may start with `-`, `*`, or `+`; live preview displays the two alternative
+markers like `-` without changing the stored Markdown.
 
 ### Undo and Redo
 

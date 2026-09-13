@@ -59,6 +59,11 @@ Changes since `v0.7.1`.
   editor live preview while preserving their Markdown source.
 - Preserved complete wiki-link aliases containing additional pipe characters
   and prevented wiki syntax from corrupting standard Markdown links.
+- Kept wiki links, tasks, checkboxes, and formulas literal inside indented code
+  in editor live preview.
+- Rendered standard inline Markdown links in editor live preview without
+  reinterpreting wiki-like label or target text, and aligned escaped emphasis
+  with CommonMark behavior in the right pane.
 - Made wide rendered Markdown tables horizontally scrollable.
 
 ## 0.7.1

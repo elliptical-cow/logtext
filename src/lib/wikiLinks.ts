@@ -24,6 +24,13 @@ export type WikiLinkMatch = {
   syntax: WikiLinkSyntax;
 };
 
+export type MarkdownInlineLinkMatch = {
+  from: number;
+  to: number;
+  labelFrom: number;
+  labelTo: number;
+};
+
 const compactSegmentPattern = String.raw`[\p{L}\p{N}_](?:[\p{L}\p{N}_-]|\.(?=[\p{L}\p{N}_]))*`;
 const compactTargetPattern = `${compactSegmentPattern}(?:/${compactSegmentPattern})*`;
 const wikiLinkPattern = new RegExp(
@@ -154,6 +161,44 @@ export function wikiLinksInText(source: string): WikiLinkMatch[] {
   return links;
 }
 
+export function markdownInlineLinksInText(source: string): MarkdownInlineLinkMatch[] {
+  const links: MarkdownInlineLinkMatch[] = [];
+
+  for (let open = 0; open < source.length; open += 1) {
+    if (
+      source[open] !== "[" ||
+      source[open + 1] === "[" ||
+      (source[open - 1] === "!" && !isEscapedMarkdownPosition(source, open - 1)) ||
+      isEscapedMarkdownPosition(source, open) ||
+      isMarkdownCodePosition(source, open) ||
+      isMarkdownLatexPosition(source, open)
+    ) {
+      continue;
+    }
+
+    const labelClose = matchingMarkdownLabelClose(source, open);
+    const targetOpen = labelClose + 1;
+    if (labelClose === -1 || source[targetOpen] !== "(") {
+      continue;
+    }
+
+    const targetClose = closingMarkdownLinkTarget(source, targetOpen);
+    if (targetClose >= source.length || source[targetClose] !== ")") {
+      continue;
+    }
+
+    links.push({
+      from: open,
+      to: targetClose + 1,
+      labelFrom: open + 1,
+      labelTo: labelClose,
+    });
+    open = targetClose;
+  }
+
+  return links;
+}
+
 export function isValidCompactWikiTarget(target: string) {
   return compactTargetPatternExact.test(target) && isValidWikiTarget(target);
 }
@@ -277,6 +322,14 @@ function isMarkdownLinkPosition(source: string, position: number) {
   const lineEnd = source.indexOf("\n", position);
   const line = source.slice(lineStart, lineEnd === -1 ? source.length : lineEnd);
   const relativePosition = position - lineStart;
+
+  if (
+    markdownInlineLinksInText(line).some(
+      (link) => relativePosition > link.from && relativePosition < link.to,
+    )
+  ) {
+    return true;
+  }
 
   for (let index = 0; index < relativePosition; index += 1) {
     if (line[index] !== "]" || (line[index + 1] !== "(" && line[index + 1] !== "[")) {

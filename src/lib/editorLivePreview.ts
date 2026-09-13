@@ -10,7 +10,11 @@ import {
 import { taskColorStyle } from "./taskColors.js";
 import { wikiLinkColorStyle } from "./folderColors.js";
 import { parseCheckboxListItem, parseListItemPrefix } from "./markdownPatterns.js";
-import { wikiLinkDisplayLabel, wikiLinksInText } from "./wikiLinks.js";
+import {
+  markdownInlineLinksInText,
+  wikiLinkDisplayLabel,
+  wikiLinksInText,
+} from "./wikiLinks.js";
 import { isWorkspaceImageTarget, workspaceImageUrl } from "./mediaPaths.js";
 import {
   imageTitleWithLogtextWidth,
@@ -76,6 +80,7 @@ const emphasisText = Decoration.mark({ class: "cm-live-emphasis" });
 const strongEmphasisText = Decoration.mark({ class: "cm-live-strong-emphasis" });
 const strikethroughText = Decoration.mark({ class: "cm-live-strikethrough" });
 const inlineCodeText = Decoration.mark({ class: "cm-live-inline-code" });
+const markdownLinkText = Decoration.mark({ class: "cm-live-markdown-link" });
 const taskPriority = Decoration.mark({ class: "cm-live-priority" });
 const latexSource = Decoration.mark({ class: "cm-live-latex-source" });
 const latexBlockSourceLine = Decoration.line({ class: "cm-live-latex-block-source" });
@@ -117,6 +122,7 @@ export function previewDecorationsForLine(
   addAlternativeListMarkerDecoration(lineText, lineFrom, decorations);
   addCheckboxDecorations(lineText, lineFrom, decorations);
   addTaskDecorations(lineText, lineFrom, decorations, taskStates, taskStateColors);
+  addMarkdownLinkDecorations(lineText, lineFrom, decorations);
   addWikiLinkDecorations(lineText, lineFrom, decorations, pages, folderColors);
   addInlineCodeDecorations(lineText, lineFrom, decorations);
   addStrongEmphasisDecorations(lineText, lineFrom, decorations);
@@ -168,9 +174,10 @@ export function wikiLinkAtPosition(
 
 export function wikiLinkAtDocumentPosition(state: EditorState, position: number) {
   const lineNumber = state.doc.lineAt(position).number;
+  const codeLines = markdownCodeLineNumbersInState(state);
   if (
-    isPositionInsideFencedCode(state, position) ||
-    latexBlockLineNumbers(state.doc.toString()).has(lineNumber)
+    isPositionInsideMarkdownCode(state, position, codeLines) ||
+    latexBlockLineNumbers(state.doc.toString(), codeLines).has(lineNumber)
   ) {
     return null;
   }
@@ -184,7 +191,7 @@ export function taskKeywordAtDocumentPosition(
   position: number,
   taskStates = DEFAULT_TASK_STATES,
 ): TaskKeywordAtPosition | null {
-  if (isPositionInsideFencedCode(state, position)) {
+  if (isPositionInsideMarkdownCode(state, position)) {
     return null;
   }
 
@@ -210,7 +217,7 @@ export function checkboxAtDocumentPosition(
   state: EditorState,
   position: number,
 ): CheckboxAtPosition | null {
-  if (isPositionInsideFencedCode(state, position)) {
+  if (isPositionInsideMarkdownCode(state, position)) {
     return null;
   }
 
@@ -319,6 +326,10 @@ const livePreviewTheme = EditorView.baseTheme({
     fontFamily: '\"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace',
     padding: "0 0.15em",
   },
+  ".cm-live-markdown-link": {
+    color: "var(--link-color)",
+    textDecoration: "underline",
+  },
   ".cm-live-latex-source": {
     borderRadius: "3px",
     backgroundColor: "var(--code-bg)",
@@ -411,8 +422,10 @@ function buildLivePreviewDecorations(
 ) {
   const builder = new RangeSetBuilder<Decoration>();
   const activeLines = activeBlockLineNumbers(state);
-  const latexBlocks = latexBlockRanges(state.doc.toString());
-  const fencedCodeLines = markdownFencedCodeLineNumbers(state.doc.toString());
+  const source = state.doc.toString();
+  const codeLines = markdownCodeLineNumbersInState(state);
+  const latexBlocks = latexBlockRanges(source, codeLines);
+  const syntaxDecorationsByLine = markdownSyntaxDecorationsByLine(state);
   const latexBlockByLine = new Map<number, LatexBlockRange>();
   const activeLatexBlocks = new Set<LatexBlockRange>();
   for (const block of latexBlocks) {
@@ -446,7 +459,7 @@ function buildLivePreviewDecorations(
       continue;
     }
 
-    if (fencedCodeLines.has(lineNumber)) {
+    if (codeLines.has(lineNumber)) {
       continue;
     }
 
@@ -493,14 +506,99 @@ function buildLivePreviewDecorations(
       (decoration) =>
         !lineImages.some((image) => decoration.from < image.to && decoration.to > image.from),
     );
-    for (const { from, to, decoration } of [...imageDecorations, ...lineDecorations].sort(
-      (left, right) => left.from - right.from || left.to - right.to,
-    )) {
+    const syntaxDecorations = isTableRow(line.text)
+      ? []
+      : syntaxDecorationsByLine.get(lineNumber) ?? [];
+    for (const { from, to, decoration } of [
+      ...imageDecorations,
+      ...lineDecorations,
+      ...syntaxDecorations,
+    ].sort((left, right) => left.from - right.from || left.to - right.to)) {
       builder.add(from, to, decoration);
     }
   }
 
   return builder.finish();
+}
+
+function markdownSyntaxDecorationsByLine(state: EditorState) {
+  const decorationsByLine = new Map<number, PreviewDecoration[]>();
+  const escapedDelimiterByEnd = new Map<number, string>();
+
+  syntaxTree(state).iterate({
+    enter(node) {
+      if (node.name === "Escape" && node.to - node.from >= 2) {
+        const escapedCharacter = state.sliceDoc(node.to - 1, node.to);
+        addSyntaxDecoration(
+          decorationsByLine,
+          state,
+          {
+            from: node.from,
+            to: node.to - 1,
+            decoration: hiddenMarkdown,
+          },
+        );
+        if (escapedCharacter === "*" || escapedCharacter === "_") {
+          escapedDelimiterByEnd.set(node.to, escapedCharacter);
+        }
+        return;
+      }
+
+      if (node.name !== "Emphasis") {
+        return;
+      }
+
+      const escapedDelimiter = escapedDelimiterByEnd.get(node.from);
+      const marks = node.node.getChildren("EmphasisMark");
+      const opening = marks[0];
+      const closing = marks.at(-1);
+      if (
+        !escapedDelimiter ||
+        !opening ||
+        !closing ||
+        state.sliceDoc(opening.from, opening.to) !== escapedDelimiter
+      ) {
+        return;
+      }
+
+      for (const decoration of delimitedTextDecorations(
+        opening.from,
+        opening.to,
+        closing.from,
+        closing.to,
+        emphasisText,
+      )) {
+        addSyntaxDecoration(decorationsByLine, state, decoration);
+      }
+    },
+  });
+
+  return decorationsByLine;
+}
+
+function delimitedTextDecorations(
+  start: number,
+  contentStart: number,
+  contentEnd: number,
+  end: number,
+  textDecoration: Decoration,
+): PreviewDecoration[] {
+  return [
+    { from: start, to: contentStart, decoration: hiddenMarkdown },
+    { from: contentStart, to: contentEnd, decoration: textDecoration },
+    { from: contentEnd, to: end, decoration: hiddenMarkdown },
+  ];
+}
+
+function addSyntaxDecoration(
+  decorationsByLine: Map<number, PreviewDecoration[]>,
+  state: EditorState,
+  decoration: PreviewDecoration,
+) {
+  const lineNumber = state.doc.lineAt(decoration.from).number;
+  const lineDecorations = decorationsByLine.get(lineNumber) ?? [];
+  lineDecorations.push(decoration);
+  decorationsByLine.set(lineNumber, lineDecorations);
 }
 
 export function markdownImagesInState(state: EditorState): MarkdownImageMatch[] {
@@ -532,9 +630,12 @@ export function markdownImagesInState(state: EditorState): MarkdownImageMatch[] 
   return matches;
 }
 
-export function latexBlockLineNumbers(source: string) {
+export function latexBlockLineNumbers(
+  source: string,
+  codeLines = markdownFencedCodeLineNumbers(source),
+) {
   const blockLines = new Set<number>();
-  for (const block of latexBlockRanges(source)) {
+  for (const block of latexBlockRanges(source, codeLines)) {
     for (let lineNumber = block.startLine; lineNumber <= block.endLine; lineNumber += 1) {
       blockLines.add(lineNumber);
     }
@@ -542,17 +643,19 @@ export function latexBlockLineNumbers(source: string) {
   return blockLines;
 }
 
-export function latexBlockRanges(source: string): LatexBlockRange[] {
+export function latexBlockRanges(
+  source: string,
+  codeLines = markdownFencedCodeLineNumbers(source),
+): LatexBlockRange[] {
   const blocks: LatexBlockRange[] = [];
   const lines = sourceLines(source);
-  const fencedCodeLines = markdownFencedCodeLineNumbers(source);
   let index = 0;
 
   while (index < lines.length) {
     const line = lines[index];
     const trimmed = line.text.trimStart();
 
-    if (fencedCodeLines.has(line.number) || !trimmed.startsWith("$$")) {
+    if (codeLines.has(line.number) || !trimmed.startsWith("$$")) {
       index += 1;
       continue;
     }
@@ -773,9 +876,49 @@ export function activeBlockLineNumbers(state: EditorState) {
   return new Set([...lines].sort((left, right) => left - right));
 }
 
-function isPositionInsideFencedCode(state: EditorState, position: number) {
+function isPositionInsideMarkdownCode(
+  state: EditorState,
+  position: number,
+  codeLines = markdownCodeLineNumbersInState(state),
+) {
   const currentLine = state.doc.lineAt(position).number;
-  return markdownFencedCodeLineNumbers(state.doc.toString()).has(currentLine);
+  if (codeLines.has(currentLine)) {
+    return true;
+  }
+
+  let node = syntaxTree(state).resolveInner(position, -1);
+  while (true) {
+    if (node.name === "InlineCode") {
+      return true;
+    }
+    const parent = node.parent;
+    if (!parent) {
+      break;
+    }
+    node = parent;
+  }
+
+  return false;
+}
+
+export function markdownCodeLineNumbersInState(state: EditorState) {
+  const codeLines = markdownFencedCodeLineNumbers(state.doc.toString());
+
+  syntaxTree(state).iterate({
+    enter(node) {
+      if (node.name !== "CodeBlock" && node.name !== "FencedCode") {
+        return;
+      }
+
+      const startLine = state.doc.lineAt(node.from).number;
+      const endLine = state.doc.lineAt(Math.max(node.from, node.to - 1)).number;
+      for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+        codeLines.add(lineNumber);
+      }
+    },
+  });
+
+  return codeLines;
 }
 
 export function markdownFencedCodeLineNumbers(source: string) {
@@ -918,6 +1061,30 @@ function addCheckboxDecorations(
     to: lineFrom + markerEnd,
     decoration: Decoration.replace({ widget: new CheckboxWidget(checked) }),
   });
+}
+
+function addMarkdownLinkDecorations(
+  lineText: string,
+  lineFrom: number,
+  decorations: PreviewDecoration[],
+) {
+  for (const link of markdownInlineLinksInText(lineText)) {
+    decorations.push({
+      from: lineFrom + link.from,
+      to: lineFrom + link.labelFrom,
+      decoration: hiddenMarkdown,
+    });
+    decorations.push({
+      from: lineFrom + link.labelFrom,
+      to: lineFrom + link.labelTo,
+      decoration: markdownLinkText,
+    });
+    decorations.push({
+      from: lineFrom + link.labelTo,
+      to: lineFrom + link.to,
+      decoration: hiddenMarkdown,
+    });
+  }
 }
 
 function addWikiLinkDecorations(
@@ -1102,21 +1269,15 @@ function addDelimitedTextDecorations(
   textDecoration: Decoration,
   decorations: PreviewDecoration[],
 ) {
-  decorations.push({
-    from: lineFrom + start,
-    to: lineFrom + contentStart,
-    decoration: hiddenMarkdown,
-  });
-  decorations.push({
-    from: lineFrom + contentStart,
-    to: lineFrom + contentEnd,
-    decoration: textDecoration,
-  });
-  decorations.push({
-    from: lineFrom + contentEnd,
-    to: lineFrom + end,
-    decoration: hiddenMarkdown,
-  });
+  decorations.push(
+    ...delimitedTextDecorations(
+      lineFrom + start,
+      lineFrom + contentStart,
+      lineFrom + contentEnd,
+      lineFrom + end,
+      textDecoration,
+    ),
+  );
 }
 
 type DelimitedInlineSpan = {

@@ -486,9 +486,15 @@ lines are visually rendered while the active line remains editable Markdown
 source. Inline emphasis, strong emphasis, combined strong emphasis,
 strikethrough, and code spans share one delimiter-decoration helper. Code-span
 ranges are detected once per line and protect their literal content from the
-other inline scanners. Alternative unordered list markers are parsed through
-the shared `markdownPatterns.ts` helper and normalized visually without changing
-the document. Inline LaTeX follows the same rule. Its Markdown range is hidden
+other inline scanners. Standard inline Markdown links use the same context
+scanner that prevents their labels and targets from being reinterpreted as
+Logtext wiki links. CodeMirror syntax-tree `Escape` nodes hide only the
+backslash; an immediately following emphasis node preserves CommonMark delimiter
+semantics. Syntax-tree `CodeBlock` and `FencedCode` ranges protect both rendering
+and pointer interaction, including four-space-indented code. Alternative
+unordered list markers are parsed through the shared `markdownPatterns.ts`
+helper and normalized visually without changing the document. Inline LaTeX
+follows the same rule. Its Markdown range is hidden
 separately from a right-sided point widget at the opening delimiter, which
 keeps the widget's left edge anchored after preceding text. The widget is an
 atomic LTR inline-block; the hidden Markdown range adds no width, and a

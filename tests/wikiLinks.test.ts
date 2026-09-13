@@ -5,6 +5,7 @@ import {
   applyWikiLinkColorStyles,
   compactPageFolderLabel,
   compactPageLabel,
+  markdownInlineLinksInText,
   renderWikiLinks,
   resolveWikiTarget,
   wikiLinksInText,
@@ -63,6 +64,34 @@ test("ignores escaped wiki links and wiki syntax inside Markdown links", () => {
 
   assert.deepEqual(wikiLinksInText(source), []);
   assert.equal(renderWikiLinks(source, pages), source);
+});
+
+test("finds inline Markdown links with wiki-like text in labels and targets", () => {
+  assert.deepEqual(
+    markdownInlineLinksInText(
+      "[Standardlink mit [[verschachteltem Wiki-Link]]](https://example.test)",
+    ),
+    [{ from: 0, to: 70, labelFrom: 1, labelTo: 47 }],
+  );
+  assert.deepEqual(
+    markdownInlineLinksInText(
+      "[Link mit problematischem Ziel](https://example.test/[[WikiTarget]])",
+    ),
+    [{ from: 0, to: 68, labelFrom: 1, labelTo: 30 }],
+  );
+});
+
+test("does not treat images, escaped labels, code, or LaTeX as inline Markdown links", () => {
+  const source = [
+    "![Image](media/image.png)",
+    String.raw`\[Escaped](https://example.test)`,
+    "`[Code](https://example.test)`",
+    String.raw`$\text{[Formula](https://example.test)}$`,
+  ];
+
+  for (const line of source) {
+    assert.deepEqual(markdownInlineLinksInText(line), []);
+  }
 });
 
 test("ignores wiki links inside inline and block LaTeX", () => {
