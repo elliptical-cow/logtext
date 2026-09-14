@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onDestroy, tick } from "svelte";
   import CodeMirrorEditor from "./CodeMirrorEditor.svelte";
   import ErrorDialog from "./ErrorDialog.svelte";
   import LinkedReferences from "./LinkedReferences.svelte";
@@ -10,11 +9,6 @@
   import { appUndoStore } from "../stores/appUndo";
   import { linkOperations, type LinkTargetPane } from "../stores/linkOperations";
   import { workspaceStore } from "../stores/workspace";
-  import {
-    createJournalScrollNavigation,
-    type JournalScrollContext,
-  } from "../journalScrollNavigation";
-  import { orderedJournalPaths, shouldUseContinuousJournalView } from "../journals";
   import type { BacklinkView, PageView } from "../types";
 
   let editor: { saveCurrentDocument: () => void } | null = null;
@@ -24,12 +18,6 @@
   let pageViewRequestKey = "";
   let pageViewRequestSequence = 0;
   let missingLinkPath: string | null = null;
-  let editorScroll: HTMLDivElement;
-  let journalScrollContext: JournalScrollContext;
-  const journalScrollNavigation = createJournalScrollNavigation({
-    openPage: (path) => editorSessionStore.open(path),
-    afterOpen: tick,
-  });
 
   $: nextPageViewRequestKey =
     $editorSessionStore.path && $editorSessionStore.contentHash
@@ -40,25 +28,6 @@
     pageViewRequestKey = nextPageViewRequestKey;
     void loadEditorPageView($editorSessionStore.path);
   }
-
-  $: journalSortDescending = (
-    $workspaceStore.folderPageSort[$workspaceStore.journalFolder] ??
-    $workspaceStore.defaultPageSort
-  ).endsWith("-desc");
-  $: editorJournalPaths = orderedJournalPaths(
-    $workspaceStore.pages.map((page) => page.path),
-    $workspaceStore.journalFolder,
-    journalSortDescending ? "desc" : "asc",
-  );
-  $: journalScrollContext = {
-    enabled: shouldUseContinuousJournalView(
-      $editorSessionStore.path,
-      $workspaceStore.journalFolder,
-      $workspaceStore.journalEditorContinuousScrolling,
-    ),
-    currentPath: $editorSessionStore.path,
-    journalPaths: editorJournalPaths,
-  };
 
   async function loadEditorPageView(path: string | null) {
     const requestId = ++pageViewRequestSequence;
@@ -149,24 +118,7 @@
     });
   }
 
-  function handleJournalWheel(event: WheelEvent) {
-    void journalScrollNavigation.handleWheel(event, editorScroll, journalScrollContext);
-  }
-
-  function handleJournalPageKey(event: KeyboardEvent) {
-    if (!(event.target instanceof Node) || !editorScroll?.contains(event.target)) {
-      return;
-    }
-    void journalScrollNavigation.handlePageKey(event, editorScroll, journalScrollContext);
-  }
-
-  onDestroy(() => {
-    journalScrollNavigation.destroy();
-  });
-
 </script>
-
-<svelte:window on:keydown|capture={handleJournalPageKey} />
 
 <section class="editor-pane" aria-label="Editor">
   <div class="pane-header">
@@ -223,11 +175,7 @@
     primaryActionLabel={$editorSessionStore.conflict ? "Overwrite disk" : null}
     onPrimaryAction={$editorSessionStore.conflict ? () => editorSessionStore.overwriteDisk() : null}
   />
-  <div
-    class="editor-scroll"
-    bind:this={editorScroll}
-    on:wheel={handleJournalWheel}
-  >
+  <div class="editor-scroll">
     <CodeMirrorEditor
       bind:this={editor}
       value={$editorSessionStore.content}

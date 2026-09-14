@@ -134,17 +134,9 @@ journal entries in the configured ascending or descending order.
 Set `journalRightPaneContinuousScrolling` to `false` to show only the selected
 journal page.
 
-### Editor Boundary Navigation
-
-The middle pane edits one file at a time. It does not place multiple Markdown
-files in one editor document.
-
-When the editor is at a journal page boundary, an additional mouse-wheel or
-Page Up/Page Down action opens the adjacent journal file. No extra click in the
-new document is required.
-
-Set `journalEditorContinuousScrolling` to `false` to disable this boundary
-navigation.
+The middle pane edits one Markdown file at a time. Mouse-wheel and Page Up/Page
+Down scrolling stay within that file. Use the journal controls or pane history
+to open another journal entry.
 
 ## Pages and Titles
 
@@ -533,7 +525,6 @@ A representative configuration:
 {
   "journalFolder": "journal",
   "mediaFolder": "media",
-  "journalEditorContinuousScrolling": true,
   "journalRightPaneContinuousScrolling": true,
   "taskStates": ["TODO", "INPROGRESS", "WAITING", "DONE"],
   "taskStateColors": {
@@ -560,7 +551,6 @@ A representative configuration:
 | --- | --- |
 | `journalFolder` | Workspace-relative folder; defaults to `journal`. No `.`, `..`, or empty segments. |
 | `mediaFolder` | Workspace-relative folder; defaults to `media`. Cannot overlap the journal folder or use `.git`, `node_modules`, or `target`. |
-| `journalEditorContinuousScrolling` | Boolean; enables journal boundary navigation in the editor. |
 | `journalRightPaneContinuousScrolling` | Boolean; enables the continuous right-pane journal feed. |
 | `taskStates` | Ordered list of uppercase states using letters, numbers, or `_`. The final state is treated as complete. |
 | `taskStateColors` | State-to-color map. Supported colors: `red`, `yellow`, `green`, `blue`, `grey`, `orange`, `pink`. |

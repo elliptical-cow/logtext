@@ -75,7 +75,6 @@ type WorkspaceStoreState = {
   root: string | null;
   journalFolder: string;
   mediaFolder: string;
-  journalEditorContinuousScrolling: boolean;
   journalRightPaneContinuousScrolling: boolean;
   pages: PageSummary[];
   folders: string[];
@@ -105,7 +104,6 @@ const initialState: WorkspaceStoreState = {
   root: null,
   journalFolder: DEFAULT_JOURNAL_FOLDER,
   mediaFolder: "media",
-  journalEditorContinuousScrolling: true,
   journalRightPaneContinuousScrolling: true,
   pages: [],
   folders: [],
@@ -137,7 +135,6 @@ function storeStateFromWorkspace(workspace: WorkspaceStateDto): WorkspaceStoreSt
     root: workspace.root,
     journalFolder: workspace.journalFolder ?? DEFAULT_JOURNAL_FOLDER,
     mediaFolder: workspace.mediaFolder ?? "media",
-    journalEditorContinuousScrolling: workspace.journalEditorContinuousScrolling ?? true,
     journalRightPaneContinuousScrolling: workspace.journalRightPaneContinuousScrolling ?? true,
     pages: workspace.pages,
     folders: workspace.folders ?? [],

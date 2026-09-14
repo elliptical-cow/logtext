@@ -11,7 +11,6 @@ import {
 const defaults: WorkspacePreferences = {
   journalFolder: "journal",
   mediaFolder: "media",
-  journalEditorContinuousScrolling: true,
   journalRightPaneContinuousScrolling: true,
   taskStates: ["TODO", "DONE"],
   taskStateColors: { TODO: "red", DONE: "green" },

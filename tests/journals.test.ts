@@ -4,19 +4,15 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  adjacentPathInOrderedJournalPaths,
-  adjacentJournalPath,
   expandJournalFeedWindow,
   initialJournalFeedWindow,
   isJournalPagePath,
-  journalBoundaryDirection,
   journalPath,
   journalPathForDateInput,
   journalPathForDay,
   orderedJournalPaths,
   shouldUseContinuousJournalView,
 } from "../src/lib/journals.js";
-import { createJournalScrollNavigation } from "../src/lib/journalScrollNavigation.js";
 
 const date = new Date(2026, 7, 9);
 
@@ -51,48 +47,6 @@ test("enables the continuous journal view only for configured journal pages", ()
   assert.equal(shouldUseContinuousJournalView(null, "daily", true), false);
 });
 
-test("finds existing adjacent journal pages in chronological order", () => {
-  const pages = [
-    "daily/notes.md",
-    "daily/2026-08-10.md",
-    "daily/2026-08-08.md",
-    "daily/2026-08-09.md",
-  ];
-
-  assert.equal(adjacentJournalPath("daily/2026-08-09.md", pages, "daily", "previous"), "daily/2026-08-08.md");
-  assert.equal(adjacentJournalPath("daily/2026-08-09.md", pages, "daily", "next"), "daily/2026-08-10.md");
-  assert.equal(adjacentJournalPath("daily/2026-08-10.md", pages, "daily", "next"), null);
-  assert.equal(
-    adjacentJournalPath("daily/2026-08-09.md", pages, "daily", "previous", "desc"),
-    "daily/2026-08-10.md",
-  );
-  assert.equal(
-    adjacentJournalPath("daily/2026-08-09.md", pages, "daily", "next", "desc"),
-    "daily/2026-08-08.md",
-  );
-});
-
-test("finds adjacent pages in an already ordered journal sequence", () => {
-  const orderedPaths = [
-    "daily/2026-08-10.md",
-    "daily/2026-08-09.md",
-    "daily/2026-08-08.md",
-  ];
-
-  assert.equal(
-    adjacentPathInOrderedJournalPaths(
-      "daily/2026-08-09.md",
-      orderedPaths,
-      "previous",
-    ),
-    "daily/2026-08-10.md",
-  );
-  assert.equal(
-    adjacentPathInOrderedJournalPaths("daily/2026-08-09.md", orderedPaths, "next"),
-    "daily/2026-08-08.md",
-  );
-});
-
 test("orders and expands the progressively loaded journal feed", () => {
   const pages = [
     "daily/2026-08-10.md",
@@ -111,7 +65,6 @@ test("orders and expands the progressively loaded journal feed", () => {
     "daily/2026-08-09.md",
     "daily/2026-08-08.md",
   ]);
-
   const initial = initialJournalFeedWindow(5, 12, 2);
   assert.deepEqual(initial, { start: 3, end: 7 });
   assert.deepEqual(expandJournalFeedWindow(initial, 12, "before", 2), {
@@ -124,28 +77,13 @@ test("orders and expands the progressively loaded journal feed", () => {
   });
 });
 
-test("detects scrolling beyond the journal page boundaries", () => {
-  assert.equal(journalBoundaryDirection(0, 1000, 400, -10), "previous");
-  assert.equal(journalBoundaryDirection(600, 1000, 400, 10), "next");
-  assert.equal(journalBoundaryDirection(200, 1000, 400, 10), null);
-  assert.equal(journalBoundaryDirection(0, 1000, 400, 0), null);
-});
-
-test("wires boundary navigation to the editor scroll container", () => {
+test("keeps journal boundary navigation out of the editor", () => {
   const source = readFileSync(
     join(process.cwd(), "src/lib/components/EditorPane.svelte"),
     "utf8",
   );
-  assert.match(source, /on:wheel=\{handleJournalWheel\}/);
-  assert.match(source, /<svelte:window on:keydown\|capture=\{handleJournalPageKey\}/);
-  assert.match(source, /editorScroll\?\.contains\(event\.target\)/);
-  assert.match(source, /createJournalScrollNavigation\(/);
-  assert.match(source, /journalScrollNavigation\.handleWheel\(/);
-  assert.match(source, /journalScrollNavigation\.handlePageKey\(/);
-  assert.match(source, /editorJournalPaths = orderedJournalPaths\(/);
-  assert.match(source, /journalPaths: editorJournalPaths/);
-  assert.match(source, /enabled: shouldUseContinuousJournalView\(/);
-  assert.match(source, /folderPageSort\[\$workspaceStore\.journalFolder\]/);
+  assert.equal(/handleJournalWheel|handleJournalPageKey/.test(source), false);
+  assert.equal(/journalScrollNavigation|journalEditorContinuousScrolling/.test(source), false);
 });
 
 test("uses a progressively loaded multi-file journal feed in the right pane", () => {
@@ -169,216 +107,6 @@ test("uses a progressively loaded multi-file journal feed in the right pane", ()
   assert.match(feed, /refreshPath\(\$pageContentUpdateStore\.path\)/);
 });
 
-test("allows another boundary gesture without requiring a click", async () => {
-  const openedPaths: string[] = [];
-  const navigation = createJournalScrollNavigation({
-    async openPage(path) {
-      openedPaths.push(path);
-      return true;
-    },
-    async afterOpen() {},
-    gestureLockMs: 0,
-  });
-  const container = { scrollTop: 500, scrollHeight: 900, clientHeight: 400 } as HTMLElement;
-  const event = {
-    ctrlKey: false,
-    metaKey: false,
-    deltaY: 20,
-    preventDefault() {},
-  } as WheelEvent;
-  const paths = [
-    "journal/2026-08-08.md",
-    "journal/2026-08-09.md",
-    "journal/2026-08-10.md",
-  ];
-
-  await navigation.handleWheel(event, container, {
-    enabled: true,
-    currentPath: paths[0],
-    journalPaths: paths,
-  });
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  container.scrollTop = 500;
-  await navigation.handleWheel(event, container, {
-    enabled: true,
-    currentPath: paths[1],
-    journalPaths: paths,
-  });
-  navigation.destroy();
-
-  assert.deepEqual(openedPaths, [paths[1], paths[2]]);
-});
-
-test("uses a second page key press at a boundary to open an adjacent journal", async () => {
-  const openedPaths: string[] = [];
-  let prevented = 0;
-  let stopped = 0;
-  const navigation = createJournalScrollNavigation({
-    async openPage(path) {
-      openedPaths.push(path);
-      return true;
-    },
-    async afterOpen() {},
-  });
-  const container = { scrollTop: 200, scrollHeight: 900, clientHeight: 400 } as HTMLElement;
-  const pageDown = {
-    key: "PageDown",
-    repeat: false,
-    altKey: false,
-    ctrlKey: false,
-    metaKey: false,
-    shiftKey: false,
-    preventDefault() {
-      prevented += 1;
-    },
-    stopPropagation() {
-      stopped += 1;
-    },
-  } as KeyboardEvent;
-  const paths = [
-    "journal/2026-08-08.md",
-    "journal/2026-08-09.md",
-    "journal/2026-08-10.md",
-  ];
-  const context = {
-    enabled: true,
-    currentPath: paths[1],
-    journalPaths: paths,
-  };
-
-  assert.equal(await navigation.handlePageKey(pageDown, container, context), false);
-  assert.deepEqual(openedPaths, []);
-
-  container.scrollTop = 500;
-  assert.equal(await navigation.handlePageKey(pageDown, container, context), true);
-  assert.equal(container.scrollTop, 0);
-
-  const pageUp = { ...pageDown, key: "PageUp" } as KeyboardEvent;
-  assert.equal(await navigation.handlePageKey(pageUp, container, context), true);
-  navigation.destroy();
-
-  assert.equal(container.scrollTop, 900);
-  assert.deepEqual(openedPaths, [paths[2], paths[0]]);
-  assert.equal(prevented, 2);
-  assert.equal(stopped, 2);
-});
-
-test("does not navigate journals for modified, repeated, or unrelated page keys", async () => {
-  const openedPaths: string[] = [];
-  const navigation = createJournalScrollNavigation({
-    async openPage(path) {
-      openedPaths.push(path);
-      return true;
-    },
-    async afterOpen() {},
-  });
-  let geometryReads = 0;
-  const container = {
-    get scrollTop() {
-      geometryReads += 1;
-      return 500;
-    },
-    get scrollHeight() {
-      geometryReads += 1;
-      return 900;
-    },
-    get clientHeight() {
-      geometryReads += 1;
-      return 400;
-    },
-  } as HTMLElement;
-  const context = {
-    enabled: true,
-    currentPath: "journal/2026-08-09.md",
-    journalPaths: ["journal/2026-08-09.md", "journal/2026-08-10.md"],
-  };
-  const event = {
-    key: "PageDown",
-    repeat: false,
-    altKey: false,
-    ctrlKey: false,
-    metaKey: false,
-    shiftKey: true,
-    preventDefault() {},
-    stopPropagation() {},
-  } as KeyboardEvent;
-
-  assert.equal(await navigation.handlePageKey(event, container, context), false);
-  assert.equal(
-    await navigation.handlePageKey({ ...event, shiftKey: false, repeat: true } as KeyboardEvent, container, context),
-    false,
-  );
-  assert.equal(
-    await navigation.handlePageKey({ ...event, shiftKey: false, key: "End" } as KeyboardEvent, container, context),
-    false,
-  );
-  navigation.destroy();
-
-  assert.deepEqual(openedPaths, []);
-  assert.equal(geometryReads, 0);
-});
-
-test("keeps editor journal boundary navigation disabled by workspace config", async () => {
-  const openedPaths: string[] = [];
-  const navigation = createJournalScrollNavigation({
-    async openPage(path) {
-      openedPaths.push(path);
-      return true;
-    },
-    async afterOpen() {},
-  });
-  let geometryReads = 0;
-  const container = {
-    get scrollTop() {
-      geometryReads += 1;
-      return 500;
-    },
-    get scrollHeight() {
-      geometryReads += 1;
-      return 900;
-    },
-    get clientHeight() {
-      geometryReads += 1;
-      return 400;
-    },
-  } as HTMLElement;
-  const context = {
-    enabled: false,
-    currentPath: "journal/2026-08-09.md",
-    journalPaths: ["journal/2026-08-09.md", "journal/2026-08-10.md"],
-  };
-  let prevented = false;
-  const wheelEvent = {
-    ctrlKey: false,
-    metaKey: false,
-    deltaY: 20,
-    preventDefault() {
-      prevented = true;
-    },
-    stopPropagation() {},
-  } as WheelEvent;
-  const keyEvent = {
-    key: "PageDown",
-    repeat: false,
-    altKey: false,
-    ctrlKey: false,
-    metaKey: false,
-    shiftKey: false,
-    preventDefault() {
-      prevented = true;
-    },
-    stopPropagation() {},
-  } as KeyboardEvent;
-
-  assert.equal(await navigation.handleWheel(wheelEvent, container, context), false);
-  assert.equal(await navigation.handlePageKey(keyEvent, container, context), false);
-  navigation.destroy();
-
-  assert.equal(prevented, false);
-  assert.equal(geometryReads, 0);
-  assert.deepEqual(openedPaths, []);
-});
-
 test("uses the configured journal folder for startup and journal shortcuts", () => {
   const app = readFileSync(join(process.cwd(), "src/App.svelte"), "utf8");
   const fileTree = readFileSync(
@@ -389,37 +117,4 @@ test("uses the configured journal folder for startup and journal shortcuts", () 
   assert.match(app, /journalPath\(new Date\(\), \$workspaceStore\.journalFolder\)/);
   assert.match(fileTree, /journalPathForDay\(day, new Date\(\), \$workspaceStore\.journalFolder\)/);
   assert.match(fileTree, /journalPathForDateInput\(date, \$workspaceStore\.journalFolder\)/);
-});
-
-test("opens one adjacent journal and places the previous page at its end", async () => {
-  const openedPaths: string[] = [];
-  let prevented = false;
-  const navigation = createJournalScrollNavigation({
-    async openPage(path) {
-      openedPaths.push(path);
-      return true;
-    },
-    async afterOpen() {},
-  });
-  const container = { scrollTop: 0, scrollHeight: 900, clientHeight: 400 } as HTMLElement;
-  const event = {
-    ctrlKey: false,
-    metaKey: false,
-    deltaY: -20,
-    preventDefault() {
-      prevented = true;
-    },
-  } as WheelEvent;
-
-  const opened = await navigation.handleWheel(event, container, {
-    enabled: true,
-    currentPath: "journal/2026-08-09.md",
-    journalPaths: ["journal/2026-08-08.md", "journal/2026-08-09.md"],
-  });
-  navigation.destroy();
-
-  assert.equal(opened, true);
-  assert.equal(prevented, true);
-  assert.deepEqual(openedPaths, ["journal/2026-08-08.md"]);
-  assert.equal(container.scrollTop, 900);
 });

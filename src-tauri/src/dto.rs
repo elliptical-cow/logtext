@@ -22,7 +22,6 @@ pub struct WorkspaceStateDto {
     pub root: String,
     pub journal_folder: String,
     pub media_folder: String,
-    pub journal_editor_continuous_scrolling: bool,
     pub journal_right_pane_continuous_scrolling: bool,
     pub pages: Vec<PageSummaryDto>,
     pub folders: Vec<String>,
@@ -50,7 +49,6 @@ pub fn workspace_state(workspace: &WorkspaceState) -> WorkspaceStateDto {
         root: workspace.root.to_string_lossy().to_string(),
         journal_folder: workspace.config.journal_folder.clone(),
         media_folder: workspace.config.media_folder.clone(),
-        journal_editor_continuous_scrolling: workspace.config.journal_editor_continuous_scrolling,
         journal_right_pane_continuous_scrolling: workspace
             .config
             .journal_right_pane_continuous_scrolling,

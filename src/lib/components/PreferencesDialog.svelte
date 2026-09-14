@@ -162,10 +162,6 @@
         </label>
         {#if errors.journalFolder}<p class="field-error">{errors.journalFolder}</p>{/if}
         <label class="checkbox-setting">
-          <input type="checkbox" bind:checked={draft.journalEditorContinuousScrolling} />
-          <span>Continuous scrolling at editor page boundaries</span>
-        </label>
-        <label class="checkbox-setting">
           <input type="checkbox" bind:checked={draft.journalRightPaneContinuousScrolling} />
           <span>Continuous journal feed in the right pane</span>
         </label>

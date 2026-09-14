@@ -72,7 +72,6 @@ export type ThemeMode = "light" | "dark";
 export type WorkspacePreferences = {
   journalFolder: string;
   mediaFolder: string;
-  journalEditorContinuousScrolling: boolean;
   journalRightPaneContinuousScrolling: boolean;
   taskStates: TaskStatus[];
   taskStateColors: TaskStateColors;
@@ -142,7 +141,6 @@ export type WorkspaceState = {
   root: string;
   journalFolder: string;
   mediaFolder: string;
-  journalEditorContinuousScrolling: boolean;
   journalRightPaneContinuousScrolling: boolean;
   pages: PageSummary[];
   folders: string[];

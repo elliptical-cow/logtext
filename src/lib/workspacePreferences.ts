@@ -13,7 +13,6 @@ export function workspacePreferencesFromState(
     WorkspaceState,
     | "journalFolder"
     | "mediaFolder"
-    | "journalEditorContinuousScrolling"
     | "journalRightPaneContinuousScrolling"
     | "taskStates"
     | "taskStateColors"
@@ -25,7 +24,6 @@ export function workspacePreferencesFromState(
   return {
     journalFolder: workspace.journalFolder,
     mediaFolder: workspace.mediaFolder,
-    journalEditorContinuousScrolling: workspace.journalEditorContinuousScrolling,
     journalRightPaneContinuousScrolling: workspace.journalRightPaneContinuousScrolling,
     taskStates: [...workspace.taskStates],
     taskStateColors: { ...workspace.taskStateColors },

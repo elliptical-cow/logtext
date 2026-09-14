@@ -1,5 +1,4 @@
 export type JournalDay = "yesterday" | "today" | "tomorrow";
-export type JournalDirection = "previous" | "next";
 export type JournalSortDirection = "asc" | "desc";
 export type JournalFeedDirection = "before" | "after";
 export type JournalFeedWindow = { start: number; end: number };
@@ -69,32 +68,6 @@ export function shouldUseContinuousJournalView(
   return enabled && path !== null && isJournalPagePath(path, root);
 }
 
-export function adjacentJournalPath(
-  currentPath: string,
-  pagePaths: string[],
-  root: string,
-  direction: JournalDirection,
-  sortDirection: JournalSortDirection = "asc",
-) {
-  const journalPaths = orderedJournalPaths(pagePaths, root, sortDirection);
-  return adjacentPathInOrderedJournalPaths(currentPath, journalPaths, direction);
-}
-
-export function adjacentPathInOrderedJournalPaths(
-  currentPath: string,
-  journalPaths: readonly string[],
-  direction: JournalDirection,
-) {
-  const currentIndex = journalPaths.findIndex(
-    (path) => path.toLocaleLowerCase() === currentPath.toLocaleLowerCase(),
-  );
-  if (currentIndex < 0) {
-    return null;
-  }
-
-  return journalPaths[currentIndex + (direction === "previous" ? -1 : 1)] ?? null;
-}
-
 export function orderedJournalPaths(
   pagePaths: string[],
   root = DEFAULT_JOURNAL_FOLDER,
@@ -124,21 +97,6 @@ export function expandJournalFeedWindow(
   return direction === "before"
     ? { start: Math.max(0, window.start - batchSize), end: window.end }
     : { start: window.start, end: Math.min(pathCount - 1, window.end + batchSize) };
-}
-
-export function journalBoundaryDirection(
-  scrollTop: number,
-  scrollHeight: number,
-  clientHeight: number,
-  deltaY: number,
-): JournalDirection | null {
-  if (deltaY < 0 && scrollTop <= 1) {
-    return "previous";
-  }
-  if (deltaY > 0 && scrollTop + clientHeight >= scrollHeight - 1) {
-    return "next";
-  }
-  return null;
 }
 
 export function normalizeJournalFolder(root: string) {
