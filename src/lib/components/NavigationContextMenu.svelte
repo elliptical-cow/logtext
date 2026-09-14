@@ -95,6 +95,24 @@
             <button
               type="button"
               role="menuitem"
+              data-menu-key="n"
+              class:active-menu-item={folderSortFor(contextMenu.node.path) === "modified-desc"}
+              on:click={() => handleContextMenuAction("sort:modified-desc")}
+            >
+              Modified: <span class="menu-mnemonic">n</span>ewest first
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-menu-key="o"
+              class:active-menu-item={folderSortFor(contextMenu.node.path) === "modified-asc"}
+              on:click={() => handleContextMenuAction("sort:modified-asc")}
+            >
+              Modified: <span class="menu-mnemonic">o</span>ldest first
+            </button>
+            <button
+              type="button"
+              role="menuitem"
               data-menu-key="r"
               class:active-menu-item={folderSortFor(contextMenu.node.path) === "opened-desc"}
               on:click={() => handleContextMenuAction("sort:opened-desc")}

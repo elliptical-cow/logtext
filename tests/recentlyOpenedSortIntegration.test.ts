@@ -20,6 +20,24 @@ test("offers recently opened sorting in preferences and folder menus", () => {
   assert.match(contextMenu, />ecently opened/);
 });
 
+test("offers filesystem modification sorting in preferences and folder menus", () => {
+  const preferences = readFileSync(
+    join(root, "src/lib/components/PreferencesDialog.svelte"),
+    "utf8",
+  );
+  const contextMenu = readFileSync(
+    join(root, "src/lib/components/NavigationContextMenu.svelte"),
+    "utf8",
+  );
+
+  assert.match(preferences, /value: "modified-desc", label: "Modified \(newest first\)"/);
+  assert.match(preferences, /value: "modified-asc", label: "Modified \(oldest first\)"/);
+  assert.match(contextMenu, /sort:modified-desc/);
+  assert.match(contextMenu, /sort:modified-asc/);
+  assert.match(contextMenu, /Modified:.*ewest first/s);
+  assert.match(contextMenu, /Modified:.*ldest first/s);
+});
+
 test("records successful pane opens through the workspace backend", () => {
   const backend = readFileSync(join(root, "src-tauri/src/config_commands.rs"), "utf8");
   const registration = readFileSync(join(root, "src-tauri/src/lib.rs"), "utf8");

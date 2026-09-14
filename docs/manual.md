@@ -124,6 +124,8 @@ Journal pages provide the default capture workflow.
 - Yesterday, Today, Tomorrow, and Pick controls are available in the left pane.
 
 The configured page sort order determines journal navigation order.
+`Modified` ordering uses each Markdown file's filesystem modification time;
+`Recently opened` uses the workspace-local opening history.
 
 ### Right-Pane Journal Feed
 
@@ -564,6 +566,10 @@ A representative configuration:
 
 Folder-specific sort modes and colors continue to be managed from folder
 context menus in the file tree rather than from Preferences.
+
+`Modified (newest first)` and `Modified (oldest first)` read the Markdown
+files' modification timestamps directly from the filesystem. These timestamps
+are indexed in memory and are not duplicated in `.config`.
 
 The journal and media folders must not be the same folder, ancestors, or
 descendants of each other.

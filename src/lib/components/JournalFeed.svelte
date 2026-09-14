@@ -80,7 +80,11 @@
     anchorPath,
     journalFolder,
     sortMode,
-    pages.map((page) => page.path).join("\u0000"),
+    pages
+      .map((page) =>
+        `${page.path}${sortMode.startsWith("modified-") ? `:${page.modifiedAt}` : ""}`,
+      )
+      .join("\u0000"),
     sortMode === "opened-desc" ? JSON.stringify(lastOpenedAt) : "",
   ].join("\u0001");
   $: if (nextInitializationKey !== initializationKey) {
@@ -118,7 +122,7 @@
     activePath = anchorPath;
     onActivePathChange(anchorPath);
     orderedPaths = orderedJournalPaths(
-      pages.map((page) => page.path),
+      pages,
       journalFolder,
       sortMode,
       lastOpenedAt,

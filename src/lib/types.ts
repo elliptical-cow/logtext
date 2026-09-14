@@ -12,6 +12,7 @@ export type PageSummary = {
   title: string;
   key: string;
   exists: boolean;
+  modifiedAt: number;
 };
 
 export type PageContent = {

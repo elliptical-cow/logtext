@@ -1,3 +1,5 @@
+import type { PageSortMode, PageSummary } from "./types.js";
+
 export type JournalDay = "yesterday" | "today" | "tomorrow";
 export type JournalSortDirection = "asc" | "desc";
 export type JournalFeedDirection = "before" | "after";
@@ -69,21 +71,33 @@ export function shouldUseContinuousJournalView(
 }
 
 export function orderedJournalPaths(
-  pagePaths: string[],
+  pages: Array<Pick<PageSummary, "path" | "modifiedAt">>,
   root = DEFAULT_JOURNAL_FOLDER,
-  sortDirection: JournalSortDirection | "name-asc" | "name-desc" | "modified-asc" | "modified-desc" | "opened-desc" = "asc",
+  sortDirection: JournalSortDirection | PageSortMode = "asc",
   lastOpenedAt: Record<string, number> = {},
 ) {
-  const journalPaths = pagePaths.filter((path) => isJournalPagePath(path, root)).sort();
+  const journalPages = pages.filter((page) => isJournalPagePath(page.path, root));
   if (sortDirection === "opened-desc") {
-    return journalPaths.sort((left, right) => {
-      const openedComparison = (lastOpenedAt[right] ?? 0) - (lastOpenedAt[left] ?? 0);
-      return openedComparison || left.localeCompare(right);
+    journalPages.sort((left, right) => {
+      const openedComparison =
+        (lastOpenedAt[right.path] ?? 0) - (lastOpenedAt[left.path] ?? 0);
+      return openedComparison || left.path.localeCompare(right.path);
     });
+  } else if (sortDirection === "modified-desc") {
+    journalPages.sort(
+      (left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path),
+    );
+  } else if (sortDirection === "modified-asc") {
+    journalPages.sort(
+      (left, right) => left.modifiedAt - right.modifiedAt || left.path.localeCompare(right.path),
+    );
+  } else {
+    journalPages.sort((left, right) => left.path.localeCompare(right.path));
+    if (sortDirection === "desc" || sortDirection === "name-desc") {
+      journalPages.reverse();
+    }
   }
-  return sortDirection === "desc" || sortDirection.endsWith("-desc")
-    ? journalPaths.reverse()
-    : journalPaths;
+  return journalPages.map((page) => page.path);
 }
 
 export function initialJournalFeedWindow(

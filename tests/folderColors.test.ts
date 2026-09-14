@@ -16,12 +16,14 @@ const pages: PageSummary[] = [
     key: "projects/alpha/forecast",
     path: "projects/alpha/Forecast.md",
     title: "Forecast",
+    modifiedAt: 0,
   },
   {
     exists: true,
     key: "journal/2026-08-21",
     path: "journal/2026-08-21.md",
     title: "2026-08-21",
+    modifiedAt: 0,
   },
 ];
 

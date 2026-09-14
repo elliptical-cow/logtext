@@ -472,6 +472,12 @@ Stores:
 - `theme.ts`: light and dark appearance state
 - `zoom.ts`: UI zoom factor
 
+`PageSummary` includes the filesystem modification time in Unix milliseconds.
+The backend page index refreshes it during full and incremental indexing, so the
+file tree, journal feed, and navigation-based backlink ordering share the same
+`modified-asc`/`modified-desc` semantics. Only user interaction history such as
+`lastOpenedAt` is persisted in `.config`; filesystem modification times are not.
+
 Domain logic is kept in framework-free TypeScript modules under `src/lib` so it
 can be unit tested without rendering components:
 

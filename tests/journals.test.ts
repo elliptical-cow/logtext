@@ -49,10 +49,10 @@ test("enables the continuous journal view only for configured journal pages", ()
 
 test("orders and expands the progressively loaded journal feed", () => {
   const pages = [
-    "daily/2026-08-10.md",
-    "daily/notes.md",
-    "daily/2026-08-08.md",
-    "daily/2026-08-09.md",
+    { path: "daily/2026-08-10.md", modifiedAt: 100 },
+    { path: "daily/notes.md", modifiedAt: 900 },
+    { path: "daily/2026-08-08.md", modifiedAt: 300 },
+    { path: "daily/2026-08-09.md", modifiedAt: 200 },
   ];
 
   assert.deepEqual(orderedJournalPaths(pages, "daily", "asc"), [
@@ -76,6 +76,16 @@ test("orders and expands the progressively loaded journal feed", () => {
       "daily/2026-08-09.md",
     ],
   );
+  assert.deepEqual(orderedJournalPaths(pages, "daily", "modified-desc"), [
+    "daily/2026-08-08.md",
+    "daily/2026-08-09.md",
+    "daily/2026-08-10.md",
+  ]);
+  assert.deepEqual(orderedJournalPaths(pages, "daily", "modified-asc"), [
+    "daily/2026-08-10.md",
+    "daily/2026-08-09.md",
+    "daily/2026-08-08.md",
+  ]);
   const initial = initialJournalFeedWindow(5, 12, 2);
   assert.deepEqual(initial, { start: 3, end: 7 });
   assert.deepEqual(expandJournalFeedWindow(initial, 12, "before", 2), {

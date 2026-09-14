@@ -146,6 +146,14 @@ fn compare_navigation_entries(
         return right_opened.cmp(&left_opened).then(name_ordering);
     }
 
+    if left.kind == NavigationEntryKind::Page && page_sort == "modified-desc" {
+        return right.modified_at.cmp(&left.modified_at).then(name_ordering);
+    }
+
+    if left.kind == NavigationEntryKind::Page && page_sort == "modified-asc" {
+        return left.modified_at.cmp(&right.modified_at).then(name_ordering);
+    }
+
     if left.kind == NavigationEntryKind::Page && page_sort.ends_with("-desc") {
         name_ordering.reverse()
     } else {
@@ -158,6 +166,7 @@ struct NavigationEntry {
     kind: NavigationEntryKind,
     path: String,
     name: String,
+    modified_at: u64,
 }
 
 impl NavigationEntry {
@@ -166,6 +175,7 @@ impl NavigationEntry {
             kind: NavigationEntryKind::Folder,
             path: path.to_string(),
             name: path.rsplit('/').next().unwrap_or(path).to_string(),
+            modified_at: 0,
         }
     }
 
@@ -175,6 +185,7 @@ impl NavigationEntry {
             kind: NavigationEntryKind::Page,
             path: page.path,
             name,
+            modified_at: page.modified_at,
         }
     }
 }
@@ -290,5 +301,32 @@ mod tests {
 
         assert!(order["zeta.md"] < order["alpha.md"]);
         assert!(order["alpha.md"] < order["beta.md"]);
+    }
+
+    #[test]
+    fn page_navigation_order_sorts_pages_by_modification_time() {
+        let mut config = WorkspaceConfig::default();
+        config.default_page_sort = "modified-desc".to_string();
+        config
+            .folder_page_sort
+            .insert("team".to_string(), "modified-asc".to_string());
+        let mut pages = PageIndex::default();
+        pages.insert_page_with_modified_at("alpha.md".to_string(), "", 100);
+        pages.insert_page_with_modified_at("zeta.md".to_string(), "", 300);
+        pages.insert_page_with_modified_at("team/old.md".to_string(), "", 50);
+        pages.insert_page_with_modified_at("team/new.md".to_string(), "", 250);
+        let workspace = WorkspaceState {
+            root: PathBuf::new(),
+            config,
+            folders: vec!["team".to_string()],
+            pages,
+            backlinks: BacklinkIndex::default(),
+            contents: ContentSnapshot::default(),
+        };
+
+        let order = page_navigation_order(&workspace);
+
+        assert!(order["team/old.md"] < order["team/new.md"]);
+        assert!(order["zeta.md"] < order["alpha.md"]);
     }
 }

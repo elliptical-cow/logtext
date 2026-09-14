@@ -52,7 +52,7 @@ function baseHarness(editor: EditorState) {
       return true;
     },
     getPageView: async (path) => ({
-      page: { path, title: path, key: path.toLowerCase(), exists: true },
+      page: { path, title: path, key: path.toLowerCase(), exists: true, modifiedAt: 0 },
       content: disk.get(path) ?? "",
       backlinks: [],
       diagnostics: [],

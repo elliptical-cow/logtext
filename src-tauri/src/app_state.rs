@@ -6,6 +6,8 @@ use crate::content_snapshot::ContentSnapshot;
 use crate::index::backlink_index::BacklinkIndex;
 use crate::index::page_index::{Page, PageIndex};
 use crate::watcher::WorkspaceWatcher;
+use crate::workspace::paths::resolve_workspace_relative_path;
+use crate::workspace::scanner::file_modified_at_millis;
 use crate::workspace_config::WorkspaceConfig;
 
 #[derive(Default)]
@@ -26,10 +28,15 @@ pub struct WorkspaceState {
 
 impl WorkspaceState {
     pub fn index_page_content(&mut self, path: String, content: String) -> Option<Page> {
+        let modified_at = resolve_workspace_relative_path(&self.root, &path)
+            .and_then(|absolute_path| file_modified_at_millis(&absolute_path).ok())
+            .unwrap_or_default();
         if self.pages.get_by_path(&path).is_some() {
-            self.pages.update_title(&path, &content);
+            self.pages
+                .update_content_metadata(&path, &content, modified_at);
         } else {
-            self.pages.insert_page(path.clone(), &content)?;
+            self.pages
+                .insert_page_with_modified_at(path.clone(), &content, modified_at)?;
         }
         self.backlinks.index_page(path.clone(), &content);
         self.contents.insert(path.clone(), content);

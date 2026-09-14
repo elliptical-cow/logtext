@@ -10,13 +10,14 @@ current source version is `0.7.5`.
 - Added `Recently opened` as a default or per-folder page sort mode. Successful
   opens in the editor and right pane are stored workspace-locally, carried
   across page and folder renames or moves, and also determine backlink order.
+- Completed `Modified` page sorting with filesystem modification timestamps and
+  added newest-first and oldest-first choices to each folder context menu.
 
 ### Changed
 
 - Limited continuous journal scrolling to the rendered right pane. The editor
-  once again scrolls only within its active Markdown file; its former boundary
-  navigation setting is ignored when loading older workspace configs and is no
-  longer written.
+  once again scrolls only within its active Markdown file; the former editor
+  boundary-navigation setting has been removed.
 
 ## 0.7.5
 Changes since `v0.7.1`.

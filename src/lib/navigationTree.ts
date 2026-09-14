@@ -196,18 +196,25 @@ function comparePages(
   sort: PageSortMode,
   lastOpenedAt: Record<string, number>,
 ) {
+  const nameComparison = left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
   if (sort === "opened-desc") {
     const openedComparison = (lastOpenedAt[right.path] ?? 0) - (lastOpenedAt[left.path] ?? 0);
     if (openedComparison !== 0) {
       return openedComparison;
     }
-    return left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
+    return nameComparison;
   }
-  if (sort === "name-asc" || sort === "modified-asc") {
-    return left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
+  if (sort === "modified-desc") {
+    return right.page.modifiedAt - left.page.modifiedAt || nameComparison;
+  }
+  if (sort === "modified-asc") {
+    return left.page.modifiedAt - right.page.modifiedAt || nameComparison;
+  }
+  if (sort === "name-asc") {
+    return nameComparison;
   }
 
-  return right.name.localeCompare(left.name, undefined, { sensitivity: "base" });
+  return -nameComparison;
 }
 
 export function pageNameFromPath(path: string) {

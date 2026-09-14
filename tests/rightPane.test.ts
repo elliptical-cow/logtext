@@ -8,7 +8,7 @@ import type { PageView } from "../src/lib/types.js";
 function pageView(path: string): PageView {
   const key = path.replace(/\.md$/, "").toLowerCase();
   return {
-    page: { exists: true, key, path, title: key },
+    page: { exists: true, key, path, title: key, modifiedAt: 0 },
     content: `# ${key}`,
     backlinks: [],
     diagnostics: [],

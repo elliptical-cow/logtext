@@ -14,6 +14,7 @@ pub struct PageSummaryDto {
     pub title: String,
     pub key: String,
     pub exists: bool,
+    pub modified_at: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -271,6 +272,7 @@ pub(crate) fn page_summary(page: Page) -> PageSummaryDto {
         title: page.title,
         key: page.key,
         exists: true,
+        modified_at: page.modified_at,
     }
 }
 
