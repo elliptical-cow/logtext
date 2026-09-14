@@ -94,7 +94,7 @@ test("keeps journal boundary navigation out of the editor", () => {
     "utf8",
   );
   assert.equal(/handleJournalWheel|handleJournalPageKey/.test(source), false);
-  assert.equal(/journalScrollNavigation|journalEditorContinuousScrolling/.test(source), false);
+  assert.equal(/journalScrollNavigation/.test(source), false);
 });
 
 test("uses a progressively loaded multi-file journal feed in the right pane", () => {

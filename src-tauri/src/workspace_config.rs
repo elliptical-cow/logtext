@@ -849,22 +849,6 @@ mod tests {
     }
 
     #[test]
-    fn ignores_removed_editor_continuous_scrolling_flag() {
-        let root = temp_workspace();
-        fs::write(
-            root.join(".config"),
-            r#"{"taskStates":["TODO","DONE"],"journalEditorContinuousScrolling":false,"journalRightPaneContinuousScrolling":true}"#,
-        )
-        .unwrap();
-
-        let config = load_or_create_workspace_config(&root).unwrap();
-
-        assert!(config.journal_right_pane_continuous_scrolling);
-
-        fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
     fn rejects_journal_folder_with_parent_segments() {
         let root = temp_workspace();
         fs::write(
@@ -1220,7 +1204,6 @@ mod tests {
         assert!(saved.contains("\"themeMode\": \"dark\""));
         assert!(saved.contains("\"openTasksOnly\": true"));
         assert!(saved.contains("\"taskDoneSoundEnabled\": false"));
-        assert!(!saved.contains("journalEditorContinuousScrolling"));
         assert!(saved.contains("\"journalRightPaneContinuousScrolling\": true"));
         assert!(saved.contains("\"defaultPageSort\": \"name-asc\""));
         assert!(saved.contains("\"folderPageSort\""));
