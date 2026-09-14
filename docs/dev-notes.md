@@ -308,6 +308,14 @@ Workspace-level config:
 The workspace config is normalized when loaded. Invalid or unknown values are
 discarded or replaced with defaults where practical.
 
+The Preferences dialog edits a typed `WorkspacePreferences` subset rather than
+the complete config object. Its single backend command clones the current
+config, validates all proposed changes, preserves application-managed state and
+persists only after any required media-folder reindex has been prepared.
+Changing folder targets never migrates files. Used task states cannot be
+removed, because doing so would silently turn affected Markdown lines into
+ordinary text.
+
 ## Frontend Structure
 
 The Svelte frontend is organized around components and stores.

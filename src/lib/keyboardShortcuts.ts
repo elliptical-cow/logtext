@@ -18,6 +18,7 @@ export const keyboardShortcuts: KeyboardShortcut[] = [
   { keys: "Cmd/Ctrl+F", description: "Search in current file" },
   { keys: "Shift+F10 / Menu", description: "Open the editor context menu at the cursor" },
   { keys: "Cmd/Ctrl+S", description: "Save current file" },
+  { keys: "Cmd/Ctrl+,", description: "Open workspace preferences" },
   { keys: "Cmd/Ctrl+Z", description: "Undo" },
   { keys: "Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y", description: "Redo" },
   { keys: "Cmd/Ctrl+Mouse Wheel", description: "Change UI zoom" },

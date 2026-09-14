@@ -7,14 +7,30 @@ use crate::workspace::scanner::scan_workspace_excluding;
 use std::collections::HashSet;
 use std::fs;
 
+pub(crate) struct WorkspaceIndexSnapshot {
+    pages: PageIndex,
+    backlinks: BacklinkIndex,
+    contents: ContentSnapshot,
+    folders: Vec<String>,
+}
+
 pub fn reindex_workspace(workspace: &mut WorkspaceState) -> Result<(), String> {
-    let scan = scan_workspace_excluding(&workspace.root, Some(&workspace.config.media_folder))?;
+    let snapshot = build_workspace_index(&workspace.root, &workspace.config.media_folder)?;
+    apply_workspace_index(workspace, snapshot);
+    Ok(())
+}
+
+pub(crate) fn build_workspace_index(
+    root: &std::path::Path,
+    media_folder: &str,
+) -> Result<WorkspaceIndexSnapshot, String> {
+    let scan = scan_workspace_excluding(root, Some(media_folder))?;
     let mut pages = PageIndex::default();
     let mut backlinks = BacklinkIndex::default();
     let mut contents = ContentSnapshot::default();
 
     for path in scan.markdown_files {
-        let absolute_path = resolve_workspace_relative_path(&workspace.root, &path)
+        let absolute_path = resolve_workspace_relative_path(root, &path)
             .ok_or_else(|| format!("Invalid page path '{path}'"))?;
         let content = fs::read_to_string(&absolute_path)
             .map_err(|error| format!("Failed to read page '{path}': {error}"))?;
@@ -23,12 +39,22 @@ pub fn reindex_workspace(workspace: &mut WorkspaceState) -> Result<(), String> {
         contents.insert(path, content);
     }
 
-    workspace.pages = pages;
-    workspace.backlinks = backlinks;
-    workspace.contents = contents;
-    workspace.folders = scan.folders;
+    Ok(WorkspaceIndexSnapshot {
+        pages,
+        backlinks,
+        contents,
+        folders: scan.folders,
+    })
+}
 
-    Ok(())
+pub(crate) fn apply_workspace_index(
+    workspace: &mut WorkspaceState,
+    snapshot: WorkspaceIndexSnapshot,
+) {
+    workspace.pages = snapshot.pages;
+    workspace.backlinks = snapshot.backlinks;
+    workspace.contents = snapshot.contents;
+    workspace.folders = snapshot.folders;
 }
 
 pub fn reindex_workspace_paths(

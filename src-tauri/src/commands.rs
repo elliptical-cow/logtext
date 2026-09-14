@@ -7,10 +7,10 @@ use crate::app_error::AppError;
 use crate::app_state::{AppState, WorkspaceState};
 use crate::content_snapshot::ContentSnapshot;
 use crate::dto::{
-    page_summaries, CreateFolderResultDto, CreatePageResultDto, DeleteFolderResultDto,
-    DeletePageResultDto, MovePageResultDto, PageContentDto, PageSummaryDto, PageViewDto,
-    RenameFolderResultDto, RenamePageResultDto, SavePageResultDto, SearchResultDto, TaskItemDto,
-    ToggleCheckboxResultDto, UpdateTaskStatusResultDto, WorkspaceStateDto,
+    page_summaries, workspace_state, CreateFolderResultDto, CreatePageResultDto,
+    DeleteFolderResultDto, DeletePageResultDto, MovePageResultDto, PageContentDto, PageSummaryDto,
+    PageViewDto, RenameFolderResultDto, RenamePageResultDto, SavePageResultDto, SearchResultDto,
+    TaskItemDto, ToggleCheckboxResultDto, UpdateTaskStatusResultDto, WorkspaceStateDto,
 };
 use crate::index::backlink_index::BacklinkIndex;
 use crate::index::page_index::{markdown_with_default_h1, PageIndex};
@@ -64,35 +64,7 @@ pub fn open_workspace(
         contents: ContentSnapshot::default(),
     };
     reindex_workspace(&mut workspace)?;
-    let diagnostics = workspace.pages.collision_diagnostics();
-    let response = WorkspaceStateDto {
-        root: root.to_string_lossy().to_string(),
-        journal_folder: workspace.config.journal_folder.clone(),
-        media_folder: workspace.config.media_folder.clone(),
-        journal_editor_continuous_scrolling: workspace.config.journal_editor_continuous_scrolling,
-        journal_right_pane_continuous_scrolling: workspace
-            .config
-            .journal_right_pane_continuous_scrolling,
-        pages: page_summaries(&workspace.pages),
-        folders: workspace.folders.clone(),
-        diagnostics,
-        task_states: workspace.config.task_states.clone(),
-        task_state_colors: workspace.config.task_state_colors.clone(),
-        task_done_sound_enabled: workspace.config.task_done_sound_enabled,
-        default_page_sort: workspace.config.default_page_sort.clone(),
-        folder_page_sort: workspace.config.folder_page_sort.clone(),
-        manual_page_order: workspace.config.manual_page_order.clone(),
-        folder_colors: workspace.config.folder_colors.clone(),
-        expanded_folders: workspace.config.expanded_folders.clone(),
-        page_favorites: workspace.config.page_favorites.clone(),
-        recent_pages: workspace.config.recent_pages.clone(),
-        navigation_layout: workspace.config.navigation_layout.clone(),
-        task_overview: workspace.config.task_overview.clone(),
-        backlink_view: workspace.config.backlink_view.clone(),
-        theme_mode: workspace.config.theme_mode.clone(),
-        last_editor_path: workspace.config.last_editor_path.clone(),
-        last_right_pane_path: workspace.config.last_right_pane_path.clone(),
-    };
+    let response = workspace_state(&workspace);
     let home_dir = app_handle
         .path()
         .home_dir()

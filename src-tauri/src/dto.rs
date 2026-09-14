@@ -1,6 +1,7 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
+use crate::app_state::WorkspaceState;
 use crate::index::backlink_index::Backlink;
 use crate::index::page_index::{Page, PageIndex};
 use crate::workspace_config::{BacklinkViewConfig, NavigationLayoutConfig, TaskOverviewConfig};
@@ -42,6 +43,37 @@ pub struct WorkspaceStateDto {
     pub theme_mode: String,
     pub last_editor_path: Option<String>,
     pub last_right_pane_path: Option<String>,
+}
+
+pub fn workspace_state(workspace: &WorkspaceState) -> WorkspaceStateDto {
+    WorkspaceStateDto {
+        root: workspace.root.to_string_lossy().to_string(),
+        journal_folder: workspace.config.journal_folder.clone(),
+        media_folder: workspace.config.media_folder.clone(),
+        journal_editor_continuous_scrolling: workspace.config.journal_editor_continuous_scrolling,
+        journal_right_pane_continuous_scrolling: workspace
+            .config
+            .journal_right_pane_continuous_scrolling,
+        pages: page_summaries(&workspace.pages),
+        folders: workspace.folders.clone(),
+        diagnostics: workspace.pages.collision_diagnostics(),
+        task_states: workspace.config.task_states.clone(),
+        task_state_colors: workspace.config.task_state_colors.clone(),
+        task_done_sound_enabled: workspace.config.task_done_sound_enabled,
+        default_page_sort: workspace.config.default_page_sort.clone(),
+        folder_page_sort: workspace.config.folder_page_sort.clone(),
+        manual_page_order: workspace.config.manual_page_order.clone(),
+        folder_colors: workspace.config.folder_colors.clone(),
+        expanded_folders: workspace.config.expanded_folders.clone(),
+        page_favorites: workspace.config.page_favorites.clone(),
+        recent_pages: workspace.config.recent_pages.clone(),
+        navigation_layout: workspace.config.navigation_layout.clone(),
+        task_overview: workspace.config.task_overview.clone(),
+        backlink_view: workspace.config.backlink_view.clone(),
+        theme_mode: workspace.config.theme_mode.clone(),
+        last_editor_path: workspace.config.last_editor_path.clone(),
+        last_right_pane_path: workspace.config.last_right_pane_path.clone(),
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

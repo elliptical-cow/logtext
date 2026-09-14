@@ -56,6 +56,20 @@ pub struct WorkspaceConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct WorkspacePreferences {
+    pub journal_folder: String,
+    pub media_folder: String,
+    pub journal_editor_continuous_scrolling: bool,
+    pub journal_right_pane_continuous_scrolling: bool,
+    pub task_states: Vec<String>,
+    pub task_state_colors: HashMap<String, String>,
+    pub task_done_sound_enabled: bool,
+    pub default_page_sort: String,
+    pub theme_mode: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NavigationLayoutConfig {
     #[serde(default = "default_quick_access_height")]
     pub quick_access_height: u32,
@@ -197,6 +211,43 @@ pub fn load_or_create_workspace_config(root: &Path) -> Result<WorkspaceConfig, S
 
 pub fn save_workspace_config(root: &Path, config: &WorkspaceConfig) -> Result<(), String> {
     write_workspace_config(&root.join(".config"), config)
+}
+
+pub fn apply_workspace_preferences(
+    config: &WorkspaceConfig,
+    preferences: WorkspacePreferences,
+) -> Result<WorkspaceConfig, String> {
+    let mut next = config.clone();
+    let task_states = normalize_task_states(preferences.task_states)?;
+    validate_preference_folder_input("journalFolder", &preferences.journal_folder)?;
+    validate_preference_folder_input("mediaFolder", &preferences.media_folder)?;
+    let journal_folder = normalize_journal_folder(preferences.journal_folder)?;
+    let media_folder = normalize_media_folder(preferences.media_folder)?;
+    validate_workspace_folder_separation(&journal_folder, &media_folder)?;
+
+    next.journal_folder = journal_folder;
+    next.media_folder = media_folder;
+    next.journal_editor_continuous_scrolling = preferences.journal_editor_continuous_scrolling;
+    next.journal_right_pane_continuous_scrolling =
+        preferences.journal_right_pane_continuous_scrolling;
+    next.task_state_colors =
+        normalize_task_state_colors(preferences.task_state_colors, &task_states);
+    next.task_states = task_states;
+    next.task_done_sound_enabled = preferences.task_done_sound_enabled;
+    next.default_page_sort = normalize_page_sort(preferences.default_page_sort, DEFAULT_PAGE_SORT);
+    next.theme_mode = normalize_theme_mode(preferences.theme_mode);
+    Ok(next)
+}
+
+fn validate_preference_folder_input(field: &str, value: &str) -> Result<(), String> {
+    let trimmed = value.trim();
+    let has_windows_prefix = trimmed.as_bytes().get(1).is_some_and(|byte| *byte == b':');
+    if trimmed.starts_with('/') || trimmed.starts_with('\\') || has_windows_prefix {
+        return Err(format!(
+            "Invalid {field}. Use a folder path relative to the workspace root."
+        ));
+    }
+    Ok(())
 }
 
 fn write_workspace_config(path: &Path, config: &WorkspaceConfig) -> Result<(), String> {
@@ -369,11 +420,12 @@ pub fn normalize_media_folder(media_folder: String) -> Result<String, String> {
     }
 
     if normalized.split('/').any(|segment| {
+        let lower = segment.to_ascii_lowercase();
         segment.is_empty()
             || segment == "."
             || segment == ".."
             || segment.trim() != segment
-            || matches!(segment, ".git" | "node_modules" | "target")
+            || matches!(lower.as_str(), ".git" | "node_modules" | "target")
     }) {
         return Err(format!(
             "Invalid mediaFolder '{media_folder}'. Use a workspace-relative folder path without '.', '..', or build directories."
@@ -671,6 +723,57 @@ mod tests {
         assert!(config.folder_colors.is_empty());
 
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn applies_preferences_without_replacing_application_managed_state() {
+        let mut config = WorkspaceConfig::default();
+        config.page_favorites = vec!["Projects.md".to_string()];
+        config.folder_page_sort =
+            HashMap::from([("projects".to_string(), "modified-desc".to_string())]);
+        let preferences = WorkspacePreferences {
+            journal_folder: "daily".to_string(),
+            media_folder: "attachments".to_string(),
+            journal_editor_continuous_scrolling: false,
+            journal_right_pane_continuous_scrolling: true,
+            task_states: vec!["NEXT".to_string(), "DONE".to_string()],
+            task_state_colors: HashMap::from([
+                ("NEXT".to_string(), "yellow".to_string()),
+                ("DONE".to_string(), "green".to_string()),
+            ]),
+            task_done_sound_enabled: false,
+            default_page_sort: "name-asc".to_string(),
+            theme_mode: "dark".to_string(),
+        };
+
+        let updated = apply_workspace_preferences(&config, preferences).unwrap();
+
+        assert_eq!(updated.journal_folder, "daily");
+        assert_eq!(updated.media_folder, "attachments");
+        assert_eq!(updated.task_states, vec!["NEXT", "DONE"]);
+        assert_eq!(updated.page_favorites, config.page_favorites);
+        assert_eq!(updated.folder_page_sort, config.folder_page_sort);
+    }
+
+    #[test]
+    fn preferences_reject_absolute_folder_paths() {
+        let config = WorkspaceConfig::default();
+        let mut preferences = WorkspacePreferences {
+            journal_folder: "/daily".to_string(),
+            media_folder: "media".to_string(),
+            journal_editor_continuous_scrolling: true,
+            journal_right_pane_continuous_scrolling: true,
+            task_states: config.task_states.clone(),
+            task_state_colors: config.task_state_colors.clone(),
+            task_done_sound_enabled: true,
+            default_page_sort: "name-desc".to_string(),
+            theme_mode: "light".to_string(),
+        };
+        assert!(apply_workspace_preferences(&config, preferences.clone()).is_err());
+
+        preferences.journal_folder = "journal".to_string();
+        preferences.media_folder = r"C:\media".to_string();
+        assert!(apply_workspace_preferences(&config, preferences).is_err());
     }
 
     #[test]
