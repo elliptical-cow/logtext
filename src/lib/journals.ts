@@ -87,10 +87,6 @@ export function orderedJournalPaths(
     journalPages.sort(
       (left, right) => right.modifiedAt - left.modifiedAt || left.path.localeCompare(right.path),
     );
-  } else if (sortDirection === "modified-asc") {
-    journalPages.sort(
-      (left, right) => left.modifiedAt - right.modifiedAt || left.path.localeCompare(right.path),
-    );
   } else {
     journalPages.sort((left, right) => left.path.localeCompare(right.path));
     if (sortDirection === "desc" || sortDirection === "name-desc") {

@@ -10,8 +10,8 @@ current source version is `0.7.5`.
 - Added `Recently opened` as a default or per-folder page sort mode. Successful
   opens in the editor and right pane are stored workspace-locally, carried
   across page and folder renames or moves, and also determine backlink order.
-- Completed `Modified` page sorting with filesystem modification timestamps and
-  added newest-first and oldest-first choices to each folder context menu.
+- Added `Recently modified` sorting based on filesystem modification timestamps
+  as a default preference and per-folder context-menu option.
 
 ### Changed
 

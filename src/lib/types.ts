@@ -70,7 +70,6 @@ export type PageSortMode =
   | "name-desc"
   | "name-asc"
   | "modified-desc"
-  | "modified-asc"
   | "opened-desc";
 export type ManualPageOrder = Record<string, string[]>;
 export type ThemeMode = "light" | "dark";

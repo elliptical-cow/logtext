@@ -81,11 +81,6 @@ test("orders and expands the progressively loaded journal feed", () => {
     "daily/2026-08-09.md",
     "daily/2026-08-10.md",
   ]);
-  assert.deepEqual(orderedJournalPaths(pages, "daily", "modified-asc"), [
-    "daily/2026-08-10.md",
-    "daily/2026-08-09.md",
-    "daily/2026-08-08.md",
-  ]);
   const initial = initialJournalFeedWindow(5, 12, 2);
   assert.deepEqual(initial, { start: 3, end: 7 });
   assert.deepEqual(expandJournalFeedWindow(initial, 12, "before", 2), {

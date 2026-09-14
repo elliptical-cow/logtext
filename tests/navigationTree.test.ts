@@ -99,8 +99,8 @@ test("sorts recently opened pages first and unopened pages by name", () => {
   );
 });
 
-test("sorts pages by filesystem modification time globally and per folder", () => {
-  const tree = buildNavigationTree(pages, [], "modified-desc", { team: "modified-asc" });
+test("sorts recently modified pages first globally and per folder", () => {
+  const tree = buildNavigationTree(pages, [], "modified-desc", { team: "modified-desc" });
   const rows = flattenVisibleTree(tree, new Set(["team"]));
 
   assert.deepEqual(
@@ -108,8 +108,8 @@ test("sorts pages by filesystem modification time globally and per folder", () =
     [
       "0:folder:projects",
       "0:folder:team",
-      "1:page:team/nadine.md",
       "1:page:team/jens.md",
+      "1:page:team/nadine.md",
       "0:page:inbox.md",
       "0:page:zettel.md",
     ],

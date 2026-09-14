@@ -150,10 +150,6 @@ fn compare_navigation_entries(
         return right.modified_at.cmp(&left.modified_at).then(name_ordering);
     }
 
-    if left.kind == NavigationEntryKind::Page && page_sort == "modified-asc" {
-        return left.modified_at.cmp(&right.modified_at).then(name_ordering);
-    }
-
     if left.kind == NavigationEntryKind::Page && page_sort.ends_with("-desc") {
         name_ordering.reverse()
     } else {
@@ -309,7 +305,7 @@ mod tests {
         config.default_page_sort = "modified-desc".to_string();
         config
             .folder_page_sort
-            .insert("team".to_string(), "modified-asc".to_string());
+            .insert("team".to_string(), "modified-desc".to_string());
         let mut pages = PageIndex::default();
         pages.insert_page_with_modified_at("alpha.md".to_string(), "", 100);
         pages.insert_page_with_modified_at("zeta.md".to_string(), "", 300);
@@ -326,7 +322,7 @@ mod tests {
 
         let order = page_navigation_order(&workspace);
 
-        assert!(order["team/old.md"] < order["team/new.md"]);
+        assert!(order["team/new.md"] < order["team/old.md"]);
         assert!(order["zeta.md"] < order["alpha.md"]);
     }
 }

@@ -559,7 +559,7 @@ A representative configuration:
 | `taskStates` | Ordered list of uppercase states using letters, numbers, or `_`. The final state is treated as complete. |
 | `taskStateColors` | State-to-color map. Supported colors: `red`, `yellow`, `green`, `blue`, `grey`, `orange`, `pink`. |
 | `taskDoneSoundEnabled` | Boolean; controls the completion sound. |
-| `defaultPageSort` | `name-desc`, `name-asc`, `modified-desc`, `modified-asc`, or `opened-desc` (`Recently opened`). |
+| `defaultPageSort` | `name-desc`, `name-asc`, `modified-desc` (`Recently modified`), or `opened-desc` (`Recently opened`). |
 | `folderPageSort` | Folder-path-to-sort-mode map. |
 | `folderColors` | Folder-path-to-color map using the task color names. |
 | `themeMode` | `light` or `dark`. |
@@ -567,9 +567,9 @@ A representative configuration:
 Folder-specific sort modes and colors continue to be managed from folder
 context menus in the file tree rather than from Preferences.
 
-`Modified (newest first)` and `Modified (oldest first)` read the Markdown
-files' modification timestamps directly from the filesystem. These timestamps
-are indexed in memory and are not duplicated in `.config`.
+`Recently modified` reads the Markdown files' modification timestamps directly
+from the filesystem and places the newest changes first. These timestamps are
+indexed in memory and are not duplicated in `.config`.
 
 The journal and media folders must not be the same folder, ancestors, or
 descendants of each other.

@@ -31,8 +31,7 @@
   const sortOptions: Array<{ value: PageSortMode; label: string }> = [
     { value: "name-asc", label: "Name (A–Z)" },
     { value: "name-desc", label: "Name (Z–A)" },
-    { value: "modified-desc", label: "Modified (newest first)" },
-    { value: "modified-asc", label: "Modified (oldest first)" },
+    { value: "modified-desc", label: "Recently modified" },
     { value: "opened-desc", label: "Recently opened" },
   ];
   let draft: WorkspacePreferences = {

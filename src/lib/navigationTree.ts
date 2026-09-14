@@ -207,9 +207,6 @@ function comparePages(
   if (sort === "modified-desc") {
     return right.page.modifiedAt - left.page.modifiedAt || nameComparison;
   }
-  if (sort === "modified-asc") {
-    return left.page.modifiedAt - right.page.modifiedAt || nameComparison;
-  }
   if (sort === "name-asc") {
     return nameComparison;
   }

@@ -593,7 +593,7 @@ fn normalize_navigation_path_list(paths: Vec<String>) -> Vec<String> {
 fn is_valid_page_sort(value: &str) -> bool {
     matches!(
         value,
-        "name-desc" | "name-asc" | "modified-desc" | "modified-asc" | "opened-desc"
+        "name-desc" | "name-asc" | "modified-desc" | "opened-desc"
     )
 }
 
@@ -910,10 +910,7 @@ mod tests {
             config.folder_page_sort.get("journals"),
             Some(&"modified-desc".to_string())
         );
-        assert_eq!(
-            config.folder_page_sort.get("team/ops"),
-            Some(&"modified-asc".to_string())
-        );
+        assert!(!config.folder_page_sort.contains_key("team/ops"));
         assert_eq!(
             config.folder_page_sort.get("journal"),
             Some(&"name-desc".to_string())
