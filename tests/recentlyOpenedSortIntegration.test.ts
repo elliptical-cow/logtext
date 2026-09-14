@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 const root = process.cwd();
+const styles = readFileSync(join(root, "src/styles.css"), "utf8");
 
 test("offers recently opened sorting in preferences and folder menus", () => {
   const preferences = readFileSync(
@@ -14,7 +15,6 @@ test("offers recently opened sorting in preferences and folder menus", () => {
     join(root, "src/lib/components/NavigationContextMenu.svelte"),
     "utf8",
   );
-
   assert.match(preferences, /value: "opened-desc", label: "Recently opened"/);
   assert.match(contextMenu, /sort:opened-desc/);
   assert.match(contextMenu, />ecently opened/);
@@ -36,6 +36,9 @@ test("offers filesystem modification sorting in preferences and folder menus", (
   assert.match(contextMenu, /sort:modified-asc/);
   assert.match(contextMenu, /Modified:.*ewest first/s);
   assert.match(contextMenu, /Modified:.*ldest first/s);
+  assert.match(contextMenu, /context-menu-flyout-panel navigation-sort-menu/);
+  assert.match(styles, /\.navigation-sort-menu\s*\{[^}]*width: max-content;/s);
+  assert.match(styles, /\.navigation-sort-menu button\s*\{[^}]*white-space: nowrap;/s);
 });
 
 test("records successful pane opens through the workspace backend", () => {

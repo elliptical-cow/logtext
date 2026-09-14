@@ -73,7 +73,7 @@
             <span><span class="menu-mnemonic">S</span>ort files by</span>
             <span aria-hidden="true">›</span>
           </button>
-          <div class="context-menu-flyout-panel" role="menu">
+          <div class="context-menu-flyout-panel navigation-sort-menu" role="menu">
             <button
               type="button"
               role="menuitem"

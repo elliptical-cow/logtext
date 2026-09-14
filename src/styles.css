@@ -1266,6 +1266,15 @@ textarea {
   box-shadow: var(--shadow-popover);
 }
 
+.navigation-sort-menu {
+  width: max-content;
+  min-width: 180px;
+}
+
+.navigation-sort-menu button {
+  white-space: nowrap;
+}
+
 .context-menu-flyout-left .context-menu-flyout-panel {
   right: 100%;
   left: auto;
