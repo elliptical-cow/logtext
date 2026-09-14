@@ -204,6 +204,7 @@ pub fn run() {
             config_commands::save_folder_colors_config,
             config_commands::save_workspace_session_config,
             config_commands::save_navigation_config,
+            config_commands::record_page_opened,
             config_commands::save_navigation_layout_config,
             config_commands::save_task_overview_config,
             config_commands::save_backlink_view_config,

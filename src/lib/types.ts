@@ -65,7 +65,12 @@ export type TaskStateColors = Record<string, TaskColorName>;
 export type FolderColors = Record<string, TaskColorName>;
 
 export type TaskOverviewGroupMode = "status" | "priority" | "source" | "folder" | "linked-page";
-export type PageSortMode = "name-desc" | "name-asc" | "modified-desc" | "modified-asc";
+export type PageSortMode =
+  | "name-desc"
+  | "name-asc"
+  | "modified-desc"
+  | "modified-asc"
+  | "opened-desc";
 export type ManualPageOrder = Record<string, string[]>;
 export type ThemeMode = "light" | "dark";
 
@@ -155,6 +160,7 @@ export type WorkspaceState = {
   expandedFolders: string[] | null;
   pageFavorites: string[];
   recentPages: string[];
+  lastOpenedAt: Record<string, number>;
   navigationLayout: NavigationLayoutConfig;
   taskOverview: TaskOverviewConfig;
   backlinkView: BacklinkViewConfig;

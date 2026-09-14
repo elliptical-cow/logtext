@@ -204,9 +204,9 @@ Linked References may appear in the right pane and below the middle editor. The
 middle-pane section starts expanded. `Open Tasks only` limits results to
 references whose block or child blocks contain an open task.
 
-References are sorted by source path in reverse alphabetical order, then by
-their order in the source file. Date-based journal entries therefore normally
-appear newest first.
+References follow the same configured folder and page order as the file tree,
+then their order in the source file. This includes the `Recently opened` sort
+mode.
 
 ## Editing
 
@@ -418,7 +418,8 @@ Current limitations:
 ## Navigation and File Operations
 
 The left pane contains a compact file tree. Files are sorted by descending name
-by default. Each folder may override that order.
+by default. Each folder may override that order. `Recently opened` places pages
+opened in either content pane first; pages without history follow by name.
 
 Actions include:
 
@@ -428,8 +429,8 @@ Actions include:
 - create, rename, move, and delete pages and folders
 - move pages with drag and drop
 - assign a folder color
-- choose ascending, descending, or modified-time sorting and reorder items
-  manually
+- choose ascending, descending, modified-time, or recently-opened sorting and
+  reorder items manually
 
 File and folder context menus contain secondary actions. Normal left-click
 behavior is not repeated unnecessarily.
@@ -536,7 +537,8 @@ A representative configuration:
   "taskDoneSoundEnabled": true,
   "defaultPageSort": "name-desc",
   "folderPageSort": {
-    "journal": "name-desc"
+    "journal": "name-desc",
+    "projects": "opened-desc"
   },
   "folderColors": {
     "projects": "blue"
@@ -555,7 +557,7 @@ A representative configuration:
 | `taskStates` | Ordered list of uppercase states using letters, numbers, or `_`. The final state is treated as complete. |
 | `taskStateColors` | State-to-color map. Supported colors: `red`, `yellow`, `green`, `blue`, `grey`, `orange`, `pink`. |
 | `taskDoneSoundEnabled` | Boolean; controls the completion sound. |
-| `defaultPageSort` | `name-desc`, `name-asc`, `modified-desc`, or `modified-asc`. |
+| `defaultPageSort` | `name-desc`, `name-asc`, `modified-desc`, `modified-asc`, or `opened-desc` (`Recently opened`). |
 | `folderPageSort` | Folder-path-to-sort-mode map. |
 | `folderColors` | Folder-path-to-color map using the task color names. |
 | `themeMode` | `light` or `dark`. |
@@ -574,6 +576,7 @@ Logtext may also write these fields:
 - `expandedFolders`
 - `pageFavorites`
 - `recentPages`
+- `lastOpenedAt`
 - `navigationLayout`
 - `taskOverview`
 - `backlinkView`

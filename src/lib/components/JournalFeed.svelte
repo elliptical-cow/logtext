@@ -11,6 +11,7 @@
     BacklinkView,
     FolderColors,
     PageSummary,
+    PageSortMode,
     PageView,
     TaskStateColors,
   } from "../types";
@@ -23,7 +24,8 @@
   export let anchorView: PageView;
   export let pages: PageSummary[] = [];
   export let journalFolder: string;
-  export let sortDescending = false;
+  export let sortMode: PageSortMode = "name-desc";
+  export let lastOpenedAt: Record<string, number> = {};
   export let taskStates: string[] = [];
   export let taskStateColors: TaskStateColors = {};
   export let folderColors: FolderColors = {};
@@ -77,8 +79,9 @@
   $: nextInitializationKey = [
     anchorPath,
     journalFolder,
-    sortDescending ? "desc" : "asc",
+    sortMode,
     pages.map((page) => page.path).join("\u0000"),
+    sortMode === "opened-desc" ? JSON.stringify(lastOpenedAt) : "",
   ].join("\u0001");
   $: if (nextInitializationKey !== initializationKey) {
     initializationKey = nextInitializationKey;
@@ -117,7 +120,8 @@
     orderedPaths = orderedJournalPaths(
       pages.map((page) => page.path),
       journalFolder,
-      sortDescending ? "desc" : "asc",
+      sortMode,
+      lastOpenedAt,
     );
     const anchorIndex = orderedPaths.indexOf(anchorPath);
     if (anchorIndex < 0) {

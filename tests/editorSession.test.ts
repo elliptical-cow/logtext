@@ -498,3 +498,30 @@ test("updates task priority lines in editor content", async () => {
   assert.equal(get(store).content, "- TODO [#B] First\r\n- DONE Second\r\n");
   assert.equal(get(store).dirty, true);
 });
+
+test("records a page only after it opens successfully", async () => {
+  const opened: string[] = [];
+  const store = createEditorSessionStore({
+    openPage: async (path) => {
+      if (path === "missing.md") {
+        throw new Error("missing");
+      }
+      return { ...page(`${path} content`, path), path };
+    },
+    savePage: async () => ({
+      status: "saved",
+      path: "unused.md",
+      modifiedAt: "m1",
+      contentHash: "h1",
+    }),
+    refreshRightPane: async () => {},
+    recordPageOpened: (path) => opened.push(path),
+    autoSaveDelayMs: 10,
+  });
+
+  await store.open("A.md");
+  await store.open("missing.md");
+  await store.open("A.md");
+
+  assert.deepEqual(opened, ["A.md", "A.md"]);
+});

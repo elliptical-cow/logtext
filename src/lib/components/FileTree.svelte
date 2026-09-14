@@ -175,6 +175,7 @@
     $workspaceStore.defaultPageSort,
     $workspaceStore.folderPageSort,
     $workspaceStore.manualPageOrder,
+    $workspaceStore.lastOpenedAt,
   );
   $: visibleRows = flattenVisibleTree(tree, expandedFolders);
   $: navigationRows = visibleRows;
@@ -564,20 +565,11 @@
 
   function openPageInEditor(path: string) {
     mainViewStore.set("editor");
-    rememberRecentPage(path);
     void editorSessionStore.open(path);
   }
 
   function openPageInRightPane(path: string) {
     void rightPaneStore.open(path);
-  }
-
-  function rememberRecentPage(path: string) {
-    const recentPages = [
-      path,
-      ...$workspaceStore.recentPages.filter((candidate) => candidate !== path),
-    ].slice(0, 10);
-    persistNavigation($workspaceStore.pageFavorites, recentPages);
   }
 
   function removeRecentPage(path: string) {
@@ -839,7 +831,6 @@
 
   function openSearchResult(result: SearchResult) {
     mainViewStore.set("editor");
-    rememberRecentPage(result.path);
     void editorSessionStore.open(result.path, { line: result.line });
   }
 

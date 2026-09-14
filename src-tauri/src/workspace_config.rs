@@ -38,6 +38,8 @@ pub struct WorkspaceConfig {
     pub page_favorites: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub recent_pages: Vec<String>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub last_opened_at: HashMap<String, u64>,
     #[serde(default)]
     pub navigation_layout: NavigationLayoutConfig,
     #[serde(default)]
@@ -139,6 +141,7 @@ impl Default for WorkspaceConfig {
             expanded_folders: None,
             page_favorites: Vec::new(),
             recent_pages: Vec::new(),
+            last_opened_at: HashMap::new(),
             navigation_layout: NavigationLayoutConfig::default(),
             task_overview: TaskOverviewConfig::default(),
             backlink_view: BacklinkViewConfig::default(),
@@ -195,6 +198,7 @@ pub fn load_or_create_workspace_config(root: &Path) -> Result<WorkspaceConfig, S
         expanded_folders: config.expanded_folders.map(normalize_expanded_folders),
         page_favorites: normalize_page_path_list(config.page_favorites, usize::MAX),
         recent_pages: normalize_page_path_list(config.recent_pages, 10),
+        last_opened_at: normalize_last_opened_at(config.last_opened_at),
         navigation_layout: normalize_navigation_layout_config(config.navigation_layout),
         task_overview: normalize_task_overview_config(config.task_overview),
         backlink_view: normalize_backlink_view_config(config.backlink_view),
@@ -537,6 +541,35 @@ pub fn normalize_page_path_list(paths: Vec<String>, limit: usize) -> Vec<String>
     normalized
 }
 
+pub fn normalize_last_opened_at(last_opened_at: HashMap<String, u64>) -> HashMap<String, u64> {
+    let mut normalized = HashMap::new();
+
+    for (path, timestamp) in last_opened_at {
+        let Some(path) = normalize_optional_page_path(Some(path)) else {
+            continue;
+        };
+        if timestamp == 0 {
+            continue;
+        }
+
+        let existing = normalized
+            .keys()
+            .find(|candidate: &&String| candidate.eq_ignore_ascii_case(&path))
+            .cloned();
+        if let Some(existing) = existing {
+            let previous = normalized.get(&existing).copied().unwrap_or_default();
+            if timestamp > previous {
+                normalized.remove(&existing);
+                normalized.insert(path, timestamp);
+            }
+        } else {
+            normalized.insert(path, timestamp);
+        }
+    }
+
+    normalized
+}
+
 fn normalize_navigation_path_list(paths: Vec<String>) -> Vec<String> {
     let mut normalized = Vec::new();
 
@@ -560,7 +593,7 @@ fn normalize_navigation_path_list(paths: Vec<String>) -> Vec<String> {
 fn is_valid_page_sort(value: &str) -> bool {
     matches!(
         value,
-        "name-desc" | "name-asc" | "modified-desc" | "modified-asc"
+        "name-desc" | "name-asc" | "modified-desc" | "modified-asc" | "opened-desc"
     )
 }
 
@@ -722,6 +755,7 @@ mod tests {
     fn applies_preferences_without_replacing_application_managed_state() {
         let mut config = WorkspaceConfig::default();
         config.page_favorites = vec!["Projects.md".to_string()];
+        config.last_opened_at = HashMap::from([("Projects.md".to_string(), 100)]);
         config.folder_page_sort =
             HashMap::from([("projects".to_string(), "modified-desc".to_string())]);
         let preferences = WorkspacePreferences {
@@ -744,6 +778,7 @@ mod tests {
         assert_eq!(updated.media_folder, "attachments");
         assert_eq!(updated.task_states, vec!["NEXT", "DONE"]);
         assert_eq!(updated.page_favorites, config.page_favorites);
+        assert_eq!(updated.last_opened_at, config.last_opened_at);
         assert_eq!(updated.folder_page_sort, config.folder_page_sort);
     }
 
@@ -880,13 +915,13 @@ mod tests {
         let root = temp_workspace();
         fs::write(
             root.join(".config"),
-            r#"{"taskStates":["TODO","DONE"],"defaultPageSort":"name-asc","folderPageSort":{"journals":"modified-desc","projects":"name-asc","../outside":"name-desc","team\\ops":"modified-asc","bad":"unknown"}}"#,
+            r#"{"taskStates":["TODO","DONE"],"defaultPageSort":"opened-desc","folderPageSort":{"journals":"modified-desc","projects":"opened-desc","../outside":"name-desc","team\\ops":"modified-asc","bad":"unknown"}}"#,
         )
         .unwrap();
 
         let config = load_or_create_workspace_config(&root).unwrap();
 
-        assert_eq!(config.default_page_sort, "name-asc");
+        assert_eq!(config.default_page_sort, "opened-desc");
         assert_eq!(
             config.folder_page_sort.get("journals"),
             Some(&"modified-desc".to_string())
@@ -902,6 +937,25 @@ mod tests {
         assert!(!config.folder_page_sort.contains_key("bad"));
         assert!(!config.folder_page_sort.contains_key("projects"));
         assert!(!config.folder_page_sort.contains_key("../outside"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn loads_and_normalizes_page_open_history() {
+        let root = temp_workspace();
+        fs::write(
+            root.join(".config"),
+            r#"{"taskStates":["TODO","DONE"],"lastOpenedAt":{" projects/alpha.md ":100,"projects\\beta.md":200,"../outside.md":300,"empty.md":0}}"#,
+        )
+        .unwrap();
+
+        let config = load_or_create_workspace_config(&root).unwrap();
+
+        assert_eq!(config.last_opened_at.get("projects/alpha.md"), Some(&100));
+        assert_eq!(config.last_opened_at.get("projects/beta.md"), Some(&200));
+        assert!(!config.last_opened_at.contains_key("../outside.md"));
+        assert!(!config.last_opened_at.contains_key("empty.md"));
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -1097,6 +1151,7 @@ mod tests {
             expanded_folders: Some(vec!["projects".to_string()]),
             page_favorites: Vec::new(),
             recent_pages: Vec::new(),
+            last_opened_at: HashMap::new(),
             navigation_layout: NavigationLayoutConfig::default(),
             task_overview: TaskOverviewConfig::default(),
             backlink_view: BacklinkViewConfig::default(),
@@ -1136,6 +1191,10 @@ mod tests {
             recent_pages: (0..12)
                 .map(|index| format!("journal/2026-08-{index:02}.md"))
                 .collect(),
+            last_opened_at: HashMap::from([
+                ("projects/alpha.md".to_string(), 1_725_000_000_000),
+                ("journal/2026-08-21.md".to_string(), 1_725_000_100_000),
+            ]),
             navigation_layout: NavigationLayoutConfig {
                 quick_access_height: 320,
             },
@@ -1168,6 +1227,7 @@ mod tests {
         assert!(saved.contains("\"manualPageOrder\""));
         assert!(saved.contains("\"pageFavorites\""));
         assert!(saved.contains("\"recentPages\""));
+        assert!(saved.contains("\"lastOpenedAt\""));
         assert!(saved.contains("\"navigationLayout\""));
         assert!(saved.contains("\"quickAccessHeight\": 320"));
         assert!(saved.contains("\"lastEditorPath\": \"projects/alpha.md\""));

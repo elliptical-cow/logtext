@@ -27,6 +27,7 @@ export function buildNavigationTree(
   defaultPageSort: PageSortMode = "name-desc",
   folderPageSort: Record<string, PageSortMode> = {},
   manualPageOrder: ManualPageOrder = {},
+  lastOpenedAt: Record<string, number> = {},
 ): FolderNode {
   const root: FolderNode = {
     kind: "folder",
@@ -51,7 +52,7 @@ export function buildNavigationTree(
     });
   }
 
-  sortTree(root, defaultPageSort, folderPageSort, manualPageOrder);
+  sortTree(root, defaultPageSort, folderPageSort, manualPageOrder, lastOpenedAt);
   return root;
 }
 
@@ -138,6 +139,7 @@ function sortTree(
   defaultPageSort: PageSortMode,
   folderPageSort: Record<string, PageSortMode>,
   manualPageOrder: ManualPageOrder,
+  lastOpenedAt: Record<string, number>,
 ) {
   const pageSort = folderPageSort[folder.path] ?? defaultPageSort;
   const manualOrder = manualPageOrder[folder.path] ?? [];
@@ -161,29 +163,46 @@ function sortTree(
       }
     }
 
-    return compareNavigationNodes(left, right, pageSort);
+    return compareNavigationNodes(left, right, pageSort, lastOpenedAt);
   });
 
   for (const child of folder.children) {
     if (child.kind === "folder") {
-      sortTree(child, defaultPageSort, folderPageSort, manualPageOrder);
+      sortTree(child, defaultPageSort, folderPageSort, manualPageOrder, lastOpenedAt);
     }
   }
 }
 
-function compareNavigationNodes(left: NavigationNode, right: NavigationNode, pageSort: PageSortMode) {
+function compareNavigationNodes(
+  left: NavigationNode,
+  right: NavigationNode,
+  pageSort: PageSortMode,
+  lastOpenedAt: Record<string, number>,
+) {
   if (left.kind !== right.kind) {
     return left.kind === "folder" ? -1 : 1;
   }
 
   if (left.kind === "page" && right.kind === "page") {
-    return comparePages(left, right, pageSort);
+    return comparePages(left, right, pageSort, lastOpenedAt);
   }
 
   return left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
 }
 
-function comparePages(left: PageNode, right: PageNode, sort: PageSortMode) {
+function comparePages(
+  left: PageNode,
+  right: PageNode,
+  sort: PageSortMode,
+  lastOpenedAt: Record<string, number>,
+) {
+  if (sort === "opened-desc") {
+    const openedComparison = (lastOpenedAt[right.path] ?? 0) - (lastOpenedAt[left.path] ?? 0);
+    if (openedComparison !== 0) {
+      return openedComparison;
+    }
+    return left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
+  }
   if (sort === "name-asc" || sort === "modified-asc") {
     return left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
   }

@@ -71,6 +71,34 @@ test("applies folder-specific page sort order", () => {
   );
 });
 
+test("sorts recently opened pages first and unopened pages by name", () => {
+  const tree = buildNavigationTree(
+    pages,
+    [],
+    "opened-desc",
+    {},
+    {},
+    {
+      "inbox.md": 100,
+      "zettel.md": 300,
+      "team/jens.md": 200,
+    },
+  );
+  const rows = flattenVisibleTree(tree, new Set(["team"]));
+
+  assert.deepEqual(
+    rows.map((row) => `${row.depth}:${row.node.kind}:${row.node.path}`),
+    [
+      "0:folder:projects",
+      "0:folder:team",
+      "1:page:team/jens.md",
+      "1:page:team/nadine.md",
+      "0:page:zettel.md",
+      "0:page:inbox.md",
+    ],
+  );
+});
+
 test("applies manual order before configured sort order", () => {
   const tree = buildNavigationTree(pages, [], "name-desc", {}, {
     "": ["inbox.md", "team"],

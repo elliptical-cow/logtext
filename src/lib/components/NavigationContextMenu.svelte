@@ -92,6 +92,15 @@
             >
               Name <span class="menu-mnemonic">d</span>escending
             </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-menu-key="r"
+              class:active-menu-item={folderSortFor(contextMenu.node.path) === "opened-desc"}
+              on:click={() => handleContextMenuAction("sort:opened-desc")}
+            >
+              <span class="menu-mnemonic">R</span>ecently opened
+            </button>
           </div>
         </div>
         <div class="context-menu-flyout" role="menuitem" tabindex="0">

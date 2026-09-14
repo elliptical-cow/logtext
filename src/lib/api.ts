@@ -176,10 +176,22 @@ export function saveWorkspaceSessionConfig(
 export function saveNavigationConfig(
   pageFavorites: string[],
   recentPages: string[],
-): Promise<[string[], string[]]> {
-  return invokeTauri<[string[], string[]]>("save_navigation_config", {
+  lastOpenedAt: Record<string, number>,
+): Promise<[string[], string[], Record<string, number>]> {
+  return invokeTauri<[string[], string[], Record<string, number>]>("save_navigation_config", {
     pageFavorites,
     recentPages,
+    lastOpenedAt,
+  });
+}
+
+export function recordPageOpened(
+  path: string,
+  openedAt: number,
+): Promise<[string[], Record<string, number>]> {
+  return invokeTauri<[string[], Record<string, number>]>("record_page_opened", {
+    path,
+    openedAt,
   });
 }
 

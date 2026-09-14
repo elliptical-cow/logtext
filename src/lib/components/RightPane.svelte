@@ -23,10 +23,10 @@
   $: displayedRightPanePath = journalFeedActive
     ? activeJournalPath ?? $rightPaneStore.path
     : $rightPaneStore.path;
-  $: journalSortDescending = (
+  $: journalSortMode = (
     $workspaceStore.folderPageSort[$workspaceStore.journalFolder] ??
     $workspaceStore.defaultPageSort
-  ).endsWith("-desc");
+  );
 
   $: if ($rightPaneStore.path !== lastPagePath) {
     lastPagePath = $rightPaneStore.path;
@@ -196,7 +196,8 @@
       anchorView={$rightPaneStore.pageView}
       pages={$workspaceStore.pages}
       journalFolder={$workspaceStore.journalFolder}
-      sortDescending={journalSortDescending}
+      sortMode={journalSortMode}
+      lastOpenedAt={$workspaceStore.lastOpenedAt}
       taskStates={$workspaceStore.taskStates}
       taskStateColors={$workspaceStore.taskStateColors}
       folderColors={$workspaceStore.folderColors}

@@ -33,6 +33,7 @@
     { value: "name-desc", label: "Name (Z–A)" },
     { value: "modified-desc", label: "Modified (newest first)" },
     { value: "modified-asc", label: "Modified (oldest first)" },
+    { value: "opened-desc", label: "Recently opened" },
   ];
   let draft: WorkspacePreferences = {
     ...preferences,

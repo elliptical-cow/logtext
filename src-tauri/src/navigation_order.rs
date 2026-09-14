@@ -116,7 +116,7 @@ fn sort_navigation_entries(
             }
         }
 
-        compare_navigation_entries(left, right, page_sort)
+        compare_navigation_entries(left, right, page_sort, &workspace.config.last_opened_at)
     });
 }
 
@@ -124,6 +124,7 @@ fn compare_navigation_entries(
     left: &NavigationEntry,
     right: &NavigationEntry,
     page_sort: &str,
+    last_opened_at: &HashMap<String, u64>,
 ) -> Ordering {
     if left.kind != right.kind {
         return if left.kind == NavigationEntryKind::Folder {
@@ -133,16 +134,22 @@ fn compare_navigation_entries(
         };
     }
 
-    let ordering = left
+    let name_ordering = left
         .name
         .to_lowercase()
         .cmp(&right.name.to_lowercase())
         .then_with(|| left.path.cmp(&right.path));
 
+    if left.kind == NavigationEntryKind::Page && page_sort == "opened-desc" {
+        let left_opened = last_opened_at.get(&left.path).copied().unwrap_or_default();
+        let right_opened = last_opened_at.get(&right.path).copied().unwrap_or_default();
+        return right_opened.cmp(&left_opened).then(name_ordering);
+    }
+
     if left.kind == NavigationEntryKind::Page && page_sort.ends_with("-desc") {
-        ordering.reverse()
+        name_ordering.reverse()
     } else {
-        ordering
+        name_ordering
     }
 }
 
@@ -259,5 +266,29 @@ mod tests {
         assert!(order["journal/2026-08-26.md"] < order["team/z.md"]);
         assert!(order["team/z.md"] < order["team/a.md"]);
         assert!(order["zeta.md"] < order["alpha.md"]);
+    }
+
+    #[test]
+    fn page_navigation_order_sorts_recently_opened_pages_first() {
+        let mut config = WorkspaceConfig::default();
+        config.default_page_sort = "opened-desc".to_string();
+        config.last_opened_at =
+            HashMap::from([("alpha.md".to_string(), 100), ("zeta.md".to_string(), 300)]);
+        let workspace = WorkspaceState {
+            root: PathBuf::new(),
+            config,
+            folders: Vec::new(),
+            pages: PageIndex::from_paths(vec![
+                "alpha.md".to_string(),
+                "beta.md".to_string(),
+                "zeta.md".to_string(),
+            ]),
+            backlinks: BacklinkIndex::default(),
+            contents: ContentSnapshot::default(),
+        };
+        let order = page_navigation_order(&workspace);
+
+        assert!(order["zeta.md"] < order["alpha.md"]);
+        assert!(order["alpha.md"] < order["beta.md"]);
     }
 }

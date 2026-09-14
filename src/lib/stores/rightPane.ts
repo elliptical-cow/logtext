@@ -3,6 +3,7 @@ import { getPageView } from "../api.js";
 import { toErrorMessage } from "../errors.js";
 import type { PageView } from "../types.js";
 import { createNavigationHistory } from "./navigationHistory.js";
+import { workspaceStore } from "./workspace.js";
 
 type RightPaneState = {
   path: string | null;
@@ -35,9 +36,13 @@ type RightPaneOpenOptions = {
 
 export type RightPaneDependencies = {
   getPageView: (path: string) => Promise<PageView>;
+  recordPageOpened?: (path: string) => void;
 };
 
-const defaultDependencies: RightPaneDependencies = { getPageView };
+const defaultDependencies: RightPaneDependencies = {
+  getPageView,
+  recordPageOpened: (path) => void workspaceStore.recordPageOpened(path),
+};
 
 export function createRightPaneStore(dependencies: RightPaneDependencies = defaultDependencies) {
   const { subscribe, set, update } = writable<RightPaneState>(initialState);
@@ -57,6 +62,7 @@ export function createRightPaneStore(dependencies: RightPaneDependencies = defau
         revealToken: options.line ? state.revealToken + 1 : state.revealToken,
         error: null,
       }));
+      dependencies.recordPageOpened?.(path);
       return true;
     }
 
@@ -83,6 +89,7 @@ export function createRightPaneStore(dependencies: RightPaneDependencies = defau
         ...historyAvailability,
         error: null,
       });
+      dependencies.recordPageOpened?.(pageView.page.path);
       return true;
     } catch (error) {
       if (requestId !== requestSequence) {

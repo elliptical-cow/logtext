@@ -9,6 +9,7 @@ import {
   moveFolder as moveFolderCommand,
   movePage as movePageCommand,
   openWorkspace as openWorkspaceCommand,
+  recordPageOpened as recordPageOpenedCommand,
   renameFolder as renameFolderCommand,
   renamePage as renamePageCommand,
   saveBacklinkViewConfig as saveBacklinkViewConfigCommand,
@@ -22,6 +23,12 @@ import {
   saveTaskOverviewConfig as saveTaskOverviewConfigCommand,
   saveWorkspaceSessionConfig,
 } from "../api.js";
+import {
+  recordPageOpen,
+  remapPageOpenHistoryFolder,
+  remapPageOpenHistoryPath,
+  removePageOpenHistory,
+} from "../pageOpenHistory.js";
 import { toErrorPresentation } from "../errors.js";
 import { DEFAULT_TASK_STATE_COLORS } from "../taskColors.js";
 import { DEFAULT_TASK_STATES } from "../taskKeywords.js";
@@ -89,6 +96,7 @@ type WorkspaceStoreState = {
   expandedFolders: string[] | null;
   pageFavorites: string[];
   recentPages: string[];
+  lastOpenedAt: Record<string, number>;
   navigationLayout: NavigationLayoutConfig;
   taskOverview: TaskOverviewConfig;
   backlinkView: BacklinkViewConfig;
@@ -118,6 +126,7 @@ const initialState: WorkspaceStoreState = {
   expandedFolders: null,
   pageFavorites: [],
   recentPages: [],
+  lastOpenedAt: {},
   navigationLayout: DEFAULT_NAVIGATION_LAYOUT,
   taskOverview: DEFAULT_TASK_OVERVIEW_CONFIG,
   backlinkView: DEFAULT_BACKLINK_VIEW_CONFIG,
@@ -152,6 +161,7 @@ function storeStateFromWorkspace(workspace: WorkspaceStateDto): WorkspaceStoreSt
     expandedFolders: workspace.expandedFolders,
     pageFavorites: workspace.pageFavorites ?? [],
     recentPages: workspace.recentPages ?? [],
+    lastOpenedAt: workspace.lastOpenedAt ?? {},
     navigationLayout: workspace.navigationLayout ?? DEFAULT_NAVIGATION_LAYOUT,
     taskOverview: workspace.taskOverview ?? DEFAULT_TASK_OVERVIEW_CONFIG,
     backlinkView: workspace.backlinkView ?? DEFAULT_BACKLINK_VIEW_CONFIG,
@@ -166,6 +176,11 @@ function storeStateFromWorkspace(workspace: WorkspaceStateDto): WorkspaceStoreSt
 
 function createWorkspaceStore() {
   const { subscribe, set, update } = writable<WorkspaceStoreState>(initialState);
+  let currentState = initialState;
+
+  subscribe((state) => {
+    currentState = state;
+  });
 
   return {
     subscribe,
@@ -287,6 +302,7 @@ function createWorkspaceStore() {
             (favoritePath) => favoritePath !== result.deletedPath,
           ),
           recentPages: state.recentPages.filter((recentPath) => recentPath !== result.deletedPath),
+          lastOpenedAt: removePageOpenHistory(state.lastOpenedAt, [result.deletedPath]),
           diagnostics: result.diagnostics,
           loading: false,
           error: null,
@@ -318,6 +334,7 @@ function createWorkspaceStore() {
             (recentPath) =>
               !result.deletedPagePaths.some((deletedPath) => deletedPath === recentPath),
           ),
+          lastOpenedAt: removePageOpenHistory(state.lastOpenedAt, result.deletedPagePaths),
           diagnostics: result.diagnostics,
           loading: false,
           error: null,
@@ -342,6 +359,11 @@ function createWorkspaceStore() {
           pages: result.pages,
           folders: result.folders,
           diagnostics: result.diagnostics,
+          lastOpenedAt: remapPageOpenHistoryPath(
+            state.lastOpenedAt,
+            result.oldPath,
+            result.page.path,
+          ),
           loading: false,
           error: null,
         }));
@@ -365,6 +387,11 @@ function createWorkspaceStore() {
           pages: result.pages,
           folders: result.folders,
           diagnostics: result.diagnostics,
+          lastOpenedAt: remapPageOpenHistoryFolder(
+            state.lastOpenedAt,
+            result.oldPath,
+            result.newPath,
+          ),
           loading: false,
           error: null,
         }));
@@ -388,6 +415,11 @@ function createWorkspaceStore() {
           pages: result.pages,
           folders: result.folders,
           diagnostics: result.diagnostics,
+          lastOpenedAt: remapPageOpenHistoryPath(
+            state.lastOpenedAt,
+            result.oldPath,
+            result.page.path,
+          ),
           loading: false,
           error: null,
         }));
@@ -411,6 +443,11 @@ function createWorkspaceStore() {
           pages: result.pages,
           folders: result.folders,
           diagnostics: result.diagnostics,
+          lastOpenedAt: remapPageOpenHistoryFolder(
+            state.lastOpenedAt,
+            result.oldPath,
+            result.newPath,
+          ),
           loading: false,
           error: null,
         }));
@@ -578,12 +615,14 @@ function createWorkspaceStore() {
       }
     },
     async saveNavigationConfig(pageFavorites: string[], recentPages: string[]) {
+      const lastOpenedAt = currentState.lastOpenedAt;
       update((state) => ({ ...state, pageFavorites, recentPages, error: null }));
 
       try {
         const [savedPageFavorites, savedRecentPages] = await saveNavigationConfigCommand(
           pageFavorites,
           recentPages,
+          lastOpenedAt,
         );
         update((state) => ({
           ...state,
@@ -598,6 +637,32 @@ function createWorkspaceStore() {
           ...configSaveError("navigation settings", error),
         }));
         return null;
+      }
+    },
+    async recordPageOpened(path: string) {
+      const openedAt = Date.now();
+      const recentPages = [
+        path,
+        ...currentState.recentPages.filter(
+          (candidate) => candidate.toLocaleLowerCase() !== path.toLocaleLowerCase(),
+        ),
+      ].slice(0, 10);
+      update((state) => ({
+        ...state,
+        recentPages,
+        lastOpenedAt: recordPageOpen(state.lastOpenedAt, path, openedAt),
+        error: null,
+      }));
+
+      try {
+        await recordPageOpenedCommand(path, openedAt);
+        return true;
+      } catch (error) {
+        update((state) => ({
+          ...state,
+          ...configSaveError("page open history", error),
+        }));
+        return false;
       }
     },
     async saveNavigationLayoutConfig(navigationLayout: NavigationLayoutConfig) {

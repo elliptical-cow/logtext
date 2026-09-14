@@ -23,6 +23,7 @@ test("wires the native Preferences menu to the workspace dialog", () => {
   assert.match(app, /<PreferencesDialog/);
   assert.match(dialog, /Save Preferences/);
   assert.match(dialog, /Completed state/);
+  assert.match(dialog, /Recently opened/);
 });
 
 test("saves user preferences through one typed backend command", () => {

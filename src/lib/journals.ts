@@ -71,10 +71,19 @@ export function shouldUseContinuousJournalView(
 export function orderedJournalPaths(
   pagePaths: string[],
   root = DEFAULT_JOURNAL_FOLDER,
-  sortDirection: JournalSortDirection = "asc",
+  sortDirection: JournalSortDirection | "name-asc" | "name-desc" | "modified-asc" | "modified-desc" | "opened-desc" = "asc",
+  lastOpenedAt: Record<string, number> = {},
 ) {
   const journalPaths = pagePaths.filter((path) => isJournalPagePath(path, root)).sort();
-  return sortDirection === "desc" ? journalPaths.reverse() : journalPaths;
+  if (sortDirection === "opened-desc") {
+    return journalPaths.sort((left, right) => {
+      const openedComparison = (lastOpenedAt[right] ?? 0) - (lastOpenedAt[left] ?? 0);
+      return openedComparison || left.localeCompare(right);
+    });
+  }
+  return sortDirection === "desc" || sortDirection.endsWith("-desc")
+    ? journalPaths.reverse()
+    : journalPaths;
 }
 
 export function initialJournalFeedWindow(
