@@ -19,6 +19,11 @@ current source version is `0.7.5`.
   once again scrolls only within its active Markdown file; the former editor
   boundary-navigation setting has been removed.
 
+### Fixed
+
+- Adjusted the selected editor link-autocomplete entry to use the application
+  theme colors in dark mode.
+
 ## 0.7.5
 Changes since `v0.7.1`.
 

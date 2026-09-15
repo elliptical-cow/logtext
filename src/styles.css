@@ -3049,6 +3049,11 @@ textarea {
   background: var(--editor-selection-range-bg);
 }
 
+:root[data-theme="dark"] .code-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--accent-bg-selected);
+  color: var(--text-primary);
+}
+
 :root[data-theme="dark"] .code-editor .cm-line-highlight,
 :root[data-theme="dark"] .markdown-view .markdown-line-highlight {
   background: linear-gradient(var(--editor-reveal-highlight-bg), var(--editor-reveal-highlight-bg)) left top /
