@@ -3055,9 +3055,12 @@ textarea {
   color: var(--text-primary);
 }
 
-:root[data-theme="dark"] .code-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
-  background: var(--accent-bg-selected);
+.code-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--navigator-selected-active-bg);
   color: var(--text-primary);
+  outline: 1px solid var(--navigator-focus-outline);
+  outline-offset: -1px;
+  box-shadow: 0 0 0 2px var(--navigator-focus-shadow);
 }
 
 :root[data-theme="dark"] .code-editor .cm-line-highlight,

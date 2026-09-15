@@ -22,7 +22,8 @@ current source version is `0.7.5`.
 ### Fixed
 
 - Adjusted the editor link-autocomplete dropdown and its selected entry to use
-  the application surface, border, text, and selection colors in dark mode.
+  the application surface, border, and text colors in dark mode. Its active
+  entry now shares the file navigator's selection and focus colors.
 
 ## 0.7.5
 Changes since `v0.7.1`.

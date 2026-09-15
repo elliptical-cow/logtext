@@ -5,13 +5,16 @@ import test from "node:test";
 
 const styles = readFileSync(join(process.cwd(), "src/styles.css"), "utf8");
 
-test("uses theme colors for the editor autocomplete dropdown in dark mode", () => {
+test("uses dark theme colors for the editor autocomplete dropdown", () => {
   assert.match(
     styles,
     /:root\[data-theme="dark"\] \.code-editor \.cm-tooltip\.cm-tooltip-autocomplete\s*\{[^}]*border: 1px solid var\(--border-control\);[^}]*background: var\(--surface-elevated\);[^}]*color: var\(--text-primary\);/s,
   );
+});
+
+test("matches the selected autocomplete entry to the focused file selection", () => {
   assert.match(
     styles,
-    /:root\[data-theme="dark"\] \.code-editor \.cm-tooltip-autocomplete > ul > li\[aria-selected\]\s*\{[^}]*background: var\(--accent-bg-selected\);[^}]*color: var\(--text-primary\);/s,
+    /\.code-editor \.cm-tooltip-autocomplete > ul > li\[aria-selected\]\s*\{[^}]*background: var\(--navigator-selected-active-bg\);[^}]*color: var\(--text-primary\);[^}]*outline: 1px solid var\(--navigator-focus-outline\);[^}]*box-shadow: 0 0 0 2px var\(--navigator-focus-shadow\);/s,
   );
 });
