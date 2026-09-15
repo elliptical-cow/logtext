@@ -3049,6 +3049,12 @@ textarea {
   background: var(--editor-selection-range-bg);
 }
 
+:root[data-theme="dark"] .code-editor .cm-tooltip.cm-tooltip-autocomplete {
+  border: 1px solid var(--border-control);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
 :root[data-theme="dark"] .code-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
   background: var(--accent-bg-selected);
   color: var(--text-primary);

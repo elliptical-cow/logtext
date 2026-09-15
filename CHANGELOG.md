@@ -21,8 +21,8 @@ current source version is `0.7.5`.
 
 ### Fixed
 
-- Adjusted the selected editor link-autocomplete entry to use the application
-  theme colors in dark mode.
+- Adjusted the editor link-autocomplete dropdown and its selected entry to use
+  the application surface, border, text, and selection colors in dark mode.
 
 ## 0.7.5
 Changes since `v0.7.1`.
