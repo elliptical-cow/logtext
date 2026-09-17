@@ -1,6 +1,6 @@
 # Contributing
 
-Logtext is a local Markdown-first knowledge workspace built with Tauri, Rust,
+Logtext is a local Markdown-based knowledge and task management workspace built with Tauri, Rust,
 Svelte, TypeScript, and CodeMirror. Markdown files are the source of truth, so
 changes that move, rename, delete, parse, or rewrite files must be conservative
 and covered by focused tests.
