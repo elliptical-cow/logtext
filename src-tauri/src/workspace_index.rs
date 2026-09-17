@@ -3,6 +3,7 @@ use crate::content_snapshot::ContentSnapshot;
 use crate::index::backlink_index::BacklinkIndex;
 use crate::index::page_index::PageIndex;
 use crate::workspace::paths::resolve_workspace_relative_path;
+use crate::workspace::scanner::file_modified_at_millis;
 use crate::workspace::scanner::scan_workspace_excluding;
 use std::collections::HashSet;
 use std::fs;
@@ -34,7 +35,8 @@ pub(crate) fn build_workspace_index(
             .ok_or_else(|| format!("Invalid page path '{path}'"))?;
         let content = fs::read_to_string(&absolute_path)
             .map_err(|error| format!("Failed to read page '{path}': {error}"))?;
-        pages.insert_page(path.clone(), &content);
+        let modified_at = file_modified_at_millis(&absolute_path).unwrap_or_default();
+        pages.insert_page_with_modified_at(path.clone(), &content, modified_at);
         backlinks.index_page(path.clone(), &content);
         contents.insert(path, content);
     }
@@ -101,6 +103,14 @@ mod tests {
         fs::write(root.join("Old target.md"), "# Old target").unwrap();
         let mut incremental = empty_workspace(root.clone());
         reindex_workspace(&mut incremental).unwrap();
+        assert!(
+            incremental
+                .pages
+                .get_by_path("notes/Source.md")
+                .unwrap()
+                .modified_at
+                > 0
+        );
 
         fs::write(
             root.join("notes/Source.md"),

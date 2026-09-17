@@ -8,7 +8,7 @@ import type { PageView } from "../src/lib/types.js";
 function pageView(path: string): PageView {
   const key = path.replace(/\.md$/, "").toLowerCase();
   return {
-    page: { exists: true, key, path, title: key },
+    page: { exists: true, key, path, title: key, modifiedAt: 0 },
     content: `# ${key}`,
     backlinks: [],
     diagnostics: [],
@@ -88,6 +88,25 @@ test("tracks right-pane back and forward history", async () => {
   assert.equal(get(store).path, "C.md");
   assert.equal(get(store).canGoBack, true);
   assert.equal(get(store).canGoForward, false);
+});
+
+test("records a page only after it opens successfully", async () => {
+  const opened: string[] = [];
+  const store = createRightPaneStore({
+    getPageView: async (path) => {
+      if (path === "missing.md") {
+        throw new Error("missing");
+      }
+      return pageView(path);
+    },
+    recordPageOpened: (path) => opened.push(path),
+  });
+
+  await store.open("A.md");
+  await store.open("missing.md");
+  await store.open("A.md");
+
+  assert.deepEqual(opened, ["A.md", "A.md"]);
 });
 
 test("keeps the current page and history when right-pane back navigation fails", async () => {

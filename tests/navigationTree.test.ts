@@ -11,11 +11,11 @@ import {
 import type { PageSummary } from "../src/lib/types.js";
 
 const pages: PageSummary[] = [
-  { exists: true, key: "team/nadine", path: "team/nadine.md", title: "nadine" },
-  { exists: true, key: "team/jens", path: "team/jens.md", title: "jens" },
-  { exists: true, key: "projects/forecasts", path: "projects/forecasts.md", title: "forecasts" },
-  { exists: true, key: "zettel", path: "zettel.md", title: "zettel" },
-  { exists: true, key: "inbox", path: "inbox.md", title: "inbox" },
+  { exists: true, key: "team/nadine", path: "team/nadine.md", title: "nadine", modifiedAt: 100 },
+  { exists: true, key: "team/jens", path: "team/jens.md", title: "jens", modifiedAt: 300 },
+  { exists: true, key: "projects/forecasts", path: "projects/forecasts.md", title: "forecasts", modifiedAt: 50 },
+  { exists: true, key: "zettel", path: "zettel.md", title: "zettel", modifiedAt: 200 },
+  { exists: true, key: "inbox", path: "inbox.md", title: "inbox", modifiedAt: 400 },
 ];
 
 test("builds a folder-first navigation tree", () => {
@@ -28,7 +28,7 @@ test("builds a folder-first navigation tree", () => {
 
 test("uses file names instead of headings as page labels", () => {
   const tree = buildNavigationTree([
-    { exists: true, key: "projects/roadmap", path: "projects/roadmap.md", title: "Strategic Plan" },
+    { exists: true, key: "projects/roadmap", path: "projects/roadmap.md", title: "Strategic Plan", modifiedAt: 0 },
   ]);
   const rows = flattenVisibleTree(tree, new Set(["projects"]));
 
@@ -67,6 +67,51 @@ test("applies folder-specific page sort order", () => {
       "1:page:team/nadine.md",
       "0:page:zettel.md",
       "0:page:inbox.md",
+    ],
+  );
+});
+
+test("sorts recently opened pages first and unopened pages by name", () => {
+  const tree = buildNavigationTree(
+    pages,
+    [],
+    "opened-desc",
+    {},
+    {},
+    {
+      "inbox.md": 100,
+      "zettel.md": 300,
+      "team/jens.md": 200,
+    },
+  );
+  const rows = flattenVisibleTree(tree, new Set(["team"]));
+
+  assert.deepEqual(
+    rows.map((row) => `${row.depth}:${row.node.kind}:${row.node.path}`),
+    [
+      "0:folder:projects",
+      "0:folder:team",
+      "1:page:team/jens.md",
+      "1:page:team/nadine.md",
+      "0:page:zettel.md",
+      "0:page:inbox.md",
+    ],
+  );
+});
+
+test("sorts recently modified pages first globally and per folder", () => {
+  const tree = buildNavigationTree(pages, [], "modified-desc", { team: "modified-desc" });
+  const rows = flattenVisibleTree(tree, new Set(["team"]));
+
+  assert.deepEqual(
+    rows.map((row) => `${row.depth}:${row.node.kind}:${row.node.path}`),
+    [
+      "0:folder:projects",
+      "0:folder:team",
+      "1:page:team/jens.md",
+      "1:page:team/nadine.md",
+      "0:page:inbox.md",
+      "0:page:zettel.md",
     ],
   );
 });

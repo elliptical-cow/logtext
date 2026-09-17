@@ -20,14 +20,15 @@ const pages: PageSummary[] = [
     key: "projects/forecasts",
     path: "Projects/Forecasts.md",
     title: "Forecasts",
+    modifiedAt: 0,
   },
 ];
 
 const collidingPages: PageSummary[] = [
-  { exists: true, key: "projects/prognose", path: "projects/prognose.md", title: "prognose" },
-  { exists: true, key: "processes/prognose", path: "processes/prognose.md", title: "prognose" },
-  { exists: true, key: "archive/alpha/report", path: "archive/alpha/report.md", title: "report" },
-  { exists: true, key: "active/alpha/report", path: "active/alpha/report.md", title: "report" },
+  { exists: true, key: "projects/prognose", path: "projects/prognose.md", title: "prognose", modifiedAt: 0 },
+  { exists: true, key: "processes/prognose", path: "processes/prognose.md", title: "prognose", modifiedAt: 0 },
+  { exists: true, key: "archive/alpha/report", path: "archive/alpha/report.md", title: "report", modifiedAt: 0 },
+  { exists: true, key: "active/alpha/report", path: "active/alpha/report.md", title: "report", modifiedAt: 0 },
 ];
 
 test("renders wiki links with markdown extensions to the existing page path", () => {

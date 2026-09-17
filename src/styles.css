@@ -1266,6 +1266,15 @@ textarea {
   box-shadow: var(--shadow-popover);
 }
 
+.navigation-sort-menu {
+  width: max-content;
+  min-width: 180px;
+}
+
+.navigation-sort-menu button {
+  white-space: nowrap;
+}
+
 .context-menu-flyout-left .context-menu-flyout-panel {
   right: 100%;
   left: auto;
@@ -3038,6 +3047,20 @@ textarea {
 :root[data-theme="dark"] .code-editor .cm-selectionBackground,
 :root[data-theme="dark"] .code-editor .cm-focused .cm-selectionBackground {
   background: var(--editor-selection-range-bg);
+}
+
+:root[data-theme="dark"] .code-editor .cm-tooltip.cm-tooltip-autocomplete {
+  border: 1px solid var(--border-control);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.code-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--navigator-selected-active-bg);
+  color: var(--text-primary);
+  outline: 1px solid var(--navigator-focus-outline);
+  outline-offset: -1px;
+  box-shadow: 0 0 0 2px var(--navigator-focus-shadow);
 }
 
 :root[data-theme="dark"] .code-editor .cm-line-highlight,

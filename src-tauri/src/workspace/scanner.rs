@@ -1,6 +1,7 @@
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
+use std::time::UNIX_EPOCH;
 
 use crate::workspace::paths::case_insensitive_key;
 
@@ -31,6 +32,19 @@ pub fn scan_workspace_excluding(
         markdown_files: files,
         folders,
     })
+}
+
+pub(crate) fn file_modified_at_millis(path: &Path) -> Result<u64, String> {
+    let metadata = fs::metadata(path)
+        .map_err(|error| format!("Failed to read page metadata '{}': {error}", path.display()))?;
+    let modified = metadata
+        .modified()
+        .map_err(|error| format!("Failed to read modified time '{}': {error}", path.display()))?;
+
+    Ok(modified
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis().min(u128::from(u64::MAX)) as u64)
+        .unwrap_or_default())
 }
 
 fn sort_folder_paths(folders: &mut [String]) {

@@ -56,6 +56,7 @@ test("creates, refreshes the source, and opens the canonical page path in order"
     key: "projects/forecast",
     path: "Projects/Forecast.md",
     title: "Forecast",
+    modifiedAt: 0,
   };
   const harness = createHarness(page);
 

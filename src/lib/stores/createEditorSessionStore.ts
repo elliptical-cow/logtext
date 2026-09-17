@@ -53,6 +53,7 @@ export type EditorSessionDependencies = {
   refreshPages?: () => Promise<void>;
   refreshRightPane: () => Promise<void>;
   notifyPageChanged?: (path: string) => void;
+  recordPageOpened?: (path: string) => void;
   autoSaveDelayMs: number;
 };
 
@@ -96,6 +97,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
         revealToken: options.line ? state.revealToken + 1 : state.revealToken,
         error: null,
       }));
+      dependencies.recordPageOpened?.(path);
       return true;
     }
 
@@ -153,6 +155,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
         ...historyAvailability,
         error: null,
       });
+      dependencies.recordPageOpened?.(page.path);
       return true;
     } catch (error) {
       if (requestId !== openSequence) {

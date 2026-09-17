@@ -9,8 +9,8 @@ import {
 import type { PageSummary } from "../src/lib/types.js";
 
 const pages: PageSummary[] = [
-  { exists: true, key: "projects/forecasts", path: "projects/forecasts.md", title: "forecasts" },
-  { exists: true, key: "team/nadine", path: "team/nadine.md", title: "nadine" },
+  { exists: true, key: "projects/forecasts", path: "projects/forecasts.md", title: "forecasts", modifiedAt: 0 },
+  { exists: true, key: "team/nadine", path: "team/nadine.md", title: "nadine", modifiedAt: 0 },
 ];
 
 test("matches text after an open wiki link marker", () => {
@@ -84,8 +84,8 @@ test("matches substrings in the full path and filename", () => {
 
 test("ranks prefix matches before substring matches", () => {
   const orderedPages: PageSummary[] = [
-    { exists: true, key: "archive/projector", path: "archive/projector.md", title: "projector" },
-    { exists: true, key: "team/alpha-project", path: "team/alpha-project.md", title: "alpha-project" },
+    { exists: true, key: "archive/projector", path: "archive/projector.md", title: "projector", modifiedAt: 0 },
+    { exists: true, key: "team/alpha-project", path: "team/alpha-project.md", title: "alpha-project", modifiedAt: 0 },
   ];
 
   assert.deepEqual(wikiLinkSuggestions("pro", orderedPages).map((suggestion) => suggestion.label), [
@@ -111,8 +111,8 @@ test("matches both full path prefix and filename prefix", () => {
 
 test("keeps full suggestion labels in the dropdown", () => {
   const collidingPages: PageSummary[] = [
-    { exists: true, key: "projects/prognose", path: "projects/prognose.md", title: "prognose" },
-    { exists: true, key: "processes/prognose", path: "processes/prognose.md", title: "prognose" },
+    { exists: true, key: "projects/prognose", path: "projects/prognose.md", title: "prognose", modifiedAt: 0 },
+    { exists: true, key: "processes/prognose", path: "processes/prognose.md", title: "prognose", modifiedAt: 0 },
   ];
 
   assert.deepEqual(wikiLinkSuggestions("progn", collidingPages), [
@@ -130,7 +130,7 @@ test("keeps full suggestion labels in the dropdown", () => {
 test("compact completion offers page targets containing spaces", () => {
   const compactPages: PageSummary[] = [
     ...pages,
-    { exists: true, key: "projects/new alpha", path: "projects/new alpha.md", title: "New Alpha" },
+    { exists: true, key: "projects/new alpha", path: "projects/new alpha.md", title: "New Alpha", modifiedAt: 0 },
   ];
 
   assert.deepEqual(wikiLinkSuggestions("new", compactPages), [
@@ -186,6 +186,7 @@ test("returns up to thirty suggestions by default", () => {
       key: `team/topic-${padded}`,
       path: `team/topic-${padded}.md`,
       title: `topic-${padded}`,
+      modifiedAt: 0,
     };
   });
 

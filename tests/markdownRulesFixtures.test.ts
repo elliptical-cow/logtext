@@ -88,13 +88,14 @@ const fixtures = JSON.parse(
 ) as MarkdownRulesFixture;
 
 const pages: PageSummary[] = [
-  { exists: true, key: "projects/alpha", path: "Projects/Alpha.md", title: "Alpha" },
-  { exists: true, key: "projects/forecasts", path: "projects/forecasts.md", title: "forecasts" },
+  { exists: true, key: "projects/alpha", path: "Projects/Alpha.md", title: "Alpha", modifiedAt: 0 },
+  { exists: true, key: "projects/forecasts", path: "projects/forecasts.md", title: "forecasts", modifiedAt: 0 },
   {
     exists: true,
     key: "projekte/übersicht",
     path: "Projekte/Übersicht.md",
     title: "Übersicht",
+    modifiedAt: 0,
   },
 ];
 

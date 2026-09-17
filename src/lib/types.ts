@@ -12,6 +12,7 @@ export type PageSummary = {
   title: string;
   key: string;
   exists: boolean;
+  modifiedAt: number;
 };
 
 export type PageContent = {
@@ -65,14 +66,17 @@ export type TaskStateColors = Record<string, TaskColorName>;
 export type FolderColors = Record<string, TaskColorName>;
 
 export type TaskOverviewGroupMode = "status" | "priority" | "source" | "folder" | "linked-page";
-export type PageSortMode = "name-desc" | "name-asc" | "modified-desc" | "modified-asc";
+export type PageSortMode =
+  | "name-desc"
+  | "name-asc"
+  | "modified-desc"
+  | "opened-desc";
 export type ManualPageOrder = Record<string, string[]>;
 export type ThemeMode = "light" | "dark";
 
 export type WorkspacePreferences = {
   journalFolder: string;
   mediaFolder: string;
-  journalEditorContinuousScrolling: boolean;
   journalRightPaneContinuousScrolling: boolean;
   taskStates: TaskStatus[];
   taskStateColors: TaskStateColors;
@@ -142,7 +146,6 @@ export type WorkspaceState = {
   root: string;
   journalFolder: string;
   mediaFolder: string;
-  journalEditorContinuousScrolling: boolean;
   journalRightPaneContinuousScrolling: boolean;
   pages: PageSummary[];
   folders: string[];
@@ -157,6 +160,7 @@ export type WorkspaceState = {
   expandedFolders: string[] | null;
   pageFavorites: string[];
   recentPages: string[];
+  lastOpenedAt: Record<string, number>;
   navigationLayout: NavigationLayoutConfig;
   taskOverview: TaskOverviewConfig;
   backlinkView: BacklinkViewConfig;

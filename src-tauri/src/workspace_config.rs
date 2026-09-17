@@ -18,8 +18,6 @@ pub struct WorkspaceConfig {
     #[serde(default = "default_media_folder")]
     pub media_folder: String,
     #[serde(default = "default_journal_continuous_scrolling")]
-    pub journal_editor_continuous_scrolling: bool,
-    #[serde(default = "default_journal_continuous_scrolling")]
     pub journal_right_pane_continuous_scrolling: bool,
     pub task_states: Vec<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
@@ -40,6 +38,8 @@ pub struct WorkspaceConfig {
     pub page_favorites: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub recent_pages: Vec<String>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub last_opened_at: HashMap<String, u64>,
     #[serde(default)]
     pub navigation_layout: NavigationLayoutConfig,
     #[serde(default)]
@@ -59,7 +59,6 @@ pub struct WorkspaceConfig {
 pub struct WorkspacePreferences {
     pub journal_folder: String,
     pub media_folder: String,
-    pub journal_editor_continuous_scrolling: bool,
     pub journal_right_pane_continuous_scrolling: bool,
     pub task_states: Vec<String>,
     pub task_state_colors: HashMap<String, String>,
@@ -131,7 +130,6 @@ impl Default for WorkspaceConfig {
         Self {
             journal_folder: default_journal_folder(),
             media_folder: default_media_folder(),
-            journal_editor_continuous_scrolling: default_journal_continuous_scrolling(),
             journal_right_pane_continuous_scrolling: default_journal_continuous_scrolling(),
             task_state_colors: default_task_state_colors(&task_states),
             task_states,
@@ -143,6 +141,7 @@ impl Default for WorkspaceConfig {
             expanded_folders: None,
             page_favorites: Vec::new(),
             recent_pages: Vec::new(),
+            last_opened_at: HashMap::new(),
             navigation_layout: NavigationLayoutConfig::default(),
             task_overview: TaskOverviewConfig::default(),
             backlink_view: BacklinkViewConfig::default(),
@@ -188,7 +187,6 @@ pub fn load_or_create_workspace_config(root: &Path) -> Result<WorkspaceConfig, S
     Ok(WorkspaceConfig {
         journal_folder,
         media_folder,
-        journal_editor_continuous_scrolling: config.journal_editor_continuous_scrolling,
         journal_right_pane_continuous_scrolling: config.journal_right_pane_continuous_scrolling,
         task_states,
         task_state_colors,
@@ -200,6 +198,7 @@ pub fn load_or_create_workspace_config(root: &Path) -> Result<WorkspaceConfig, S
         expanded_folders: config.expanded_folders.map(normalize_expanded_folders),
         page_favorites: normalize_page_path_list(config.page_favorites, usize::MAX),
         recent_pages: normalize_page_path_list(config.recent_pages, 10),
+        last_opened_at: normalize_last_opened_at(config.last_opened_at),
         navigation_layout: normalize_navigation_layout_config(config.navigation_layout),
         task_overview: normalize_task_overview_config(config.task_overview),
         backlink_view: normalize_backlink_view_config(config.backlink_view),
@@ -227,7 +226,6 @@ pub fn apply_workspace_preferences(
 
     next.journal_folder = journal_folder;
     next.media_folder = media_folder;
-    next.journal_editor_continuous_scrolling = preferences.journal_editor_continuous_scrolling;
     next.journal_right_pane_continuous_scrolling =
         preferences.journal_right_pane_continuous_scrolling;
     next.task_state_colors =
@@ -543,6 +541,35 @@ pub fn normalize_page_path_list(paths: Vec<String>, limit: usize) -> Vec<String>
     normalized
 }
 
+pub fn normalize_last_opened_at(last_opened_at: HashMap<String, u64>) -> HashMap<String, u64> {
+    let mut normalized = HashMap::new();
+
+    for (path, timestamp) in last_opened_at {
+        let Some(path) = normalize_optional_page_path(Some(path)) else {
+            continue;
+        };
+        if timestamp == 0 {
+            continue;
+        }
+
+        let existing = normalized
+            .keys()
+            .find(|candidate: &&String| candidate.eq_ignore_ascii_case(&path))
+            .cloned();
+        if let Some(existing) = existing {
+            let previous = normalized.get(&existing).copied().unwrap_or_default();
+            if timestamp > previous {
+                normalized.remove(&existing);
+                normalized.insert(path, timestamp);
+            }
+        } else {
+            normalized.insert(path, timestamp);
+        }
+    }
+
+    normalized
+}
+
 fn normalize_navigation_path_list(paths: Vec<String>) -> Vec<String> {
     let mut normalized = Vec::new();
 
@@ -566,7 +593,7 @@ fn normalize_navigation_path_list(paths: Vec<String>) -> Vec<String> {
 fn is_valid_page_sort(value: &str) -> bool {
     matches!(
         value,
-        "name-desc" | "name-asc" | "modified-desc" | "modified-asc"
+        "name-desc" | "name-asc" | "modified-desc" | "opened-desc"
     )
 }
 
@@ -698,7 +725,6 @@ mod tests {
         assert_eq!(config.task_states, vec!["TODO", "BLOCKED", "DONE"]);
         assert_eq!(config.journal_folder, "journal");
         assert_eq!(config.media_folder, "media");
-        assert!(config.journal_editor_continuous_scrolling);
         assert!(config.journal_right_pane_continuous_scrolling);
         assert_eq!(
             config.task_state_colors.get("TODO"),
@@ -729,12 +755,12 @@ mod tests {
     fn applies_preferences_without_replacing_application_managed_state() {
         let mut config = WorkspaceConfig::default();
         config.page_favorites = vec!["Projects.md".to_string()];
+        config.last_opened_at = HashMap::from([("Projects.md".to_string(), 100)]);
         config.folder_page_sort =
             HashMap::from([("projects".to_string(), "modified-desc".to_string())]);
         let preferences = WorkspacePreferences {
             journal_folder: "daily".to_string(),
             media_folder: "attachments".to_string(),
-            journal_editor_continuous_scrolling: false,
             journal_right_pane_continuous_scrolling: true,
             task_states: vec!["NEXT".to_string(), "DONE".to_string()],
             task_state_colors: HashMap::from([
@@ -752,6 +778,7 @@ mod tests {
         assert_eq!(updated.media_folder, "attachments");
         assert_eq!(updated.task_states, vec!["NEXT", "DONE"]);
         assert_eq!(updated.page_favorites, config.page_favorites);
+        assert_eq!(updated.last_opened_at, config.last_opened_at);
         assert_eq!(updated.folder_page_sort, config.folder_page_sort);
     }
 
@@ -761,7 +788,6 @@ mod tests {
         let mut preferences = WorkspacePreferences {
             journal_folder: "/daily".to_string(),
             media_folder: "media".to_string(),
-            journal_editor_continuous_scrolling: true,
             journal_right_pane_continuous_scrolling: true,
             task_states: config.task_states.clone(),
             task_state_colors: config.task_state_colors.clone(),
@@ -823,23 +849,6 @@ mod tests {
     }
 
     #[test]
-    fn loads_independent_journal_continuous_scrolling_flags() {
-        let root = temp_workspace();
-        fs::write(
-            root.join(".config"),
-            r#"{"taskStates":["TODO","DONE"],"journalEditorContinuousScrolling":false,"journalRightPaneContinuousScrolling":true}"#,
-        )
-        .unwrap();
-
-        let config = load_or_create_workspace_config(&root).unwrap();
-
-        assert!(!config.journal_editor_continuous_scrolling);
-        assert!(config.journal_right_pane_continuous_scrolling);
-
-        fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
     fn rejects_journal_folder_with_parent_segments() {
         let root = temp_workspace();
         fs::write(
@@ -890,21 +899,18 @@ mod tests {
         let root = temp_workspace();
         fs::write(
             root.join(".config"),
-            r#"{"taskStates":["TODO","DONE"],"defaultPageSort":"name-asc","folderPageSort":{"journals":"modified-desc","projects":"name-asc","../outside":"name-desc","team\\ops":"modified-asc","bad":"unknown"}}"#,
+            r#"{"taskStates":["TODO","DONE"],"defaultPageSort":"opened-desc","folderPageSort":{"journals":"modified-desc","projects":"opened-desc","../outside":"name-desc","team\\ops":"modified-asc","bad":"unknown"}}"#,
         )
         .unwrap();
 
         let config = load_or_create_workspace_config(&root).unwrap();
 
-        assert_eq!(config.default_page_sort, "name-asc");
+        assert_eq!(config.default_page_sort, "opened-desc");
         assert_eq!(
             config.folder_page_sort.get("journals"),
             Some(&"modified-desc".to_string())
         );
-        assert_eq!(
-            config.folder_page_sort.get("team/ops"),
-            Some(&"modified-asc".to_string())
-        );
+        assert!(!config.folder_page_sort.contains_key("team/ops"));
         assert_eq!(
             config.folder_page_sort.get("journal"),
             Some(&"name-desc".to_string())
@@ -912,6 +918,25 @@ mod tests {
         assert!(!config.folder_page_sort.contains_key("bad"));
         assert!(!config.folder_page_sort.contains_key("projects"));
         assert!(!config.folder_page_sort.contains_key("../outside"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn loads_and_normalizes_page_open_history() {
+        let root = temp_workspace();
+        fs::write(
+            root.join(".config"),
+            r#"{"taskStates":["TODO","DONE"],"lastOpenedAt":{" projects/alpha.md ":100,"projects\\beta.md":200,"../outside.md":300,"empty.md":0}}"#,
+        )
+        .unwrap();
+
+        let config = load_or_create_workspace_config(&root).unwrap();
+
+        assert_eq!(config.last_opened_at.get("projects/alpha.md"), Some(&100));
+        assert_eq!(config.last_opened_at.get("projects/beta.md"), Some(&200));
+        assert!(!config.last_opened_at.contains_key("../outside.md"));
+        assert!(!config.last_opened_at.contains_key("empty.md"));
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -1096,7 +1121,6 @@ mod tests {
         let config = WorkspaceConfig {
             journal_folder: default_journal_folder(),
             media_folder: default_media_folder(),
-            journal_editor_continuous_scrolling: true,
             journal_right_pane_continuous_scrolling: true,
             task_states: vec!["TODO".to_string(), "DONE".to_string()],
             task_state_colors: default_task_state_colors(&["TODO".to_string(), "DONE".to_string()]),
@@ -1108,6 +1132,7 @@ mod tests {
             expanded_folders: Some(vec!["projects".to_string()]),
             page_favorites: Vec::new(),
             recent_pages: Vec::new(),
+            last_opened_at: HashMap::new(),
             navigation_layout: NavigationLayoutConfig::default(),
             task_overview: TaskOverviewConfig::default(),
             backlink_view: BacklinkViewConfig::default(),
@@ -1131,7 +1156,6 @@ mod tests {
         let config = WorkspaceConfig {
             journal_folder: default_journal_folder(),
             media_folder: default_media_folder(),
-            journal_editor_continuous_scrolling: false,
             journal_right_pane_continuous_scrolling: true,
             task_states: vec!["TODO".to_string(), "DONE".to_string()],
             task_state_colors: default_task_state_colors(&["TODO".to_string(), "DONE".to_string()]),
@@ -1148,6 +1172,10 @@ mod tests {
             recent_pages: (0..12)
                 .map(|index| format!("journal/2026-08-{index:02}.md"))
                 .collect(),
+            last_opened_at: HashMap::from([
+                ("projects/alpha.md".to_string(), 1_725_000_000_000),
+                ("journal/2026-08-21.md".to_string(), 1_725_000_100_000),
+            ]),
             navigation_layout: NavigationLayoutConfig {
                 quick_access_height: 320,
             },
@@ -1173,13 +1201,13 @@ mod tests {
         assert!(saved.contains("\"themeMode\": \"dark\""));
         assert!(saved.contains("\"openTasksOnly\": true"));
         assert!(saved.contains("\"taskDoneSoundEnabled\": false"));
-        assert!(saved.contains("\"journalEditorContinuousScrolling\": false"));
         assert!(saved.contains("\"journalRightPaneContinuousScrolling\": true"));
         assert!(saved.contains("\"defaultPageSort\": \"name-asc\""));
         assert!(saved.contains("\"folderPageSort\""));
         assert!(saved.contains("\"manualPageOrder\""));
         assert!(saved.contains("\"pageFavorites\""));
         assert!(saved.contains("\"recentPages\""));
+        assert!(saved.contains("\"lastOpenedAt\""));
         assert!(saved.contains("\"navigationLayout\""));
         assert!(saved.contains("\"quickAccessHeight\": 320"));
         assert!(saved.contains("\"lastEditorPath\": \"projects/alpha.md\""));

@@ -10,5 +10,6 @@ export const editorSessionStore = createEditorSessionStore({
   refreshPages: () => workspaceStore.refreshPages(),
   refreshRightPane: () => rightPaneStore.refresh(),
   notifyPageChanged: (path) => pageContentUpdateStore.notify(path),
+  recordPageOpened: (path) => void workspaceStore.recordPageOpened(path),
   autoSaveDelayMs: 3000,
 });

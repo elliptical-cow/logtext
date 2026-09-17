@@ -73,7 +73,7 @@
             <span><span class="menu-mnemonic">S</span>ort files by</span>
             <span aria-hidden="true">›</span>
           </button>
-          <div class="context-menu-flyout-panel" role="menu">
+          <div class="context-menu-flyout-panel navigation-sort-menu" role="menu">
             <button
               type="button"
               role="menuitem"
@@ -91,6 +91,24 @@
               on:click={() => handleContextMenuAction("sort:name-desc")}
             >
               Name <span class="menu-mnemonic">d</span>escending
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-menu-key="m"
+              class:active-menu-item={folderSortFor(contextMenu.node.path) === "modified-desc"}
+              on:click={() => handleContextMenuAction("sort:modified-desc")}
+            >
+              Recently <span class="menu-mnemonic">m</span>odified
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-menu-key="r"
+              class:active-menu-item={folderSortFor(contextMenu.node.path) === "opened-desc"}
+              on:click={() => handleContextMenuAction("sort:opened-desc")}
+            >
+              <span class="menu-mnemonic">R</span>ecently opened
             </button>
           </div>
         </div>

@@ -14,6 +14,7 @@ pub struct PageSummaryDto {
     pub title: String,
     pub key: String,
     pub exists: bool,
+    pub modified_at: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -22,7 +23,6 @@ pub struct WorkspaceStateDto {
     pub root: String,
     pub journal_folder: String,
     pub media_folder: String,
-    pub journal_editor_continuous_scrolling: bool,
     pub journal_right_pane_continuous_scrolling: bool,
     pub pages: Vec<PageSummaryDto>,
     pub folders: Vec<String>,
@@ -37,6 +37,7 @@ pub struct WorkspaceStateDto {
     pub expanded_folders: Option<Vec<String>>,
     pub page_favorites: Vec<String>,
     pub recent_pages: Vec<String>,
+    pub last_opened_at: HashMap<String, u64>,
     pub navigation_layout: NavigationLayoutConfig,
     pub task_overview: TaskOverviewConfig,
     pub backlink_view: BacklinkViewConfig,
@@ -50,7 +51,6 @@ pub fn workspace_state(workspace: &WorkspaceState) -> WorkspaceStateDto {
         root: workspace.root.to_string_lossy().to_string(),
         journal_folder: workspace.config.journal_folder.clone(),
         media_folder: workspace.config.media_folder.clone(),
-        journal_editor_continuous_scrolling: workspace.config.journal_editor_continuous_scrolling,
         journal_right_pane_continuous_scrolling: workspace
             .config
             .journal_right_pane_continuous_scrolling,
@@ -67,6 +67,7 @@ pub fn workspace_state(workspace: &WorkspaceState) -> WorkspaceStateDto {
         expanded_folders: workspace.config.expanded_folders.clone(),
         page_favorites: workspace.config.page_favorites.clone(),
         recent_pages: workspace.config.recent_pages.clone(),
+        last_opened_at: workspace.config.last_opened_at.clone(),
         navigation_layout: workspace.config.navigation_layout.clone(),
         task_overview: workspace.config.task_overview.clone(),
         backlink_view: workspace.config.backlink_view.clone(),
@@ -271,6 +272,7 @@ pub(crate) fn page_summary(page: Page) -> PageSummaryDto {
         title: page.title,
         key: page.key,
         exists: true,
+        modified_at: page.modified_at,
     }
 }
 

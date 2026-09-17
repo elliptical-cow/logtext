@@ -1,10 +1,11 @@
 use std::fs;
 use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
 use crate::app_state::WorkspaceState;
 use crate::dto::SavePageResultDto;
 use crate::workspace::paths::resolve_workspace_relative_path;
+use crate::workspace::scanner::file_modified_at_millis;
 
 pub fn content_hash(content: &str) -> String {
     let mut hash = 0xcbf29ce484222325_u64;
@@ -85,17 +86,11 @@ pub fn save_page_in_workspace(
 }
 
 pub(crate) fn modified_at_millis(path: &PathBuf) -> Result<String, String> {
-    let metadata = fs::metadata(path)
-        .map_err(|error| format!("Failed to read page metadata '{}': {error}", path.display()))?;
-    let modified = metadata
-        .modified()
-        .map_err(|error| format!("Failed to read modified time '{}': {error}", path.display()))?;
-
-    Ok(system_time_millis(modified))
+    file_modified_at_millis(path).map(|modified_at| modified_at.to_string())
 }
 
 fn system_time_millis(time: SystemTime) -> String {
-    time.duration_since(UNIX_EPOCH)
+    time.duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_millis().to_string())
         .unwrap_or_else(|_| "0".to_string())
 }
@@ -103,6 +98,7 @@ fn system_time_millis(time: SystemTime) -> String {
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::UNIX_EPOCH;
 
     use super::*;
     use crate::content_snapshot::ContentSnapshot;

@@ -13,11 +13,11 @@ use crate::workspace::paths::resolve_workspace_relative_path;
 use crate::workspace::scanner::scan_workspace;
 use crate::workspace_config::{
     apply_workspace_preferences, normalize_backlink_view_config, normalize_expanded_folders,
-    normalize_folder_colors, normalize_folder_page_sort, normalize_manual_page_order,
-    normalize_navigation_layout_config, normalize_optional_page_path, normalize_page_path_list,
-    normalize_page_sort, normalize_task_overview_config, normalize_theme_mode,
-    save_workspace_config, BacklinkViewConfig, NavigationLayoutConfig, TaskOverviewConfig,
-    WorkspacePreferences, DEFAULT_PAGE_SORT,
+    normalize_folder_colors, normalize_folder_page_sort, normalize_last_opened_at,
+    normalize_manual_page_order, normalize_navigation_layout_config, normalize_optional_page_path,
+    normalize_page_path_list, normalize_page_sort, normalize_task_overview_config,
+    normalize_theme_mode, save_workspace_config, BacklinkViewConfig, NavigationLayoutConfig,
+    TaskOverviewConfig, WorkspacePreferences, DEFAULT_PAGE_SORT,
 };
 use crate::workspace_index::{apply_workspace_index, build_workspace_index};
 
@@ -261,15 +261,72 @@ pub fn save_workspace_session_config(
 pub fn save_navigation_config(
     page_favorites: Vec<String>,
     recent_pages: Vec<String>,
+    last_opened_at: HashMap<String, u64>,
     state: State<'_, AppState>,
-) -> Result<(Vec<String>, Vec<String>), String> {
+) -> Result<(Vec<String>, Vec<String>, HashMap<String, u64>), String> {
     state.with_workspace_mut(|workspace| {
         let page_favorites = normalize_page_path_list(page_favorites, usize::MAX);
         let recent_pages = normalize_page_path_list(recent_pages, 10);
+        let last_opened_at = merge_last_opened_at(workspace, last_opened_at)?;
         workspace.config.page_favorites = page_favorites.clone();
         workspace.config.recent_pages = recent_pages.clone();
+        workspace.config.last_opened_at = last_opened_at.clone();
         save_workspace_config(&workspace.root, &workspace.config)?;
-        Ok((page_favorites, recent_pages))
+        Ok((page_favorites, recent_pages, last_opened_at))
+    })?
+}
+
+fn merge_last_opened_at(
+    workspace: &crate::app_state::WorkspaceState,
+    submitted: HashMap<String, u64>,
+) -> Result<HashMap<String, u64>, String> {
+    let mut merged = workspace.config.last_opened_at.clone();
+    for (path, timestamp) in normalize_last_opened_at(submitted) {
+        let entry = merged.entry(path).or_default();
+        *entry = (*entry).max(timestamp);
+    }
+
+    let mut current_paths: HashMap<String, u64> = HashMap::new();
+    for (path, timestamp) in normalize_last_opened_at(merged) {
+        if let Some(canonical_path) = workspace.pages.resolve_path(&path)? {
+            let entry = current_paths.entry(canonical_path).or_default();
+            *entry = (*entry).max(timestamp);
+        }
+    }
+    Ok(current_paths)
+}
+
+#[tauri::command]
+pub fn record_page_opened(
+    path: String,
+    opened_at: u64,
+    state: State<'_, AppState>,
+) -> Result<(Vec<String>, HashMap<String, u64>), String> {
+    state.with_workspace_mut(|workspace| {
+        if opened_at == 0 {
+            return Err("Page open timestamp must be greater than zero".to_string());
+        }
+        let path = normalize_optional_page_path(Some(path))
+            .ok_or_else(|| "Invalid page path for open history".to_string())?;
+        let path = workspace
+            .pages
+            .resolve_path(&path)?
+            .ok_or_else(|| format!("Page '{path}' is not part of the workspace"))?;
+
+        let mut next_config = workspace.config.clone();
+        let recent_pages = normalize_page_path_list(
+            std::iter::once(path.clone())
+                .chain(next_config.recent_pages.iter().cloned())
+                .collect(),
+            10,
+        );
+        next_config.recent_pages = recent_pages.clone();
+        let timestamp = next_config.last_opened_at.entry(path).or_default();
+        *timestamp = (*timestamp).max(opened_at);
+        save_workspace_config(&workspace.root, &next_config)?;
+        workspace.config = next_config;
+
+        Ok((recent_pages, workspace.config.last_opened_at.clone()))
     })?
 }
 
@@ -354,6 +411,29 @@ mod tests {
             &["TODO".to_string(), "DONE".to_string()]
         )
         .is_ok());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn merging_open_history_keeps_newer_values_and_drops_missing_pages() {
+        let root = temp_workspace();
+        fs::write(root.join("Alpha.md"), "# Alpha").unwrap();
+        fs::write(root.join("Beta.md"), "# Beta").unwrap();
+        let mut workspace = indexed_workspace(root.clone());
+        workspace.config.last_opened_at = HashMap::from([
+            ("Alpha.md".to_string(), 300),
+            ("Deleted.md".to_string(), 500),
+        ]);
+
+        let merged = merge_last_opened_at(
+            &workspace,
+            HashMap::from([("Alpha.md".to_string(), 100), ("Beta.md".to_string(), 200)]),
+        )
+        .unwrap();
+
+        assert_eq!(merged.get("Alpha.md"), Some(&300));
+        assert_eq!(merged.get("Beta.md"), Some(&200));
+        assert!(!merged.contains_key("Deleted.md"));
         fs::remove_dir_all(root).unwrap();
     }
 

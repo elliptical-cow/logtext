@@ -124,6 +124,8 @@ Journal pages provide the default capture workflow.
 - Yesterday, Today, Tomorrow, and Pick controls are available in the left pane.
 
 The configured page sort order determines journal navigation order.
+`Modified` ordering uses each Markdown file's filesystem modification time;
+`Recently opened` uses the workspace-local opening history.
 
 ### Right-Pane Journal Feed
 
@@ -134,17 +136,9 @@ journal entries in the configured ascending or descending order.
 Set `journalRightPaneContinuousScrolling` to `false` to show only the selected
 journal page.
 
-### Editor Boundary Navigation
-
-The middle pane edits one file at a time. It does not place multiple Markdown
-files in one editor document.
-
-When the editor is at a journal page boundary, an additional mouse-wheel or
-Page Up/Page Down action opens the adjacent journal file. No extra click in the
-new document is required.
-
-Set `journalEditorContinuousScrolling` to `false` to disable this boundary
-navigation.
+The middle pane edits one Markdown file at a time. Mouse-wheel and Page Up/Page
+Down scrolling stay within that file. Use the journal controls or pane history
+to open another journal entry.
 
 ## Pages and Titles
 
@@ -212,9 +206,9 @@ Linked References may appear in the right pane and below the middle editor. The
 middle-pane section starts expanded. `Open Tasks only` limits results to
 references whose block or child blocks contain an open task.
 
-References are sorted by source path in reverse alphabetical order, then by
-their order in the source file. Date-based journal entries therefore normally
-appear newest first.
+References follow the same configured folder and page order as the file tree,
+then their order in the source file. This includes the `Recently opened` sort
+mode.
 
 ## Editing
 
@@ -426,7 +420,8 @@ Current limitations:
 ## Navigation and File Operations
 
 The left pane contains a compact file tree. Files are sorted by descending name
-by default. Each folder may override that order.
+by default. Each folder may override that order. `Recently opened` places pages
+opened in either content pane first; pages without history follow by name.
 
 Actions include:
 
@@ -436,8 +431,8 @@ Actions include:
 - create, rename, move, and delete pages and folders
 - move pages with drag and drop
 - assign a folder color
-- choose ascending, descending, or modified-time sorting and reorder items
-  manually
+- choose ascending, descending, modified-time, or recently-opened sorting and
+  reorder items manually
 
 File and folder context menus contain secondary actions. Normal left-click
 behavior is not repeated unnecessarily.
@@ -533,7 +528,6 @@ A representative configuration:
 {
   "journalFolder": "journal",
   "mediaFolder": "media",
-  "journalEditorContinuousScrolling": true,
   "journalRightPaneContinuousScrolling": true,
   "taskStates": ["TODO", "INPROGRESS", "WAITING", "DONE"],
   "taskStateColors": {
@@ -545,7 +539,8 @@ A representative configuration:
   "taskDoneSoundEnabled": true,
   "defaultPageSort": "name-desc",
   "folderPageSort": {
-    "journal": "name-desc"
+    "journal": "name-desc",
+    "projects": "opened-desc"
   },
   "folderColors": {
     "projects": "blue"
@@ -560,18 +555,21 @@ A representative configuration:
 | --- | --- |
 | `journalFolder` | Workspace-relative folder; defaults to `journal`. No `.`, `..`, or empty segments. |
 | `mediaFolder` | Workspace-relative folder; defaults to `media`. Cannot overlap the journal folder or use `.git`, `node_modules`, or `target`. |
-| `journalEditorContinuousScrolling` | Boolean; enables journal boundary navigation in the editor. |
 | `journalRightPaneContinuousScrolling` | Boolean; enables the continuous right-pane journal feed. |
 | `taskStates` | Ordered list of uppercase states using letters, numbers, or `_`. The final state is treated as complete. |
 | `taskStateColors` | State-to-color map. Supported colors: `red`, `yellow`, `green`, `blue`, `grey`, `orange`, `pink`. |
 | `taskDoneSoundEnabled` | Boolean; controls the completion sound. |
-| `defaultPageSort` | `name-desc`, `name-asc`, `modified-desc`, or `modified-asc`. |
+| `defaultPageSort` | `name-desc`, `name-asc`, `modified-desc` (`Recently modified`), or `opened-desc` (`Recently opened`). |
 | `folderPageSort` | Folder-path-to-sort-mode map. |
 | `folderColors` | Folder-path-to-color map using the task color names. |
 | `themeMode` | `light` or `dark`. |
 
 Folder-specific sort modes and colors continue to be managed from folder
 context menus in the file tree rather than from Preferences.
+
+`Recently modified` reads the Markdown files' modification timestamps directly
+from the filesystem and places the newest changes first. These timestamps are
+indexed in memory and are not duplicated in `.config`.
 
 The journal and media folders must not be the same folder, ancestors, or
 descendants of each other.
@@ -584,6 +582,7 @@ Logtext may also write these fields:
 - `expandedFolders`
 - `pageFavorites`
 - `recentPages`
+- `lastOpenedAt`
 - `navigationLayout`
 - `taskOverview`
 - `backlinkView`

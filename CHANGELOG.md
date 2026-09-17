@@ -3,6 +3,28 @@
 This file records notable user-facing and development changes to Logtext. The
 current source version is `0.7.5`.
 
+## Unreleased
+
+### Added
+
+- Added `Recently opened` as a default or per-folder page sort mode. Successful
+  opens in the editor and right pane are stored workspace-locally, carried
+  across page and folder renames or moves, and also determine backlink order.
+- Added `Recently modified` sorting based on filesystem modification timestamps
+  as a default preference and per-folder context-menu option.
+
+### Changed
+
+- Limited continuous journal scrolling to the rendered right pane. The editor
+  once again scrolls only within its active Markdown file; the former editor
+  boundary-navigation setting has been removed.
+
+### Fixed
+
+- Adjusted the editor link-autocomplete dropdown and its selected entry to use
+  the application surface, border, and text colors in dark mode. Its active
+  entry now shares the file navigator's selection and focus colors.
+
 ## 0.7.5
 Changes since `v0.7.1`.
 

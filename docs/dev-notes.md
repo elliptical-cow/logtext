@@ -301,9 +301,9 @@ Workspace-level config:
 - Stored in the workspace root as `.config`
 - Managed by `src-tauri/src/workspace_config.rs`
 - Stores derived UI and workspace preferences such as task states, task colors,
-  folder colors, expanded folders, favorites, recent pages, task overview
-  filters, backlink view options, sort configuration, the journal and media
-  folders, pane session state, and navigation layout values
+  folder colors, expanded folders, favorites, recent pages, page-open
+  timestamps, task overview filters, backlink view options, sort configuration,
+  the journal and media folders, pane session state, and navigation layout values
 
 The workspace config is normalized when loaded. Invalid or unknown values are
 discarded or replaced with defaults where practical.
@@ -331,11 +331,11 @@ per-pane minimum widths, and persists them in `localStorage` under
 workspace config, debounced before saving. On workspace change the shell ensures
 today's journal page exists and opens it in the middle pane.
 
-`src/lib/journals.ts` defines valid date-page paths, their configured order, and
-chronological neighbors. The editor uses those rules to navigate to an existing
-adjacent journal page after an additional wheel event at a boundary. The right
-pane keeps a progressively loaded window of rendered journal pages in one
-scroll container and preserves the viewport when pages are prepended.
+`src/lib/journals.ts` defines valid date-page paths and their configured order.
+The editor remains bound to one Markdown file and does not change files from
+scroll gestures. The right pane keeps a progressively loaded window of rendered
+journal pages in one scroll container and preserves the viewport when pages are
+prepended.
 `rightPaneStore` keeps the loaded `path` and `pageView` consistent and exposes a
 separate `pendingPath` during navigation, preventing consumers from rendering a
 new page mode with stale content from the previous page.
@@ -472,6 +472,13 @@ Stores:
 - `theme.ts`: light and dark appearance state
 - `zoom.ts`: UI zoom factor
 
+`PageSummary` includes the filesystem modification time in Unix milliseconds.
+The backend page index refreshes it during full and incremental indexing, so the
+file tree, journal feed, and navigation-based backlink ordering share the same
+`modified-desc` semantics for recently modified pages. Only user interaction
+history such as `lastOpenedAt` is persisted in `.config`; filesystem modification
+times are not.
+
 Domain logic is kept in framework-free TypeScript modules under `src/lib` so it
 can be unit tested without rendering components:
 
@@ -542,11 +549,9 @@ array and rescanning the hierarchy for every visible gutter marker. Selection,
 viewport, and scroll-only updates reuse the same metadata object; document
 changes rebuild it in one pass.
 
-Editor journal navigation receives an already filtered and ordered journal-path
-list from `EditorPane`. The list changes reactively with workspace pages,
-journal-folder configuration, or sort order, but is not rebuilt for individual
-wheel or Page Up/Page Down events. Disabled navigation and non-journal pages are
-rejected before scroll geometry is read.
+The editor owns one Markdown file and does not intercept wheel or Page Up/Page
+Down events to switch journal files. Continuous multi-file journal navigation is
+limited to the rendered right-pane feed.
 
 Right-pane `mermaid` fences are emitted as escaped source
 placeholders and rendered asynchronously as SVG only when an IntersectionObserver
@@ -668,7 +673,10 @@ implicitly.
 
 The left pane builds its tree from the page and folder lists returned by the
 backend. Ordering combines default sort mode, per-folder sort mode, manual order
-configuration, and recent/favorite metadata.
+configuration, and recent/favorite metadata. Successful opens in either content
+pane update `lastOpenedAt`; the `opened-desc` mode orders timestamped pages
+newest first and untimestamped pages by name. Backend backlink ordering uses the
+same configuration.
 
 Page and wiki-link keys are matched with Unicode lowercasing. This is not
 locale-specific comparison or full Unicode case folding. Physical folders that

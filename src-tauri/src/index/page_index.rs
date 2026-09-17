@@ -8,6 +8,7 @@ pub struct Page {
     pub path: String,
     pub title: String,
     pub key: String,
+    pub modified_at: u64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -32,12 +33,22 @@ impl PageIndex {
     }
 
     pub fn insert_page(&mut self, path: String, markdown: &str) -> Option<Page> {
+        self.insert_page_with_modified_at(path, markdown, 0)
+    }
+
+    pub fn insert_page_with_modified_at(
+        &mut self,
+        path: String,
+        markdown: &str,
+        modified_at: u64,
+    ) -> Option<Page> {
         let key = page_key_from_relative_path(&path)?;
         let title = title_from_markdown_or_path(markdown, &path);
         let page = Page {
             path: path.clone(),
             title,
             key: key.clone(),
+            modified_at,
         };
 
         self.pages_by_path.insert(path.clone(), page.clone());
@@ -49,6 +60,13 @@ impl PageIndex {
     pub fn update_title(&mut self, path: &str, markdown: &str) {
         if let Some(page) = self.pages_by_path.get_mut(path) {
             page.title = title_from_markdown_or_path(markdown, path);
+        }
+    }
+
+    pub fn update_content_metadata(&mut self, path: &str, markdown: &str, modified_at: u64) {
+        if let Some(page) = self.pages_by_path.get_mut(path) {
+            page.title = title_from_markdown_or_path(markdown, path);
+            page.modified_at = modified_at;
         }
     }
 
