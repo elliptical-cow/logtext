@@ -26,3 +26,10 @@ test("editor backlinks refresh after a successful shared mutation", () => {
   );
   assert.match(editorPane, /message=\{\$editorSessionStore\.error \?\? mutationError \?\? pageViewError\}/);
 });
+
+test("editor backlink refreshes keep the existing view mounted", () => {
+  assert.match(
+    editorPane,
+    /pageViewLoading = !pageView \|\| pageView\.page\.path !== path;/,
+  );
+});

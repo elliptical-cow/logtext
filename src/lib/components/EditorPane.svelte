@@ -43,7 +43,7 @@
       return;
     }
 
-    pageViewLoading = true;
+    pageViewLoading = !pageView || pageView.page.path !== path;
     pageViewError = null;
 
     try {
