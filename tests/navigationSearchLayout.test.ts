@@ -17,7 +17,10 @@ test("shows one ranked result list while searching", () => {
   assert.match(fileTree, /\{#if !searchQuery\.trim\(\)\}\s*<NavigationTree/);
   assert.match(fileTree, /<span>Ranked Results<\/span>/);
   assert.equal(/Results by Content/.test(fileTree), false);
-  assert.match(styles, /\.content-search-results\s*\{[^}]*flex: 1;/s);
+  assert.match(
+    styles,
+    /\.content-search-results\s*\{[^}]*flex: 1;[^}]*align-content: start;/s,
+  );
 });
 
 test("offers a direct right-pane action for every ranked result", () => {

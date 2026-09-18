@@ -732,6 +732,7 @@ textarea {
 .content-search-results {
   display: grid;
   flex: 1;
+  align-content: start;
   gap: 2px;
   min-height: 0;
   padding: 8px;
