@@ -835,7 +835,7 @@
   }
 
   function openSearchResultInRightPane(result: SearchResult) {
-    openPageInRightPane(result.path);
+    void rightPaneStore.open(result.path, { line: result.line });
   }
 
   function openSearchResultContextMenu(result: SearchResult, event: MouseEvent) {
@@ -2213,18 +2213,29 @@
           <p>No ranked results</p>
         {:else}
           {#each searchResults as result}
-            <button
-              type="button"
-              class="search-result"
-              title={`${result.path}:${result.line}`}
-              on:click={() => openSearchResult(result)}
-              on:contextmenu={(event) => openSearchResultContextMenu(result, event)}
-              on:keydown={(event) => openSearchResultKeyboardContextMenu(result, event)}
-            >
-              <span>{pageNameFromPath(result.path)}</span>
-              <small>{result.path}:{result.line}</small>
-              <em>{result.excerpt}</em>
-            </button>
+            <div class="search-result-row">
+              <button
+                type="button"
+                class="search-result"
+                title={`${result.path}:${result.line}`}
+                on:click={() => openSearchResult(result)}
+                on:contextmenu={(event) => openSearchResultContextMenu(result, event)}
+                on:keydown={(event) => openSearchResultKeyboardContextMenu(result, event)}
+              >
+                <span>{pageNameFromPath(result.path)}</span>
+                <small>{result.path}:{result.line}</small>
+                <em>{result.excerpt}</em>
+              </button>
+              <button
+                type="button"
+                class="icon-button right-pane-action search-result-right-action"
+                title={`Open ${result.path}:${result.line} in right pane`}
+                aria-label={`Open ${result.path}:${result.line} in right pane`}
+                on:click={() => openSearchResultInRightPane(result)}
+              >
+                R
+              </button>
+            </div>
           {/each}
         {/if}
       </section>

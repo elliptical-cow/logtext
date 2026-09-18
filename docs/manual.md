@@ -460,7 +460,8 @@ changes and participate in dirty-state handling, Save, and undo.
 ### Workspace
 
 Use the search field in the left pane to search indexed Markdown files. Results
-include file, line, and context and may be opened in the editor.
+include file, line, and context. Select a result to open it in the editor, or use
+its `R` action to open and reveal the matching line in the right pane.
 
 ## Context Menus
 
