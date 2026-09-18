@@ -210,6 +210,12 @@ References follow the same configured folder and page order as the file tree,
 then their order in the source file. This includes the `Recently opened` sort
 mode.
 
+Rendered backlink blocks use the same contextual actions in both content panes.
+Right-click a task keyword to change its Status or Priority. In the middle pane,
+`Show line in right pane` opens the source context opposite the editor; in the
+right pane, the corresponding action opens it in the editor. Rendered
+checkboxes can be toggled directly, and selected backlink text can be copied.
+
 ## Editing
 
 The middle pane uses CodeMirror and supports normal Markdown editing plus block

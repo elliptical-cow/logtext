@@ -8,6 +8,7 @@
   import { editorModeStore } from "../stores/editorMode";
   import { appUndoStore } from "../stores/appUndo";
   import { linkOperations, type LinkTargetPane } from "../stores/linkOperations";
+  import { mutationOperations, type MutationOutcome } from "../stores/mutationOperations";
   import { workspaceStore } from "../stores/workspace";
   import type { BacklinkView, PageView } from "../types";
 
@@ -15,6 +16,7 @@
   let pageView: PageView | null = null;
   let pageViewLoading = false;
   let pageViewError: string | null = null;
+  let mutationError: string | null = null;
   let pageViewRequestKey = "";
   let pageViewRequestSequence = 0;
   let missingLinkPath: string | null = null;
@@ -32,6 +34,7 @@
   async function loadEditorPageView(path: string | null) {
     const requestId = ++pageViewRequestSequence;
     missingLinkPath = null;
+    mutationError = null;
 
     if (!path) {
       pageView = null;
@@ -102,7 +105,48 @@
       editorSessionStore.clearError();
       return;
     }
+    if (mutationError) {
+      mutationError = null;
+      return;
+    }
     pageViewError = null;
+  }
+
+  async function finishBacklinkMutation(resultPromise: Promise<MutationOutcome>) {
+    const result = await resultPromise;
+    mutationError = result.error;
+
+    if (result.status === "changed") {
+      await loadEditorPageView($editorSessionStore.path);
+    }
+  }
+
+  function toggleBacklinkCheckbox(path: string, line: number, previousChecked: boolean) {
+    void finishBacklinkMutation(
+      mutationOperations.toggleCheckbox(path, line, previousChecked),
+    );
+  }
+
+  function changeBacklinkTaskStatus(
+    path: string,
+    line: number,
+    currentStatus: string,
+    nextStatus: string,
+  ) {
+    void finishBacklinkMutation(
+      mutationOperations.setTaskStatus(path, line, currentStatus, nextStatus),
+    );
+  }
+
+  function changeBacklinkTaskPriority(
+    path: string,
+    line: number,
+    currentPriority: string | null,
+    nextPriority: string | null,
+  ) {
+    void finishBacklinkMutation(
+      mutationOperations.setTaskPriority(path, line, currentPriority, nextPriority),
+    );
   }
 
   async function createMissingPage(openTarget: "editor" | "right") {
@@ -168,7 +212,7 @@
   </div>
   <ErrorDialog
     title="Editor Error"
-    message={$editorSessionStore.error ?? pageViewError}
+    message={$editorSessionStore.error ?? mutationError ?? pageViewError}
     onClose={closeErrorDialog}
     secondaryActionLabel={$editorSessionStore.conflict ? "Reload from disk" : null}
     onSecondaryAction={$editorSessionStore.conflict ? () => editorSessionStore.reloadFromDisk() : null}
@@ -233,6 +277,11 @@
         onOpenSourceInEditor={openBacklinkInEditor}
         onOpenSourceLineInRightPane={openBacklinkLineInRightPane}
         sourceLineMenuTargets={["right"]}
+        enableTaskContextMenu
+        enableTextCopyContextMenu
+        onCheckboxToggle={toggleBacklinkCheckbox}
+        onTaskStatusChange={changeBacklinkTaskStatus}
+        onTaskPriorityChange={changeBacklinkTaskPriority}
       />
     {/if}
   </div>
