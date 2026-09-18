@@ -357,8 +357,11 @@ fn ensure_edit_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
 }
 
 fn ensure_view_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri::Result<()> {
-    let toggle_dark_mode =
-        MenuItemBuilder::with_id(MENU_TOGGLE_DARK_MODE, theme_menu_text(false)).build(handle)?;
+    let toggle_dark_mode = MenuItemBuilder::with_id(
+        MENU_TOGGLE_DARK_MODE,
+        theme_menu_text(workspace_config::DEFAULT_THEME_MODE == "dark"),
+    )
+    .build(handle)?;
     let toggle_task_overview =
         MenuItemBuilder::with_id(MENU_TOGGLE_TASK_OVERVIEW, task_overview_menu_text(false))
             .accelerator("CmdOrCtrl+Shift+T")

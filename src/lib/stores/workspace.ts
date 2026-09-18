@@ -63,7 +63,7 @@ const DEFAULT_NAVIGATION_LAYOUT: NavigationLayoutConfig = {
 const DEFAULT_BACKLINK_VIEW_CONFIG: BacklinkViewConfig = {
   openTasksOnly: false,
 };
-const DEFAULT_THEME_MODE: ThemeMode = "light";
+const DEFAULT_THEME_MODE: ThemeMode = "dark";
 
 function configSaveError(label: string, error: unknown) {
   const presentation = toErrorPresentation(error);

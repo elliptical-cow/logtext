@@ -551,7 +551,7 @@ A representative configuration:
   "folderColors": {
     "projects": "blue"
   },
-  "themeMode": "light"
+  "themeMode": "dark"
 }
 ```
 
@@ -568,7 +568,7 @@ A representative configuration:
 | `defaultPageSort` | `name-desc`, `name-asc`, `modified-desc` (`Recently modified`), or `opened-desc` (`Recently opened`). |
 | `folderPageSort` | Folder-path-to-sort-mode map. |
 | `folderColors` | Folder-path-to-color map using the task color names. |
-| `themeMode` | `light` or `dark`. |
+| `themeMode` | `light` or `dark`; new workspaces default to `dark`. |
 
 Folder-specific sort modes and colors continue to be managed from folder
 context menus in the file tree rather than from Preferences.
