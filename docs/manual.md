@@ -210,6 +210,12 @@ References follow the same configured folder and page order as the file tree,
 then their order in the source file. This includes the `Recently opened` sort
 mode.
 
+Rendered backlink blocks use the same contextual actions in both content panes.
+Right-click a task keyword to change its Status or Priority. In the middle pane,
+`Show line in right pane` opens the source context opposite the editor; in the
+right pane, the corresponding action opens it in the editor. Rendered
+checkboxes can be toggled directly, and selected backlink text can be copied.
+
 ## Editing
 
 The middle pane uses CodeMirror and supports normal Markdown editing plus block
@@ -454,7 +460,8 @@ changes and participate in dirty-state handling, Save, and undo.
 ### Workspace
 
 Use the search field in the left pane to search indexed Markdown files. Results
-include file, line, and context and may be opened in the editor.
+include file, line, and context. Select a result to open it in the editor, or use
+its `R` action to open and reveal the matching line in the right pane.
 
 ## Context Menus
 
@@ -545,7 +552,7 @@ A representative configuration:
   "folderColors": {
     "projects": "blue"
   },
-  "themeMode": "light"
+  "themeMode": "dark"
 }
 ```
 
@@ -562,7 +569,7 @@ A representative configuration:
 | `defaultPageSort` | `name-desc`, `name-asc`, `modified-desc` (`Recently modified`), or `opened-desc` (`Recently opened`). |
 | `folderPageSort` | Folder-path-to-sort-mode map. |
 | `folderColors` | Folder-path-to-color map using the task color names. |
-| `themeMode` | `light` or `dark`. |
+| `themeMode` | `light` or `dark`; new workspaces default to `dark`. |
 
 Folder-specific sort modes and colors continue to be managed from folder
 context menus in the file tree rather than from Preferences.

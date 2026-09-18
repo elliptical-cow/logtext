@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_TASK_STATES: [&str; 4] = ["TODO", "INPROGRESS", "WAITING", "DONE"];
 pub const DEFAULT_PAGE_SORT: &str = "name-desc";
-pub const DEFAULT_THEME_MODE: &str = "light";
+pub const DEFAULT_THEME_MODE: &str = "dark";
 pub const DEFAULT_JOURNAL_FOLDER: &str = "journal";
 pub const DEFAULT_MEDIA_FOLDER: &str = "media";
 
@@ -703,7 +703,7 @@ mod tests {
             Some(&"name-desc".to_string())
         );
         assert!(config.folder_colors.is_empty());
-        assert_eq!(config.theme_mode, "light");
+        assert_eq!(config.theme_mode, "dark");
         assert_eq!(config.last_editor_path, None);
         assert_eq!(config.last_right_pane_path, None);
         assert!(root.join(".config").is_file());
@@ -1031,7 +1031,7 @@ mod tests {
 
         let config = load_or_create_workspace_config(&root).unwrap();
 
-        assert_eq!(config.theme_mode, "light");
+        assert_eq!(config.theme_mode, "dark");
 
         fs::remove_dir_all(root).unwrap();
     }

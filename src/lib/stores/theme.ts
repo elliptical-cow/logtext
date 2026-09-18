@@ -11,7 +11,7 @@ function applyTheme(mode: ThemeMode) {
 }
 
 function createThemeStore() {
-  const { subscribe, set, update } = writable<ThemeMode>("light");
+  const { subscribe, set, update } = writable<ThemeMode>("dark");
 
   subscribe(applyTheme);
 
