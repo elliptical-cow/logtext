@@ -10,7 +10,15 @@ pub struct ParsedBlock {
     pub task_priority: Option<String>,
     pub markdown: String,
     pub links: Vec<WikiLink>,
+    pub attributes: Vec<BlockAttribute>,
     pub children: Vec<ParsedBlock>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockAttribute {
+    pub line: usize,
+    pub name: String,
+    pub value: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -180,6 +188,10 @@ fn build_tree(
             .last()
             .map(|child| child.line_end)
             .unwrap_or(block.line_end);
+        let attributes = children
+            .iter()
+            .filter_map(|child| parse_block_attribute(&child.text, child.line_start))
+            .collect();
 
         blocks.push(ParsedBlock {
             line_start: block.line_start,
@@ -190,6 +202,7 @@ fn build_tree(
             task_priority: block.task_priority.clone(),
             markdown: markdown_lines.join("\n"),
             links: block.links.clone(),
+            attributes,
             children,
         });
 
@@ -197,6 +210,25 @@ fn build_tree(
     }
 
     (blocks, index)
+}
+
+fn parse_block_attribute(text: &str, line: usize) -> Option<BlockAttribute> {
+    let (name, value) = text.split_once("::")?;
+    if name.is_empty()
+        || !name.chars().enumerate().all(|(index, character)| {
+            (index > 0 && character.is_ascii_digit())
+                || character.is_ascii_alphabetic()
+                || (index > 0 && matches!(character, '_' | '-'))
+        })
+    {
+        return None;
+    }
+
+    Some(BlockAttribute {
+        line,
+        name: name.to_string(),
+        value: value.trim_start_matches([' ', '\t']).to_string(),
+    })
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -383,6 +415,49 @@ mod tests {
         assert_eq!(blocks[0].children[0].children.len(), 1);
         assert_eq!(blocks[0].line_end, 3);
         assert_eq!(blocks[1].line_start, 4);
+    }
+
+    #[test]
+    fn parses_direct_child_list_items_as_block_attributes() {
+        let blocks = parse_blocks(
+            "- TODO Prepare release\n  - owner:: Jens\n  - due-date:: 2026-09-20\n  - Normal child\n    - nested:: not-parent-metadata",
+        );
+
+        assert_eq!(
+            blocks[0].attributes,
+            vec![
+                BlockAttribute {
+                    line: 2,
+                    name: "owner".to_string(),
+                    value: "Jens".to_string(),
+                },
+                BlockAttribute {
+                    line: 3,
+                    name: "due-date".to_string(),
+                    value: "2026-09-20".to_string(),
+                },
+            ]
+        );
+        assert!(blocks[0].children[2].attributes.iter().any(|attribute| {
+            attribute.name == "nested" && attribute.value == "not-parent-metadata"
+        }));
+    }
+
+    #[test]
+    fn keeps_invalid_attribute_names_as_regular_child_blocks() {
+        let blocks = parse_blocks(
+            "- Parent\n  - 1owner:: Jens\n  - owner name:: Jens\n  - :: missing key\n  - owner::",
+        );
+
+        assert_eq!(
+            blocks[0].attributes,
+            vec![BlockAttribute {
+                line: 5,
+                name: "owner".to_string(),
+                value: String::new(),
+            }]
+        );
+        assert_eq!(blocks[0].children.len(), 4);
     }
 
     #[test]

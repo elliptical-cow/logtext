@@ -36,6 +36,10 @@
   import type { FolderColors, PageSummary, TaskStateColors, ThemeMode } from "../types";
   import type { ImageContextMenuTarget } from "../imageClipboard";
   import { runUserAction } from "../stores/appErrors";
+  import {
+    markBlockAttributesForRendering,
+    type BlockAttributeToken,
+  } from "../blockAttributes";
 
   export let content = "";
   export let sourcePath = "";
@@ -105,26 +109,31 @@
   });
   const markdownWithSourceLines = markdown as unknown as MarkdownItWithSourceLines;
 
+  $: codeLineNumbers = markdownCodeLineNumbers(markdown, content);
+  $: attributeRender = markBlockAttributesForRendering(content, codeLineNumbers);
   $: taskRender = markTaskKeywordsForRendering(
-    content,
+    attributeRender.markdown,
     taskStates,
     sourceLineNumbers,
-    markdownCodeLineNumbers(markdown, content),
+    codeLineNumbers,
   );
-  $: rendered = renderTaskPriorityMarkers(
-    renderTaskKeywordMarkers(
-      renderCheckboxItems(
-        applyWikiLinkColorStyles(
-          renderMarkdownWithSourceLines(taskRender.markdown),
-          pages,
-          folderColors,
+  $: rendered = renderBlockAttributeMarkers(
+    renderTaskPriorityMarkers(
+      renderTaskKeywordMarkers(
+        renderCheckboxItems(
+          applyWikiLinkColorStyles(
+            renderMarkdownWithSourceLines(taskRender.markdown),
+            pages,
+            folderColors,
+          ),
+          content,
+          sourceLineNumbers,
         ),
-        content,
-        sourceLineNumbers,
+        taskRender.taskTokens,
       ),
-      taskRender.taskTokens,
+      taskRender.priorityTokens,
     ),
-    taskRender.priorityTokens,
+    attributeRender.tokens,
   );
   $: mermaidRenderRequest = enableMermaid
     ? { renderedHtml: rendered, theme: $themeStore }
@@ -314,6 +323,19 @@
       renderedHtml = renderedHtml.replaceAll(
         token.marker,
         `<span class="task-priority" data-task-line="${token.line}" data-task-local-line="${token.localLine}" data-task-status="${token.status}">#${token.priority}</span>`,
+      );
+    }
+
+    return renderedHtml;
+  }
+
+  function renderBlockAttributeMarkers(html: string, tokens: BlockAttributeToken[]) {
+    let renderedHtml = html;
+
+    for (const token of tokens) {
+      renderedHtml = renderedHtml.replaceAll(
+        token.marker,
+        `<span class="block-attribute-key">${token.name}::</span>`,
       );
     }
 

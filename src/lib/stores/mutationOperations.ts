@@ -2,6 +2,7 @@ import { get } from "svelte/store";
 import { toggleCheckbox, updateTaskPriority, updateTaskStatus } from "../api.js";
 import { toErrorMessage } from "../errors.js";
 import { playTaskDoneSound } from "../taskCompletionSound.js";
+import { statusChangedAtTimestamp } from "../taskStatusChanges.js";
 import type { ToggleCheckboxResult, UpdateTaskStatusResult } from "../types.js";
 import {
   appUndoStore,
@@ -37,6 +38,7 @@ export type MutationOperationDependencies = {
     currentStatus: string,
     nextStatus: string,
     taskStates: string[],
+    changedAt: string,
   ) => boolean;
   setEditorTaskPriority: (
     line: number,
@@ -50,6 +52,7 @@ export type MutationOperationDependencies = {
     line: number,
     currentStatus: string,
     nextStatus: string,
+    changedAt: string,
   ) => Promise<UpdateTaskStatusResult>;
   updateTaskPriority: (
     path: string,
@@ -61,6 +64,7 @@ export type MutationOperationDependencies = {
   refreshTasks: () => Promise<void>;
   refreshRightPane: () => Promise<void>;
   playDoneSound: (nextStatus: string, taskStates: string[], enabled: boolean) => void;
+  now: () => Date;
 };
 
 const changed: MutationOutcome = { status: "changed", error: null };
@@ -76,8 +80,14 @@ const defaultDependencies: MutationOperationDependencies = {
     };
   },
   toggleEditorCheckbox: (line) => editorSessionStore.toggleCheckboxLine(line),
-  setEditorTaskStatus: (line, currentStatus, nextStatus, taskStates) =>
-    editorSessionStore.setTaskStatusLine(line, currentStatus, nextStatus, taskStates),
+  setEditorTaskStatus: (line, currentStatus, nextStatus, taskStates, changedAt) =>
+    editorSessionStore.setTaskStatusLine(
+      line,
+      currentStatus,
+      nextStatus,
+      taskStates,
+      changedAt,
+    ),
   setEditorTaskPriority: (line, priority, taskStates) =>
     editorSessionStore.setTaskPriorityLine(line, priority, taskStates),
   saveEditor: () => editorSessionStore.save(),
@@ -91,6 +101,7 @@ const defaultDependencies: MutationOperationDependencies = {
   refreshTasks: () => taskStore.refresh(),
   refreshRightPane: () => rightPaneStore.refresh(),
   playDoneSound: playTaskDoneSound,
+  now: () => new Date(),
 };
 
 export function createMutationOperations(
@@ -166,6 +177,7 @@ export function createMutationOperations(
       }
 
       const { taskStates, taskDoneSoundEnabled } = dependencies.getTaskConfig();
+      const changedAt = statusChangedAtTimestamp(dependencies.now());
 
       dependencies.isolateEditorHistory();
       try {
@@ -173,7 +185,15 @@ export function createMutationOperations(
         let operationPath = path;
         let operationLine = line;
         if (editor.path === path) {
-          if (!dependencies.setEditorTaskStatus(line, currentStatus, nextStatus, taskStates)) {
+          if (
+            !dependencies.setEditorTaskStatus(
+              line,
+              currentStatus,
+              nextStatus,
+              taskStates,
+              changedAt,
+            )
+          ) {
             return failed(`Line ${line} is not a recognized task. Refresh tasks.`);
           }
           if (!(await dependencies.saveEditor())) {
@@ -187,6 +207,7 @@ export function createMutationOperations(
             line,
             currentStatus,
             nextStatus,
+            changedAt,
           );
           operationPath = result.task.path;
           operationLine = result.task.line;

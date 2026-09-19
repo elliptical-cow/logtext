@@ -4,7 +4,8 @@ import {
   toggleCheckboxLine as toggleCheckboxLineInContent,
 } from "../checkboxes.js";
 import { toErrorMessage } from "../errors.js";
-import { taskKeywordMatch, taskPriorityChange } from "../taskKeywords.js";
+import { taskPriorityChange } from "../taskKeywords.js";
+import { changeTaskStatusInContent } from "../taskStatusChanges.js";
 import type { PageContent, SavePageResult } from "../types";
 import { createNavigationHistory } from "./navigationHistory.js";
 
@@ -385,27 +386,23 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
       currentStatus: string,
       nextStatus: string,
       taskStates: string[],
+      changedAt: string,
     ) {
-      const lineRange = lineContentRange(currentState.content, line);
-      if (!lineRange) {
-        return false;
-      }
-
-      const lineText = currentState.content.slice(lineRange.start, lineRange.end);
-      const match = taskKeywordMatch(lineText, 0, taskStates);
-      if (!match || match.status !== currentStatus) {
-        return false;
-      }
-
-      const content = replaceContentRange(
+      const result = changeTaskStatusInContent(
         currentState.content,
-        lineRange.start + match.from,
-        lineRange.start + match.to,
+        line,
+        currentStatus,
         nextStatus,
+        taskStates,
+        changedAt,
       );
+      if (!result.changed) {
+        return false;
+      }
+
       update((state) => ({
         ...state,
-        content,
+        content: result.content,
         dirty: true,
         error: null,
       }));

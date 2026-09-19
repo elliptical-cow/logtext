@@ -23,8 +23,8 @@ function harness(editor: EditorState) {
       calls.push(`editor-checkbox:${line}`);
       return true;
     },
-    setEditorTaskStatus: (line, currentStatus, nextStatus) => {
-      calls.push(`editor-status:${line}:${currentStatus}->${nextStatus}`);
+    setEditorTaskStatus: (line, currentStatus, nextStatus, _taskStates, changedAt) => {
+      calls.push(`editor-status:${line}:${currentStatus}->${nextStatus}:${changedAt}`);
       return true;
     },
     setEditorTaskPriority: (line, priority) => {
@@ -39,8 +39,8 @@ function harness(editor: EditorState) {
       calls.push(`disk-checkbox:${path}:${line}`);
       return { path, line, checked: true };
     },
-    updateTaskStatus: async (path, line, currentStatus, nextStatus) => {
-      calls.push(`disk-status:${path}:${line}:${currentStatus}->${nextStatus}`);
+    updateTaskStatus: async (path, line, currentStatus, nextStatus, changedAt) => {
+      calls.push(`disk-status:${path}:${line}:${currentStatus}->${nextStatus}:${changedAt}`);
       return { task: task(path, line, nextStatus, null) };
     },
     updateTaskPriority: async (path, line, priority) => {
@@ -63,6 +63,7 @@ function harness(editor: EditorState) {
     playDoneSound: (status, taskStates, enabled) => {
       calls.push(`sound:${status}:${taskStates.at(-1)}:${enabled}`);
     },
+    now: () => new Date("2026-09-16T12:32:18Z"),
   };
 
   return { calls, dependencies, undoOperations };
@@ -123,7 +124,7 @@ test("routes disk-backed status and priority changes through the same policy", a
 
   assert.deepEqual(calls, [
     "isolate",
-    "disk-status:Tasks.md:2:TODO->DONE",
+    "disk-status:Tasks.md:2:TODO->DONE:2026-09-16T12:32:18Z",
     "undo:task-status",
     "sound:DONE:DONE:true",
     "refresh-tasks",
@@ -191,7 +192,12 @@ test("does not report success, record undo, refresh, or play sound after a faile
   const outcome = await operations.setTaskStatus("Inbox.md", 3, "TODO", "DONE");
 
   assert.deepEqual(outcome, { status: "failed", error: "File changed on disk." });
-  assert.deepEqual(calls, ["isolate", "editor-status:3:TODO->DONE", "save", "isolate"]);
+  assert.deepEqual(calls, [
+    "isolate",
+    "editor-status:3:TODO->DONE:2026-09-16T12:32:18Z",
+    "save",
+    "isolate",
+  ]);
   assert.deepEqual(undoOperations, []);
 });
 

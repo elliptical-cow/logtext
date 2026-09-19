@@ -290,6 +290,35 @@ showing the source line in the other pane.
 Changing a task to the final configured state may play a completion sound. Set
 `taskDoneSoundEnabled` to `false` to disable it.
 
+Every task-state change made through Logtext adds or updates a direct child
+attribute with a second-precision UTC timestamp:
+
+```md
+- DONE Prepare release notes
+  - status-changed-at:: 2026-09-16T12:32:18Z
+```
+
+The value records the latest state transition. When a completed task is
+reopened, the timestamp is therefore replaced rather than retained as a
+completion history.
+
+### Block attributes
+
+Any list block can have direct child attributes. Attribute names begin with a
+letter and may contain letters, digits, dashes, and underscores:
+
+```md
+- Prepare project review
+  - owner:: Jens
+  - due-date:: 2026-09-20
+```
+
+Attributes remain ordinary Markdown list items. Live Preview and rendered
+views keep the bullet visible and display the `attribute-name::` portion in a
+subtle monospace style. Attribute values still support the normal inline
+Markdown rendering rules. Querying or grouping by attributes is not yet
+implemented.
+
 ### Priorities
 
 Supported priority cookies are `[#A]`, `[#B]`, and `[#C]`:

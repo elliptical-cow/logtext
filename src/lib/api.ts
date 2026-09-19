@@ -291,12 +291,14 @@ export function updateTaskStatus(
   line: number,
   expectedStatus: TaskStatus,
   newStatus: TaskStatus,
+  changedAt: string,
 ): Promise<UpdateTaskStatusResult> {
   return invokeTauri<UpdateTaskStatusResult>("update_task_status", {
     path,
     line,
     expectedStatus,
     newStatus,
+    changedAt,
   });
 }
 

@@ -542,6 +542,21 @@ forms without relying only on rendered order. The loose-list transformation
 preserves and accepts source-line attributes on Markdown-it's intermediate
 paragraph element.
 
+Block attributes use direct child list items in the form
+`- attribute-name:: value`. The Rust block parser keeps recognized direct-child
+attributes as structured metadata while retaining the original child blocks
+and Markdown unchanged. Frontend recognition lives in `blockAttributes.ts` and
+is shared by editor decoration and rendered-view preprocessing. Both surfaces
+keep the list bullet visible and style only the attribute key as subdued
+monospace text.
+
+Task-state actions atomically update the task keyword and its direct
+`status-changed-at::` child. `taskStatusChanges.ts` owns the editor-side text
+operation; the backend applies the same policy to disk-backed mutations and
+validates the second-precision UTC timestamp passed by the action coordinator.
+All task-state entry points, including `Cmd/Ctrl+Enter`, context menus,
+backlinks, and Task Overview, use this policy.
+
 Block-folding metadata is computed once per CodeMirror document version in a
 state field. Gutter rendering, context-menu checks, and collapse commands use
 line-number maps from that snapshot instead of rebuilding the document line

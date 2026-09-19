@@ -85,6 +85,7 @@ function baseHarness(editor: EditorState) {
     refreshRightPane: async () => {
       calls.push("refresh-right");
     },
+    now: () => new Date("2026-09-16T12:32:18Z"),
   };
 
   return { calls, dependencies, disk };

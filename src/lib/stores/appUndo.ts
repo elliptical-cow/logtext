@@ -3,6 +3,7 @@ import { getPageView, toggleCheckbox, updateTaskPriority, updateTaskStatus } fro
 import { toErrorMessage } from "../errors.js";
 import { parseCheckboxListItem } from "../markdownPatterns.js";
 import { priorityCookieMatch, taskKeywordMatch } from "../taskKeywords.js";
+import { statusChangedAtTimestamp } from "../taskStatusChanges.js";
 import { editorSessionStore } from "./editorSession.js";
 import { rightPaneStore } from "./rightPane.js";
 import { taskStore } from "./tasks.js";
@@ -77,6 +78,7 @@ export type AppUndoDependencies = {
     currentStatus: string,
     nextStatus: string,
     taskStates: string[],
+    changedAt: string,
   ) => boolean;
   setEditorTaskPriorityLine: (
     line: number,
@@ -90,6 +92,7 @@ export type AppUndoDependencies = {
   updateTaskPriority: typeof updateTaskPriority;
   refreshTasks: () => Promise<void>;
   refreshRightPane: () => Promise<void>;
+  now: () => Date;
 };
 
 const initialState: AppUndoState = {
@@ -111,8 +114,14 @@ const defaultDependencies: AppUndoDependencies = {
     window.dispatchEvent(new CustomEvent("logtext-editor-isolate-history"));
   },
   setEditorCheckboxLine: (line, checked) => editorSessionStore.setCheckboxLine(line, checked),
-  setEditorTaskStatusLine: (line, currentStatus, nextStatus, taskStates) =>
-    editorSessionStore.setTaskStatusLine(line, currentStatus, nextStatus, taskStates),
+  setEditorTaskStatusLine: (line, currentStatus, nextStatus, taskStates, changedAt) =>
+    editorSessionStore.setTaskStatusLine(
+      line,
+      currentStatus,
+      nextStatus,
+      taskStates,
+      changedAt,
+    ),
   setEditorTaskPriorityLine: (line, priority, taskStates) =>
     editorSessionStore.setTaskPriorityLine(line, priority, taskStates),
   saveEditor: () => editorSessionStore.save(),
@@ -122,6 +131,7 @@ const defaultDependencies: AppUndoDependencies = {
   updateTaskPriority,
   refreshTasks: () => taskStore.refresh(),
   refreshRightPane: () => rightPaneStore.refresh(),
+  now: () => new Date(),
 };
 
 export function createAppUndoStore(dependencies: AppUndoDependencies = defaultDependencies) {
@@ -373,6 +383,7 @@ async function applyTaskStatusOperation(
   const editor = dependencies.getEditorState();
   const fromStatus = direction === "undo" ? operation.afterStatus : operation.beforeStatus;
   const toStatus = direction === "undo" ? operation.beforeStatus : operation.afterStatus;
+  const changedAt = statusChangedAtTimestamp(dependencies.now());
 
   if (editor.path === operation.path) {
     const changed = dependencies.setEditorTaskStatusLine(
@@ -380,6 +391,7 @@ async function applyTaskStatusOperation(
       fromStatus,
       toStatus,
       taskStates,
+      changedAt,
     );
     if (!changed) {
       throw new Error(`Line ${operation.line} is not a recognized task. Refresh tasks.`);
@@ -399,7 +411,13 @@ async function applyTaskStatusOperation(
     throw new Error(`Task line ${operation.line} changed from '${fromStatus}' to '${currentStatus}'.`);
   }
 
-  await dependencies.updateTaskStatus(operation.path, operation.line, fromStatus, toStatus);
+  await dependencies.updateTaskStatus(
+    operation.path,
+    operation.line,
+    fromStatus,
+    toStatus,
+    changedAt,
+  );
   await refreshDerivedViews(dependencies);
 }
 

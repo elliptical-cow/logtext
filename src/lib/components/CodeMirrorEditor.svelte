@@ -66,6 +66,10 @@
     type WikiLinkAtPosition,
   } from "../editorLivePreview";
   import { DEFAULT_TASK_STATES, priorityCookieMatch, taskPriorityChange } from "../taskKeywords";
+  import {
+    changeTaskStatusInContent,
+    statusChangedAtTimestamp,
+  } from "../taskStatusChanges";
   import { playTaskDoneSound } from "../taskCompletionSound";
   import {
     editorContextMenuKind,
@@ -691,14 +695,20 @@
     }
 
     const currentStatus = editorContextMenu.task.status;
-    view.dispatch({
-      changes: {
-        from: editorContextMenu.task.from,
-        to: editorContextMenu.task.to,
-        insert: nextStatus,
-      },
-      selection: { anchor: editorContextMenu.task.from + nextStatus.length },
-    });
+    const line = view.state.doc.lineAt(editorContextMenu.task.from);
+    const result = changeTaskStatusInContent(
+      view.state.doc.toString(),
+      line.number,
+      currentStatus,
+      nextStatus,
+      taskStates,
+      statusChangedAtTimestamp(),
+    );
+    if (!result.changed) {
+      closeEditorContextMenu();
+      return;
+    }
+    view.dispatch({ changes: result.changes });
     view.focus();
     closeEditorContextMenu();
     if (nextStatus !== currentStatus) {

@@ -2743,6 +2743,12 @@ textarea {
   transform-origin: center;
 }
 
+.markdown-view .block-attribute-key {
+  color: var(--text-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.88em;
+}
+
 .markdown-view a[href^="logtext-missing:"] {
   color: #9b1c1c;
   text-decoration-style: dotted;
