@@ -84,7 +84,7 @@ const inlineCodeText = Decoration.mark({ class: "cm-live-inline-code" });
 const markdownLinkText = Decoration.mark({ class: "cm-live-markdown-link" });
 const taskPriority = Decoration.mark({ class: "cm-live-priority" });
 const blockAttributeKey = Decoration.mark({ class: "cm-live-block-attribute-key" });
-const blockAttributeLine = Decoration.line({ class: "cm-live-block-attribute-line" });
+const blockAttributeContent = Decoration.mark({ class: "cm-live-block-attribute" });
 const latexSource = Decoration.mark({ class: "cm-live-latex-source" });
 const latexBlockSourceLine = Decoration.line({ class: "cm-live-latex-block-source" });
 
@@ -418,7 +418,7 @@ const livePreviewTheme = EditorView.baseTheme({
     color: "var(--text-muted)",
     fontFamily: '\"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace',
   },
-  ".cm-live-block-attribute-line": {
+  ".cm-live-block-attribute": {
     fontSize: "0.88em",
   },
 });
@@ -1043,9 +1043,9 @@ function addBlockAttributeDecorations(
   }
 
   decorations.push({
-    from: lineFrom,
-    to: lineFrom,
-    decoration: blockAttributeLine,
+    from: attribute.from,
+    to: attribute.to,
+    decoration: blockAttributeContent,
   });
   decorations.push({
     from: attribute.nameFrom,

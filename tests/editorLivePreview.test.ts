@@ -410,16 +410,19 @@ test("finds a plain task keyword at its document position", () => {
   });
 });
 
-test("styles the full block attribute line and distinguishes its key", () => {
+test("styles block attribute content without shrinking its indentation", () => {
   const decorations = previewDecorationsForLine("  - owner-name:: Jens", 20);
-  const line = decorations.find(
-    ({ decoration }) => decoration.spec.class === "cm-live-block-attribute-line",
+  const content = decorations.find(
+    ({ decoration }) => decoration.spec.class === "cm-live-block-attribute",
   );
   const attribute = decorations.find(
     ({ decoration }) => decoration.spec.class === "cm-live-block-attribute-key",
   );
 
-  assert.deepEqual(line && { from: line.from, to: line.to }, { from: 20, to: 20 });
+  assert.deepEqual(
+    content && { from: content.from, to: content.to },
+    { from: 24, to: 41 },
+  );
   assert.deepEqual(
     attribute && { from: attribute.from, to: attribute.to },
     { from: 24, to: 36 },

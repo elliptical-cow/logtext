@@ -104,7 +104,7 @@ test("uses the same reduced size for complete block attribute lines", () => {
   assert.match(styles, /\.markdown-view \.block-attribute\s*\{[^}]*font-size: 0\.88em;/s);
   assert.match(
     livePreview,
-    /"\.cm-live-block-attribute-line"\s*:\s*\{[^}]*fontSize: "0\.88em"/s,
+    /"\.cm-live-block-attribute"\s*:\s*\{[^}]*fontSize: "0\.88em"/s,
   );
   assert.equal(
     /\.markdown-view \.block-attribute-key\s*\{[^}]*font-size:/s.test(styles),
