@@ -12,7 +12,8 @@ export type BlockAttributeMatch = {
 };
 
 export type BlockAttributeToken = {
-  marker: string;
+  openingMarker: string;
+  closingMarker: string;
   name: string;
 };
 
@@ -28,7 +29,8 @@ export function blockAttributeMatch(
   }
 
   const contentFrom = listItemTextFrom(prefix);
-  const match = attributePattern.exec(lineText.slice(contentFrom));
+  const contentTo = lineText.endsWith("\r") ? lineText.length - 1 : lineText.length;
+  const match = attributePattern.exec(lineText.slice(contentFrom, contentTo));
   if (!match) {
     return null;
   }
@@ -38,7 +40,7 @@ export function blockAttributeMatch(
     name: match[1],
     value: match[2] ?? "",
     from,
-    to: lineFrom + lineText.length,
+    to: lineFrom + contentTo,
     nameFrom: from,
     nameTo: from + match[1].length + 2,
   };
@@ -61,9 +63,16 @@ export function markBlockAttributesForRendering(
         return line;
       }
 
-      const marker = `LOGTEXT_BLOCK_ATTRIBUTE_${tokens.length}_TOKEN`;
-      tokens.push({ marker, name: match.name });
-      return `${line.slice(0, match.nameFrom)}${marker}${line.slice(match.nameTo)}`;
+      const openingMarker = `LOGTEXT_BLOCK_ATTRIBUTE_${tokens.length}_OPEN`;
+      const closingMarker = `LOGTEXT_BLOCK_ATTRIBUTE_${tokens.length}_CLOSE`;
+      tokens.push({ openingMarker, closingMarker, name: match.name });
+      return [
+        line.slice(0, match.nameFrom),
+        openingMarker,
+        line.slice(match.nameTo, match.to),
+        closingMarker,
+        line.slice(match.to),
+      ].join("");
     })
     .join("\n");
 

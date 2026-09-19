@@ -314,7 +314,8 @@ letter and may contain letters, digits, dashes, and underscores:
 ```
 
 Attributes remain ordinary Markdown list items. Live Preview and rendered
-views keep the bullet visible and display the `attribute-name::` portion in a
+views keep the bullet visible and display the complete attribute line at a
+slightly smaller size. The `attribute-name::` portion additionally uses a
 subtle monospace style. Attribute values still support the normal inline
 Markdown rendering rules. Querying or grouping by attributes is not yet
 implemented.

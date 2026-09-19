@@ -34,6 +34,17 @@ test("marks attribute keys for rendering without touching values or code", () =>
 
   assert.equal(result.tokens.length, 1);
   assert.equal(result.tokens[0].name, "owner");
-  assert.match(result.markdown, /LOGTEXT_BLOCK_ATTRIBUTE_0_TOKEN \*\*Jens\*\*/);
+  assert.match(
+    result.markdown,
+    /LOGTEXT_BLOCK_ATTRIBUTE_0_OPEN \*\*Jens\*\*LOGTEXT_BLOCK_ATTRIBUTE_0_CLOSE/,
+  );
   assert.match(result.markdown, /- example:: literal/);
+});
+
+test("keeps CRLF line endings outside attribute rendering markers", () => {
+  const source = "- Parent\r\n  - owner:: Jens\r\n";
+  const result = markBlockAttributesForRendering(source, new Set());
+
+  assert.match(result.markdown, /CLOSE\r\n/);
+  assert.equal(result.markdown.includes("\rLOGTEXT_BLOCK_ATTRIBUTE"), false);
 });

@@ -334,9 +334,10 @@
 
     for (const token of tokens) {
       renderedHtml = renderedHtml.replaceAll(
-        token.marker,
-        `<span class="block-attribute-key">${token.name}::</span>`,
+        token.openingMarker,
+        `<span class="block-attribute"><span class="block-attribute-key">${token.name}::</span>`,
       );
+      renderedHtml = renderedHtml.replaceAll(token.closingMarker, "</span>");
     }
 
     return renderedHtml;

@@ -547,8 +547,8 @@ Block attributes use direct child list items in the form
 attributes as structured metadata while retaining the original child blocks
 and Markdown unchanged. Frontend recognition lives in `blockAttributes.ts` and
 is shared by editor decoration and rendered-view preprocessing. Both surfaces
-keep the list bullet visible and style only the attribute key as subdued
-monospace text.
+keep the list bullet visible, render the complete attribute content at a
+reduced size, and style the attribute key as subdued monospace text.
 
 Task-state actions atomically update the task keyword and its direct
 `status-changed-at::` child. `taskStatusChanges.ts` owns the editor-side text
