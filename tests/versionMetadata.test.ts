@@ -66,15 +66,16 @@ test("uses explicit OS and architecture names for release assets", () => {
   );
 
   for (const assetName of [
-    "Logtext-${version}-windows-x86_64-portable.exe",
-    "Logtext-${version}-windows-x86_64-setup.exe",
-    "Logtext-${version}-macos-universal-app.zip",
-    "Logtext-${version}-linux-x86_64.AppImage",
-    "Logtext-${version}-linux-x86_64.deb",
-    "Logtext-${version}-linux-x86_64-thin.tar.gz",
+    "Logtext-v${version}-windows-x86_64-portable.exe",
+    "Logtext-v${version}-windows-x86_64-setup.exe",
+    "Logtext-v${version}-macos-universal-app.zip",
+    "Logtext-v${version}-linux-x86_64.AppImage",
+    "Logtext-v${version}-linux-x86_64.deb",
+    "Logtext-v${version}-linux-x86_64-thin.tar.gz",
   ]) {
     assert.equal(releaseWorkflow.includes(assetName), true);
   }
+  assert.equal(releaseWorkflow.includes("Logtext-${version}-"), false);
 });
 
 test("packages the native Linux binary consistently in CI and releases", () => {

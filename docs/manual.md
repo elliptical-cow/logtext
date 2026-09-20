@@ -17,24 +17,24 @@ The version in an asset name is written as `<version>` below.
 
 Choose one of these files:
 
-- `Logtext-<version>-windows-x86_64-setup.exe`: NSIS installer
-- `Logtext-<version>-windows-x86_64-portable.exe`: directly executable build
+- `Logtext-v<version>-windows-x86_64-setup.exe`: NSIS installer
+- `Logtext-v<version>-windows-x86_64-portable.exe`: directly executable build
 
 Run the installer for a normal installation. Use the portable executable when
 you do not want an installed copy.
 
 ### macOS
 
-Download `Logtext-<version>-macos-universal-app.zip`, extract it, and move
+Download `Logtext-v<version>-macos-universal-app.zip`, extract it, and move
 `Logtext.app` to `Applications`. The application bundle supports Intel and Apple
 Silicon Macs.
 
 ### Debian and Ubuntu
 
-Download `Logtext-<version>-linux-x86_64.deb` and install it through APT:
+Download `Logtext-v<version>-linux-x86_64.deb` and install it through APT:
 
 ```bash
-sudo apt install ./Logtext-<version>-linux-x86_64.deb
+sudo apt install ./Logtext-v<version>-linux-x86_64.deb
 ```
 
 APT installs declared system dependencies through the package manager.
@@ -44,13 +44,13 @@ APT installs declared system dependencies through the package manager.
 The AppImage is the portable Linux fallback:
 
 ```bash
-chmod +x Logtext-<version>-linux-x86_64.AppImage
-./Logtext-<version>-linux-x86_64.AppImage
+chmod +x Logtext-v<version>-linux-x86_64.AppImage
+./Logtext-v<version>-linux-x86_64.AppImage
 ```
 
 ### Thin Linux Archive
 
-`Logtext-<version>-linux-x86_64-thin.tar.gz` contains the native executable
+`Logtext-v<version>-linux-x86_64-thin.tar.gz` contains the native executable
 without bundled GTK or WebKitGTK libraries. It is intended for experienced
 Linux users and requires a system compatible with the Ubuntu 22.04 build
 baseline, including WebKitGTK 4.1, GTK 3, and related runtime libraries.

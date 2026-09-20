@@ -68,12 +68,12 @@ Download the current release from
 
 | Platform | Asset | Notes |
 | --- | --- | --- |
-| Windows | `Logtext-<version>-windows-x86_64-setup.exe` | NSIS installer |
-| Windows | `Logtext-<version>-windows-x86_64-portable.exe` | portable executable |
-| macOS | `Logtext-<version>-macos-universal-app.zip` | universal Intel and Apple Silicon app |
-| Debian/Ubuntu | `Logtext-<version>-linux-x86_64.deb` | installs through the package manager |
-| Linux | `Logtext-<version>-linux-x86_64.AppImage` | portable fallback |
-| Linux | `Logtext-<version>-linux-x86_64-thin.tar.gz` | small archive; requires compatible GTK 3 and WebKitGTK 4.1 system libraries |
+| Windows | `Logtext-v<version>-windows-x86_64-setup.exe` | NSIS installer |
+| Windows | `Logtext-v<version>-windows-x86_64-portable.exe` | portable executable |
+| macOS | `Logtext-v<version>-macos-universal-app.zip` | universal Intel and Apple Silicon app |
+| Debian/Ubuntu | `Logtext-v<version>-linux-x86_64.deb` | installs through the package manager |
+| Linux | `Logtext-v<version>-linux-x86_64.AppImage` | portable fallback |
+| Linux | `Logtext-v<version>-linux-x86_64-thin.tar.gz` | small archive; requires compatible GTK 3 and WebKitGTK 4.1 system libraries |
 
 Basic installation:
 
@@ -81,7 +81,7 @@ Basic installation:
   directly.
 - **macOS:** extract the archive and move `Logtext.app` to `Applications`.
 - **Debian/Ubuntu:** install the downloaded package with
-  `sudo apt install ./Logtext-<version>-linux-x86_64.deb`.
+  `sudo apt install ./Logtext-v<version>-linux-x86_64.deb`.
 - **AppImage:** make it executable with `chmod +x` and run it.
 - **Thin Linux archive:** extract it and read the included `README.txt` before
   running `Logtext`.

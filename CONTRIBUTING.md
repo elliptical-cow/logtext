@@ -116,6 +116,6 @@ Pushing the tag starts `.github/workflows/release.yml`. It reruns the complete
 verification suite, builds Windows, macOS, and Linux packages, and creates the
 GitHub Release only after all platform builds succeed.
 
-Published assets use `Logtext-<version>-<os>-<architecture>` names. Windows
+Published assets use `Logtext-v<version>-<os>-<architecture>` names. Windows
 assets additionally identify the portable executable or installer, and the
 macOS archive identifies its universal application bundle.

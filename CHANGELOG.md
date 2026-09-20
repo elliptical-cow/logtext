@@ -34,7 +34,7 @@ Changes since `v0.7.1`.
 ### Added
 
 - Added secure Mermaid rendering for fenced `mermaid` blocks in right-pane pages.
-- Added `Logtext-<version>-linux-x86_64-thin.tar.gz` to CI and release builds.
+- Added `Logtext-v<version>-linux-x86_64-thin.tar.gz` to CI and release builds.
   The small archive contains the native stripped executable, runtime guidance,
   and license while relying on system-provided WebKitGTK 4.1, GTK 3, and related
   Linux libraries. The existing `.deb` and AppImage assets remain available.

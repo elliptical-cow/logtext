@@ -146,7 +146,7 @@ jobs:
           install -m 0755 src-tauri/target/release/Logtext "$thin_dir/Logtext"
           install -m 0644 packaging/linux-thin/README.txt "$thin_dir/README.txt"
           install -m 0644 LICENSE "$thin_dir/LICENSE"
-          tar -czf "ci-artifacts/Logtext-${version}-linux-x86_64-thin.tar.gz" \
+          tar -czf "ci-artifacts/Logtext-v${version}-linux-x86_64-thin.tar.gz" \
             -C "$thin_dir" Logtext README.txt LICENSE
 
       - name: Upload temporary build artifact
