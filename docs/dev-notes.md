@@ -900,7 +900,7 @@ CI and release automation are intentionally separate:
   the full distributable package set.
 - Linux builds additionally package the already stripped
   `src-tauri/target/release/Logtext` executable as
-  `Logtext-<version>-linux-x86_64-thin.tar.gz` in both workflows. The archive
+  `Logtext-v<version>-linux-x86_64-thin.tar.gz` in both workflows. The archive
   includes its runtime guidance and the project license but deliberately omits
   WebKitGTK, GTK, desktop integration, and dependency installation. AppImage and
   `.deb` release assets remain available alongside it.

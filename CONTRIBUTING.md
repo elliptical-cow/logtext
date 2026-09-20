@@ -1,9 +1,9 @@
 # Contributing
 
-Logtext is a local Markdown-based knowledge and task management workspace built with Tauri, Rust,
-Svelte, TypeScript, and CodeMirror. Markdown files are the source of truth, so
-changes that move, rename, delete, parse, or rewrite files must be conservative
-and covered by focused tests.
+Logtext is a local Markdown-based knowledge and task management workspace built
+with Tauri, Rust, Svelte, TypeScript, and CodeMirror. Markdown files are the
+source of truth, so changes that move, rename, delete, parse, or rewrite files
+must be conservative and covered by focused tests.
 
 ## Development Setup
 
@@ -66,6 +66,19 @@ cargo test --locked
 Run additional targeted tests when changing core behavior, file operations,
 link rewriting, configuration parsing, or indexing.
 
+## Documentation
+
+- Keep `README.md` concise: product idea, main features, installation, and a
+  short path to first use.
+- Document user-facing behavior, syntax, shortcuts, and limitations in
+  `docs/manual.md`.
+- Record architecture and design decisions in `docs/dev-notes.md` rather than
+  exposing implementation details in the user manual.
+- Update `packaging/linux-thin/README.txt` when the thin archive's runtime
+  requirements, contents, or limitations change.
+- Update affected documentation in the same change as the behavior it
+  describes.
+
 ## Branches and Pull Requests
 
 - Treat `main` as stable and release-ready. Do not develop directly on it.
@@ -116,6 +129,6 @@ Pushing the tag starts `.github/workflows/release.yml`. It reruns the complete
 verification suite, builds Windows, macOS, and Linux packages, and creates the
 GitHub Release only after all platform builds succeed.
 
-Published assets use `Logtext-<version>-<os>-<architecture>` names. Windows
+Published assets use `Logtext-v<version>-<os>-<architecture>` names. Windows
 assets additionally identify the portable executable or installer, and the
 macOS archive identifies its universal application bundle.
