@@ -1,9 +1,14 @@
-Logtext thin Linux build
-========================
+Logtext thin Linux archive
+==========================
 
-This archive contains the native Logtext executable without bundled Linux
-desktop or WebView libraries. It is intended for experienced users whose
-systems already provide the required runtime dependencies.
+This archive contains the native Logtext executable, README, and license. It
+does not bundle the Linux desktop and WebView runtimes, so it is intended for
+experienced users whose systems already provide those dependencies.
+
+Debian and Ubuntu users should normally choose the Logtext .deb package. It
+integrates with the package manager and installs declared dependencies. Choose
+the AppImage when portability is more important than package-manager
+integration.
 
 Requirements
 ------------
@@ -11,12 +16,10 @@ Requirements
 - x86_64 Linux compatible with the Ubuntu 22.04 build baseline
 - WebKitGTK 4.1 runtime
 - GTK 3 runtime
-- the corresponding GLib, AppIndicator, librsvg, and standard system libraries
+- compatible GLib, AppIndicator, librsvg, and standard system libraries
 - xdg-utils
 
-Package names differ between Linux distributions. Debian and Ubuntu users
-should normally install the Logtext .deb package instead, as it lets the package
-manager resolve the required dependencies.
+Package names differ between Linux distributions.
 
 Run Logtext
 -----------
@@ -25,6 +28,15 @@ Extract the archive and run:
 
   ./Logtext
 
-This thin archive does not install a desktop file or application-menu entry and
-does not install or update system dependencies. Use the AppImage when a more
-portable Linux package is preferable.
+If the executable bit was lost while copying or extracting the archive, restore
+it first:
+
+  chmod +x Logtext
+
+Limitations
+-----------
+
+- no automatic dependency installation
+- no desktop file or application-menu entry
+- no bundled WebView runtime
+- no automatic updates

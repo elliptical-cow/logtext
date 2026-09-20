@@ -11,7 +11,8 @@ contribution rules, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 Release files are published under
 [GitHub Releases](https://github.com/elliptical-cow/logtext/releases/latest).
-The version in an asset name is written as `<version>` below.
+The version in an asset name is written as `<version>` below; for example,
+version `0.8.0` appears as `v0.8.0`.
 
 ### Windows
 
@@ -148,9 +149,10 @@ New pages receive a first-level heading based on the filename:
 # Project Alpha
 ```
 
-The first `# Heading` is the page title used in navigation, tasks, backlinks,
-and search results. For an existing file without an H1, Logtext initially uses
-the filename without `.md`; opening that file adds a default H1.
+The first `# Heading` is the page title used in tasks, backlinks, and content
+context. The left file tree continues to show the filename. For an existing
+file without an H1, Logtext initially uses the filename without `.md`; opening
+that file adds a default H1.
 
 ## Wiki Links and Tags
 
@@ -341,8 +343,9 @@ Markdown rendering rules.
 Tasks inherit effective attributes from every parent block. A definition on
 the task or a nearer parent overrides the same case-insensitive attribute name
 from a more distant parent. Multiple values on the winning level remain
-available. Explicit wiki links in effective attributes also become linked-page
-context for the task.
+available. This applies to all attributes, including `status-changed-at`.
+Explicit wiki links in effective attributes also become linked-page context for
+the task.
 
 ### Priorities
 
@@ -504,6 +507,11 @@ Actions include:
 - choose ascending, descending, modified-time, or recently-opened sorting and
   reorder items manually
 
+Use `Ctrl/Cmd+click` to select separate tree items or `Shift+click` to select a
+range. The selection can then be moved or deleted together from its context
+menu. Deleting pages requires confirmation; folders can be deleted only when
+they are empty.
+
 File and folder context menus contain secondary actions. Normal left-click
 behavior is not repeated unnecessarily.
 
@@ -576,92 +584,62 @@ Open `Help > Keyboard Shortcuts` for the list shipped with the running version.
 
 `Cmd/Ctrl + mouse wheel` also changes UI zoom.
 
-## Configuration
+## Workspace Preferences
 
 Workspace settings are stored as JSON in `.config` at the workspace root.
-Logtext creates the file when a workspace is first opened and updates UI state
-there as it changes.
+Logtext creates the file when a workspace is first opened. Settings apply only
+to that workspace.
 
 Open the workspace preferences with `Logtext > Preferences` on macOS or
-`Edit > Preferences` on Windows and Linux. The dialog edits the user-facing
-settings below and saves them together. It is available only while a workspace
-is open.
+`Edit > Preferences` on Windows and Linux (`Cmd/Ctrl+,`). The dialog is
+available only while a workspace is open. Changes remain a draft until you
+select `Save Preferences`; `Cancel` discards them.
 
-Changing the journal or media folder does not move existing files. New journal
-pages and pasted images use the new locations immediately. A journal target
-must be empty or contain only valid `YYYY-MM-DD.md` files and no subfolders. A
-media target must not contain Markdown pages. Logtext also refuses to remove or
-rename task states that are still used in the workspace.
+### General
 
-A representative configuration:
+- **Theme:** Light or Dark. New workspaces start in Dark mode.
+- **Default page sort:** Name A–Z, Name Z–A, Recently modified, or Recently
+  opened.
 
-```json
-{
-  "journalFolder": "journal",
-  "mediaFolder": "media",
-  "journalRightPaneContinuousScrolling": true,
-  "taskStates": ["TODO", "INPROGRESS", "WAITING", "DONE"],
-  "taskStateColors": {
-    "TODO": "red",
-    "INPROGRESS": "blue",
-    "WAITING": "orange",
-    "DONE": "green"
-  },
-  "taskDoneSoundEnabled": true,
-  "defaultPageSort": "name-desc",
-  "folderPageSort": {
-    "journal": "name-desc",
-    "projects": "opened-desc"
-  },
-  "folderColors": {
-    "projects": "blue"
-  },
-  "themeMode": "dark"
-}
-```
+`Recently modified` uses the Markdown files' filesystem timestamps. `Recently
+opened` uses workspace-local opening history from both content panes.
 
-### User-Facing Settings
+### Journal
 
-| Field | Values and behavior |
-| --- | --- |
-| `journalFolder` | Workspace-relative folder; defaults to `journal`. No `.`, `..`, or empty segments. |
-| `mediaFolder` | Workspace-relative folder; defaults to `media`. Cannot overlap the journal folder or use `.git`, `node_modules`, or `target`. |
-| `journalRightPaneContinuousScrolling` | Boolean; enables the continuous right-pane journal feed. |
-| `taskStates` | Ordered list of uppercase states using letters, numbers, or `_`. The final state is treated as complete. |
-| `taskStateColors` | State-to-color map. Supported colors: `red`, `yellow`, `green`, `blue`, `grey`, `orange`, `pink`. |
-| `taskDoneSoundEnabled` | Boolean; controls the completion sound. |
-| `defaultPageSort` | `name-desc`, `name-asc`, `modified-desc` (`Recently modified`), or `opened-desc` (`Recently opened`). |
-| `folderPageSort` | Folder-path-to-sort-mode map. |
-| `folderColors` | Folder-path-to-color map using the task color names. |
-| `themeMode` | `light` or `dark`; new workspaces default to `dark`. |
+- Set a workspace-relative journal folder.
+- Enable or disable the continuous journal feed in the right pane.
+- A journal target must be empty or contain only valid `YYYY-MM-DD.md` files
+  and no subfolders.
 
-Folder-specific sort modes and colors continue to be managed from folder
-context menus in the file tree rather than from Preferences.
+### Tasks
 
-`Recently modified` reads the Markdown files' modification timestamps directly
-from the filesystem and places the newest changes first. These timestamps are
-indexed in memory and are not duplicated in `.config`.
+- Add, rename, remove, and reorder task states.
+- Assign one of the available colors to each state.
+- The final state in the list is the completed state.
+- Enable or disable the sound played when a task reaches that state.
+- A state that is still used in Markdown files cannot be removed or renamed.
 
-The journal and media folders must not be the same folder, ancestors, or
-descendants of each other.
+### Media
 
-### Application-Managed State
+- Set a workspace-relative media folder.
+- The folder cannot overlap the journal folder or contain Markdown pages.
+- `.git`, `node_modules`, and `target` cannot be used as media path segments.
 
-Logtext may also write these fields:
+Changing the journal or media folder does not move existing files or rewrite
+links. New journal pages, pasted images, and Clean Media use the new locations
+immediately.
 
-- `manualPageOrder`
-- `expandedFolders`
-- `pageFavorites`
-- `recentPages`
-- `lastOpenedAt`
-- `navigationLayout`
-- `taskOverview`
-- `backlinkView`
-- `lastEditorPath`
-- `lastRightPanePath`
+### Folder-Specific Settings
 
-They remain readable JSON, but normally should be changed through the UI.
-Unknown or invalid values may be normalized when the workspace is loaded.
+Folder-specific sort modes, manual ordering, and colors remain in the folder
+context menu of the file tree. They override the workspace defaults where
+applicable.
+
+The `.config` file also stores application-managed state such as favorites,
+pane layout, recent pages, opening history, Task Overview filters, and the last
+open files. It remains readable JSON, but these values should normally be
+changed through the application. Unknown or invalid values may be normalized
+when the workspace loads.
 
 ## Data Safety
 

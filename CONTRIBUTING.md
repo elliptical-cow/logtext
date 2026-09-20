@@ -1,9 +1,9 @@
 # Contributing
 
-Logtext is a local Markdown-based knowledge and task management workspace built with Tauri, Rust,
-Svelte, TypeScript, and CodeMirror. Markdown files are the source of truth, so
-changes that move, rename, delete, parse, or rewrite files must be conservative
-and covered by focused tests.
+Logtext is a local Markdown-based knowledge and task management workspace built
+with Tauri, Rust, Svelte, TypeScript, and CodeMirror. Markdown files are the
+source of truth, so changes that move, rename, delete, parse, or rewrite files
+must be conservative and covered by focused tests.
 
 ## Development Setup
 
@@ -65,6 +65,19 @@ cargo test --locked
 
 Run additional targeted tests when changing core behavior, file operations,
 link rewriting, configuration parsing, or indexing.
+
+## Documentation
+
+- Keep `README.md` concise: product idea, main features, installation, and a
+  short path to first use.
+- Document user-facing behavior, syntax, shortcuts, and limitations in
+  `docs/manual.md`.
+- Record architecture and design decisions in `docs/dev-notes.md` rather than
+  exposing implementation details in the user manual.
+- Update `packaging/linux-thin/README.txt` when the thin archive's runtime
+  requirements, contents, or limitations change.
+- Update affected documentation in the same change as the behavior it
+  describes.
 
 ## Branches and Pull Requests
 
