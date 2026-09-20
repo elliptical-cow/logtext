@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   changeTaskStatusInContent,
+  restoreTaskStatusInContent,
   statusChangedAtTimestamp,
 } from "../src/lib/taskStatusChanges.js";
 
@@ -58,6 +59,61 @@ test("supports plain task blocks and ignores no-op transitions", () => {
     changeTaskStatusInContent("- TODO Same", 1, "TODO", "TODO", states, changedAt).changed,
     false,
   );
+});
+
+test("keeps task continuation lines before the inserted status attribute", () => {
+  const source = [
+    "- TODO Decision",
+    "  Supporting context",
+    "",
+    "  - Existing child",
+    "- TODO Sibling",
+  ].join("\n");
+
+  const result = changeTaskStatusInContent(source, 1, "TODO", "DONE", states, changedAt);
+
+  assert.equal(
+    result.content,
+    [
+      "- DONE Decision",
+      "  Supporting context",
+      "",
+      "  - status-changed-at:: 2026-09-16T12:32:18Z",
+      "  - Existing child",
+      "- TODO Sibling",
+    ].join("\n"),
+  );
+});
+
+test("restores the previous status attribute source or removes an inserted line", () => {
+  const changed = changeTaskStatusInContent("- TODO Item", 1, "TODO", "DONE", states, changedAt);
+  const restored = restoreTaskStatusInContent(
+    changed.content,
+    1,
+    "DONE",
+    "TODO",
+    states,
+    changed.previousStatusChangedAtSource,
+  );
+  assert.equal(restored.content, "- TODO Item");
+
+  const existing = changeTaskStatusInContent(
+    "- TODO Item\n  - STATUS-CHANGED-AT:: old value",
+    1,
+    "TODO",
+    "DONE",
+    states,
+    changedAt,
+  );
+  const restoredExisting = restoreTaskStatusInContent(
+    existing.content,
+    1,
+    "DONE",
+    "TODO",
+    states,
+    existing.previousStatusChangedAtSource,
+  );
+  assert.equal(restoredExisting.content, "- TODO Item\n  - STATUS-CHANGED-AT:: old value");
 });
 
 test("formats generated timestamps as second-precision UTC", () => {

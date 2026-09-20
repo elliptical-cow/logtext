@@ -2,8 +2,15 @@ import { get } from "svelte/store";
 import { toggleCheckbox, updateTaskPriority, updateTaskStatus } from "../api.js";
 import { toErrorMessage } from "../errors.js";
 import { playTaskDoneSound } from "../taskCompletionSound.js";
-import { statusChangedAtTimestamp } from "../taskStatusChanges.js";
-import type { ToggleCheckboxResult, UpdateTaskStatusResult } from "../types.js";
+import {
+  statusChangedAtTimestamp,
+  type TaskStatusContentChange,
+} from "../taskStatusChanges.js";
+import type {
+  ToggleCheckboxResult,
+  UpdateTaskPriorityResult,
+  UpdateTaskStatusResult,
+} from "../types.js";
 import {
   appUndoStore,
   type AppUndoMutationOperation,
@@ -39,7 +46,7 @@ export type MutationOperationDependencies = {
     nextStatus: string,
     taskStates: string[],
     changedAt: string,
-  ) => boolean;
+  ) => TaskStatusContentChange;
   setEditorTaskPriority: (
     line: number,
     priority: string | null,
@@ -58,7 +65,7 @@ export type MutationOperationDependencies = {
     path: string,
     line: number,
     priority: string | null,
-  ) => Promise<UpdateTaskStatusResult>;
+  ) => Promise<UpdateTaskPriorityResult>;
   pushUndo: (operation: AppUndoMutationOperation) => void;
   isolateEditorHistory: () => void;
   refreshTasks: () => Promise<void>;
@@ -184,16 +191,17 @@ export function createMutationOperations(
         const editor = dependencies.getEditorState();
         let operationPath = path;
         let operationLine = line;
+        let beforeStatusChangedAtSource: string | null = null;
+        let afterStatusChangedAtSource = "";
         if (editor.path === path) {
-          if (
-            !dependencies.setEditorTaskStatus(
-              line,
-              currentStatus,
-              nextStatus,
-              taskStates,
-              changedAt,
-            )
-          ) {
+          const editorChange = dependencies.setEditorTaskStatus(
+            line,
+            currentStatus,
+            nextStatus,
+            taskStates,
+            changedAt,
+          );
+          if (!editorChange.changed) {
             return failed(`Line ${line} is not a recognized task. Refresh tasks.`);
           }
           if (!(await dependencies.saveEditor())) {
@@ -201,6 +209,8 @@ export function createMutationOperations(
               dependencies.getEditorState().error ?? "Task status could not be saved.",
             );
           }
+          beforeStatusChangedAtSource = editorChange.previousStatusChangedAtSource;
+          afterStatusChangedAtSource = editorChange.statusChangedAtSource ?? "";
         } else {
           const result = await dependencies.updateTaskStatus(
             path,
@@ -211,6 +221,8 @@ export function createMutationOperations(
           );
           operationPath = result.task.path;
           operationLine = result.task.line;
+          beforeStatusChangedAtSource = result.previousStatusChangedAtSource;
+          afterStatusChangedAtSource = result.statusChangedAtSource;
         }
 
         dependencies.pushUndo({
@@ -219,6 +231,8 @@ export function createMutationOperations(
           line: operationLine,
           beforeStatus: currentStatus,
           afterStatus: nextStatus,
+          beforeStatusChangedAtSource,
+          afterStatusChangedAtSource,
         });
         dependencies.playDoneSound(nextStatus, taskStates, taskDoneSoundEnabled);
         await refreshDerivedViews(dependencies);

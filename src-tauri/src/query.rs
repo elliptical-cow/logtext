@@ -3,7 +3,7 @@ use std::fs;
 use crate::app_state::WorkspaceState;
 use crate::dto::{
     SearchResultDto, TaskAttributeDto, TaskItemDto, TaskLinkDto, ToggleCheckboxResultDto,
-    UpdateTaskStatusResultDto,
+    UpdateTaskPriorityResultDto, UpdateTaskStatusResultDto,
 };
 use crate::index::page_index::Page;
 use crate::parser::blocks::{parse_blocks_with_task_states, BlockAttribute, ParsedBlock};
@@ -146,6 +146,47 @@ pub(crate) fn update_task_status_in_workspace(
     new_status: &str,
     changed_at: &str,
 ) -> Result<UpdateTaskStatusResultDto, String> {
+    validate_status_changed_at(changed_at)?;
+    let status_changed_at_source = format!("status-changed-at:: {changed_at}");
+    set_task_status_in_workspace(
+        workspace,
+        path,
+        line,
+        expected_status,
+        new_status,
+        Some(&status_changed_at_source),
+    )
+}
+
+pub(crate) fn restore_task_status_in_workspace(
+    workspace: &mut WorkspaceState,
+    path: &str,
+    line: usize,
+    expected_status: &str,
+    new_status: &str,
+    status_changed_at_source: Option<&str>,
+) -> Result<UpdateTaskStatusResultDto, String> {
+    if let Some(source) = status_changed_at_source {
+        validate_status_changed_at_source(source)?;
+    }
+    set_task_status_in_workspace(
+        workspace,
+        path,
+        line,
+        expected_status,
+        new_status,
+        status_changed_at_source,
+    )
+}
+
+fn set_task_status_in_workspace(
+    workspace: &mut WorkspaceState,
+    path: &str,
+    line: usize,
+    expected_status: &str,
+    new_status: &str,
+    status_changed_at_source: Option<&str>,
+) -> Result<UpdateTaskStatusResultDto, String> {
     if line == 0 {
         return Err("Task line must be greater than 0".to_string());
     }
@@ -158,7 +199,6 @@ pub(crate) fn update_task_status_in_workspace(
     {
         return Err(format!("Unknown task status '{new_status}'"));
     }
-    validate_status_changed_at(changed_at)?;
 
     let resolved_path = workspace
         .pages
@@ -194,29 +234,49 @@ pub(crate) fn update_task_status_in_workspace(
         new_status.to_string(),
     )];
 
-    if let Some(attribute) = task_block
+    let existing_attribute = task_block
         .attributes
         .iter()
-        .find(|attribute| attribute.name.eq_ignore_ascii_case("status-changed-at"))
-    {
+        .find(|attribute| attribute.name.eq_ignore_ascii_case("status-changed-at"));
+    let previous_status_changed_at_source = existing_attribute
+        .map(|attribute| status_changed_at_source_from_content(&content, attribute.line))
+        .transpose()?;
+
+    if let Some(attribute) = existing_attribute {
         let attribute_range = line_content_range(&content, attribute.line)
             .ok_or_else(|| format!("Attribute line {} does not exist", attribute.line))?;
         let attribute_line = &content[attribute_range.clone()];
         let content_start = list_marker_end(attribute_line)
             .ok_or_else(|| format!("Attribute line {} is not a list item", attribute.line))?;
-        changes.push((
-            attribute_range.start + content_start..attribute_range.end,
-            format!("status-changed-at:: {changed_at}"),
-        ));
-    } else {
+
+        if let Some(source) = status_changed_at_source {
+            changes.push((
+                attribute_range.start + content_start..attribute_range.end,
+                source.to_string(),
+            ));
+        } else {
+            changes.push((
+                full_line_removal_range(&content, attribute.line)
+                    .ok_or_else(|| format!("Attribute line {} does not exist", attribute.line))?,
+                String::new(),
+            ));
+        }
+    } else if let Some(source) = status_changed_at_source {
         let indentation = child_attribute_indentation(&content, line_text, task_block);
-        let attribute_line = format!("{indentation}- status-changed-at:: {changed_at}");
+        let attribute_line = format!("{indentation}- {source}");
+        let insertion_after_line = task_block
+            .children
+            .first()
+            .map(|child| child.line_start.saturating_sub(1))
+            .unwrap_or(task_block.line_end);
+        let insertion_anchor = line_content_range(&content, insertion_after_line)
+            .ok_or_else(|| format!("Task block line {insertion_after_line} does not exist"))?;
         let (insertion_point, insertion) =
-            attribute_line_insertion(&content, &line_range, &attribute_line);
+            attribute_line_insertion(&content, &insertion_anchor, &attribute_line);
         changes.push((insertion_point..insertion_point, insertion));
     }
 
-    changes.sort_by(|left, right| right.0.start.cmp(&left.0.start));
+    changes.sort_by_key(|change| std::cmp::Reverse(change.0.start));
     let mut updated_content = content.clone();
     for (range, replacement) in changes {
         updated_content.replace_range(range, &replacement);
@@ -235,7 +295,11 @@ pub(crate) fn update_task_status_in_workspace(
         .find(|task| task.line == line)
         .ok_or_else(|| "Updated task could not be read back".to_string())?;
 
-    Ok(UpdateTaskStatusResultDto { task })
+    Ok(UpdateTaskStatusResultDto {
+        task,
+        previous_status_changed_at_source,
+        status_changed_at_source: status_changed_at_source.unwrap_or_default().to_string(),
+    })
 }
 
 fn find_block_by_start_line(blocks: &[ParsedBlock], line: usize) -> Option<&ParsedBlock> {
@@ -286,6 +350,35 @@ fn attribute_line_insertion(
     (task_range.end, format!("{newline}{attribute_line}"))
 }
 
+fn status_changed_at_source_from_content(content: &str, line: usize) -> Result<String, String> {
+    let range = line_content_range(content, line)
+        .ok_or_else(|| format!("Attribute line {line} does not exist"))?;
+    let line_text = &content[range];
+    let content_start = list_marker_end(line_text)
+        .ok_or_else(|| format!("Attribute line {line} is not a list item"))?;
+    Ok(line_text[content_start..].to_string())
+}
+
+fn full_line_removal_range(content: &str, line: usize) -> Option<std::ops::Range<usize>> {
+    let range = line_content_range(content, line)?;
+    let remaining = &content[range.end..];
+    if remaining.starts_with("\r\n") {
+        return Some(range.start..range.end + 2);
+    }
+    if remaining.starts_with('\n') {
+        return Some(range.start..range.end + 1);
+    }
+
+    let mut start = range.start;
+    if start > 0 && content.as_bytes()[start - 1] == b'\n' {
+        start -= 1;
+        if start > 0 && content.as_bytes()[start - 1] == b'\r' {
+            start -= 1;
+        }
+    }
+    Some(start..range.end)
+}
+
 fn validate_status_changed_at(value: &str) -> Result<(), String> {
     let bytes = value.as_bytes();
     let separators_are_valid = bytes.len() == 20
@@ -325,12 +418,25 @@ fn validate_status_changed_at(value: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn validate_status_changed_at_source(source: &str) -> Result<(), String> {
+    if source.contains(['\r', '\n']) {
+        return Err("Task status attribute must fit on one line".to_string());
+    }
+    let Some((name, _)) = source.split_once("::") else {
+        return Err("Task status attribute must use status-changed-at:: value".to_string());
+    };
+    if !name.eq_ignore_ascii_case("status-changed-at") {
+        return Err("Task status attribute must use status-changed-at:: value".to_string());
+    }
+    Ok(())
+}
+
 pub(crate) fn update_task_priority_in_workspace(
     workspace: &mut WorkspaceState,
     path: &str,
     line: usize,
     priority: Option<String>,
-) -> Result<UpdateTaskStatusResultDto, String> {
+) -> Result<UpdateTaskPriorityResultDto, String> {
     if line == 0 {
         return Err("Task line must be greater than 0".to_string());
     }
@@ -395,7 +501,7 @@ pub(crate) fn update_task_priority_in_workspace(
         .find(|task| task.line == line)
         .ok_or_else(|| "Updated task could not be read back".to_string())?;
 
-    Ok(UpdateTaskStatusResultDto { task })
+    Ok(UpdateTaskPriorityResultDto { task })
 }
 
 pub(crate) fn toggle_checkbox_in_workspace(
@@ -448,80 +554,81 @@ fn collect_task_items(
     heading_contexts: &[Vec<String>],
     tasks: &mut Vec<TaskItemDto>,
 ) {
-    collect_task_items_with_context(
-        blocks,
+    TaskCollector {
         page,
         workspace,
         heading_contexts,
         tasks,
-        &[],
-        &[],
-        &[],
-    );
+    }
+    .collect(blocks, &[], &[], &[]);
 }
 
-fn collect_task_items_with_context(
-    blocks: &[ParsedBlock],
-    page: &Page,
-    workspace: &WorkspaceState,
-    heading_contexts: &[Vec<String>],
-    tasks: &mut Vec<TaskItemDto>,
-    parent_links: &[WikiLink],
-    parent_attributes: &[BlockAttribute],
-    parent_blocks: &[String],
-) {
-    for block in blocks {
-        let effective_attributes = merge_effective_attributes(parent_attributes, &block.attributes);
+struct TaskCollector<'a> {
+    page: &'a Page,
+    workspace: &'a WorkspaceState,
+    heading_contexts: &'a [Vec<String>],
+    tasks: &'a mut Vec<TaskItemDto>,
+}
 
-        if let Some(status) = &block.task_status {
-            let direct_attribute_count = block.attributes.len();
-            tasks.push(TaskItemDto {
-                path: page.path.clone(),
-                title: page.title.clone(),
-                line: block.line_start,
-                status: status.clone(),
-                priority: block.task_priority.clone(),
-                source_headings: heading_contexts
-                    .get(block.line_start.saturating_sub(1))
-                    .cloned()
-                    .unwrap_or_default(),
-                parent_blocks: parent_blocks.to_vec(),
-                linked_pages: task_links(
-                    block,
-                    parent_links,
-                    &effective_attributes[direct_attribute_count..],
-                    workspace,
-                ),
-                attributes: effective_attributes
-                    .iter()
-                    .enumerate()
-                    .map(|(index, attribute)| TaskAttributeDto {
-                        line: attribute.line,
-                        name: attribute.name.clone(),
-                        value: attribute.value.clone(),
-                        inherited: index >= direct_attribute_count,
-                    })
-                    .collect(),
-                text: block.text.clone(),
-                markdown: block.markdown.clone(),
-            });
+impl TaskCollector<'_> {
+    fn collect(
+        &mut self,
+        blocks: &[ParsedBlock],
+        parent_links: &[WikiLink],
+        parent_attributes: &[BlockAttribute],
+        parent_blocks: &[String],
+    ) {
+        for block in blocks {
+            let effective_attributes =
+                merge_effective_attributes(parent_attributes, &block.attributes);
+
+            if let Some(status) = &block.task_status {
+                let direct_attribute_count = block.attributes.len();
+                self.tasks.push(TaskItemDto {
+                    path: self.page.path.clone(),
+                    title: self.page.title.clone(),
+                    line: block.line_start,
+                    status: status.clone(),
+                    priority: block.task_priority.clone(),
+                    source_headings: self
+                        .heading_contexts
+                        .get(block.line_start.saturating_sub(1))
+                        .cloned()
+                        .unwrap_or_default(),
+                    parent_blocks: parent_blocks.to_vec(),
+                    linked_pages: task_links(
+                        block,
+                        parent_links,
+                        &effective_attributes[direct_attribute_count..],
+                        self.workspace,
+                    ),
+                    attributes: effective_attributes
+                        .iter()
+                        .enumerate()
+                        .map(|(index, attribute)| TaskAttributeDto {
+                            line: attribute.line,
+                            name: attribute.name.clone(),
+                            value: attribute.value.clone(),
+                            inherited: index >= direct_attribute_count,
+                        })
+                        .collect(),
+                    text: block.text.clone(),
+                    markdown: block.markdown.clone(),
+                });
+            }
+
+            let mut child_parent_links = parent_links.to_vec();
+            child_parent_links.extend(block.links.iter().cloned());
+            let mut child_parent_blocks = parent_blocks.to_vec();
+            child_parent_blocks.push(block_context_text(block));
+
+            self.collect(
+                &block.children,
+                &child_parent_links,
+                &effective_attributes,
+                &child_parent_blocks,
+            );
         }
-
-        let mut child_parent_links = parent_links.to_vec();
-        child_parent_links.extend(block.links.iter().cloned());
-        let mut child_parent_blocks = parent_blocks.to_vec();
-        child_parent_blocks.push(block_context_text(block));
-
-        collect_task_items_with_context(
-            &block.children,
-            page,
-            workspace,
-            heading_contexts,
-            tasks,
-            &child_parent_links,
-            &effective_attributes,
-            &child_parent_blocks,
-        );
     }
 }
 
@@ -592,7 +699,6 @@ fn task_links(
                 .flat_map(|attribute| attribute.links.iter().cloned()),
         )
         .chain(subtree_links)
-        .into_iter()
         .map(|link| match workspace.pages.resolve_path(&link.target) {
             Ok(Some(resolved_path)) => {
                 let label = workspace

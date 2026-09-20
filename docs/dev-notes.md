@@ -309,6 +309,12 @@ Workspace-level config:
 The workspace config is normalized when loaded. Invalid or unknown values are
 discarded or replaced with defaults where practical.
 
+Task Overview filter and grouping changes are saved with a short debounce. The
+save command carries the workspace root that produced the draft; the backend
+rejects it if the active workspace changed before execution. The frontend also
+uses request/root guards so a late response cannot overwrite the newly opened
+workspace's state.
+
 The Preferences dialog edits a typed `WorkspacePreferences` subset rather than
 the complete config object. Its single backend command clones the current
 config, validates all proposed changes, preserves application-managed state and
@@ -576,6 +582,13 @@ validates the second-precision UTC timestamp passed by the action coordinator.
 All task-state entry points, including `Cmd/Ctrl+Enter`, context menus,
 backlinks, and Task Overview, use this policy.
 
+A newly created status attribute is placed after the task's own continuation
+lines and before its first child block. Forward mutations return the exact
+previous attribute source. Application-level undo restores that source, or
+removes an attribute that the forward action inserted, instead of generating a
+new timestamp. Rust and TypeScript run the same JSON fixtures for the core
+status/attribute text transformations, including CRLF input.
+
 Block-folding metadata is computed once per CodeMirror document version in a
 state field. Gutter rendering, context-menu checks, and collapse commands use
 line-number maps from that snapshot instead of rebuilding the document line
@@ -637,7 +650,9 @@ history entries.
 Application-level changes outside direct editor typing are recorded in
 `src/lib/stores/appUndo.ts`. Examples include checkbox toggles, task state
 changes, and task priority changes made from rendered views or the task
-overview.
+overview. Task-state operations retain both the previous and resulting
+`status-changed-at::` source so undo and redo restore the complete Markdown
+state and keep following task line numbers stable.
 
 The application-level undo store exposes injectable effect dependencies for
 tests. `tests/appUndo.test.ts` is the behavioral contract for ordering mixed

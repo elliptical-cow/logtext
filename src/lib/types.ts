@@ -138,6 +138,12 @@ export type TaskItem = {
 
 export type UpdateTaskStatusResult = {
   task: TaskItem;
+  previousStatusChangedAtSource: string | null;
+  statusChangedAtSource: string;
+};
+
+export type UpdateTaskPriorityResult = {
+  task: TaskItem;
 };
 
 export type ToggleCheckboxResult = {

@@ -39,6 +39,7 @@
   let attributeFilterValue = "";
   let groupMode: TaskOverviewGroupMode = "status";
   let groupAttributeName = "";
+  let taskOverviewConfigDraft: TaskOverviewConfig;
   let updatingTaskKey: string | null = null;
   let localError: string | null = null;
   let loadedRoot: string | null = null;
@@ -63,6 +64,10 @@
 
   $: doneState = $workspaceStore.taskStates[$workspaceStore.taskStates.length - 1] ?? "DONE";
   $: if ($workspaceStore.root !== loadedRoot) {
+    if (saveConfigTimer) {
+      clearTimeout(saveConfigTimer);
+      saveConfigTimer = null;
+    }
     applyTaskOverviewConfig($workspaceStore.taskOverview);
     loadedRoot = $workspaceStore.root;
     lastSavedConfigJson = JSON.stringify(currentTaskOverviewConfig());
@@ -114,8 +119,19 @@
     groupAttributeName,
     linkedPageLabel,
   );
+  $: taskOverviewConfigDraft = {
+    statusFilter,
+    priorityFilter,
+    textFilter,
+    linkedPageFilter,
+    attributeFilterName,
+    attributeFilterMode,
+    attributeFilterValue,
+    groupMode,
+    groupAttributeName,
+  };
   $: if ($workspaceStore.root && loadedRoot === $workspaceStore.root) {
-    scheduleTaskOverviewConfigSave();
+    scheduleTaskOverviewConfigSave(taskOverviewConfigDraft, $workspaceStore.root);
   }
 
   function uniquePriorities(tasks: TaskItem[]) {
@@ -348,8 +364,7 @@
     };
   }
 
-  function scheduleTaskOverviewConfigSave() {
-    const config = currentTaskOverviewConfig();
+  function scheduleTaskOverviewConfigSave(config: TaskOverviewConfig, root: string) {
     const serialized = JSON.stringify(config);
 
     if (serialized === lastSavedConfigJson) {
@@ -362,14 +377,20 @@
 
     saveConfigTimer = setTimeout(() => {
       saveConfigTimer = null;
-      persistTaskOverviewConfig(config, serialized);
+      if ($workspaceStore.root === root && loadedRoot === root) {
+        persistTaskOverviewConfig(config, serialized, root);
+      }
     }, 400);
   }
 
-  function persistTaskOverviewConfig(config: TaskOverviewConfig, serialized = JSON.stringify(config)) {
+  function persistTaskOverviewConfig(
+    config: TaskOverviewConfig,
+    serialized = JSON.stringify(config),
+    root = $workspaceStore.root,
+  ) {
     lastSavedConfigJson = serialized;
     void workspaceStore.saveTaskOverviewConfig(config).then((saved) => {
-      if (saved) {
+      if (saved && $workspaceStore.root === root && loadedRoot === root) {
         lastSavedConfigJson = JSON.stringify(saved);
       }
     });
@@ -388,7 +409,7 @@
     const config = currentTaskOverviewConfig();
     const serialized = JSON.stringify(config);
     if (serialized !== lastSavedConfigJson) {
-      persistTaskOverviewConfig(config, serialized);
+      persistTaskOverviewConfig(config, serialized, $workspaceStore.root);
     }
   }
 

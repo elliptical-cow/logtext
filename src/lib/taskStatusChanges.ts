@@ -7,6 +7,8 @@ export type TaskStatusContentChange = {
   changed: boolean;
   content: string;
   changes: TextChange[];
+  previousStatusChangedAtSource: string | null;
+  statusChangedAtSource: string | null;
 };
 
 type ContentLine = {
@@ -29,19 +31,55 @@ export function changeTaskStatusInContent(
   taskStates: string[],
   changedAt: string,
 ): TaskStatusContentChange {
+  return setTaskStatusInContent(
+    content,
+    lineNumber,
+    currentStatus,
+    nextStatus,
+    taskStates,
+    `${STATUS_CHANGED_AT_ATTRIBUTE}:: ${changedAt}`,
+  );
+}
+
+export function restoreTaskStatusInContent(
+  content: string,
+  lineNumber: number,
+  currentStatus: string,
+  nextStatus: string,
+  taskStates: string[],
+  statusChangedAtSource: string | null,
+): TaskStatusContentChange {
+  return setTaskStatusInContent(
+    content,
+    lineNumber,
+    currentStatus,
+    nextStatus,
+    taskStates,
+    statusChangedAtSource,
+  );
+}
+
+function setTaskStatusInContent(
+  content: string,
+  lineNumber: number,
+  currentStatus: string,
+  nextStatus: string,
+  taskStates: string[],
+  statusChangedAtSource: string | null,
+): TaskStatusContentChange {
   if (lineNumber <= 0 || currentStatus === nextStatus) {
-    return { changed: false, content, changes: [] };
+    return unchangedStatusChange(content, statusChangedAtSource);
   }
 
   const lines = contentLines(content);
   const line = lines[lineNumber - 1];
   if (!line) {
-    return { changed: false, content, changes: [] };
+    return unchangedStatusChange(content, statusChangedAtSource);
   }
 
   const status = taskKeywordMatch(line.text, line.from, taskStates);
   if (!status || status.status !== currentStatus) {
-    return { changed: false, content, changes: [] };
+    return unchangedStatusChange(content, statusChangedAtSource);
   }
 
   const changes: TextChange[] = [
@@ -52,27 +90,47 @@ export function changeTaskStatusInContent(
     lineNumber - 1,
     STATUS_CHANGED_AT_ATTRIBUTE,
   );
+  let previousStatusChangedAtSource: string | null = null;
 
   if (attributeLine) {
     const attribute = blockAttributeMatch(attributeLine.text, attributeLine.from)!;
-    changes.push({
-      from: attribute.from,
-      to: attribute.to,
-      insert: `${STATUS_CHANGED_AT_ATTRIBUTE}:: ${changedAt}`,
-    });
-  } else {
-    const indentation = childIndentation(lines, lineNumber - 1);
-    const attribute = `${indentation}- ${STATUS_CHANGED_AT_ATTRIBUTE}:: ${changedAt}`;
-    const fallbackEol = content.includes("\r\n") ? "\r\n" : "\n";
-    if (line.eol) {
-      changes.push({ from: line.fullTo, to: line.fullTo, insert: `${attribute}${line.eol}` });
+    previousStatusChangedAtSource = content.slice(attribute.from, attribute.to);
+    if (statusChangedAtSource === null) {
+      changes.push(attributeLineRemoval(content, attributeLine));
     } else {
-      changes.push({ from: line.to, to: line.to, insert: `${fallbackEol}${attribute}` });
+      changes.push({
+        from: attribute.from,
+        to: attribute.to,
+        insert: statusChangedAtSource,
+      });
     }
+  } else if (statusChangedAtSource !== null) {
+    const indentation = childIndentation(lines, lineNumber - 1);
+    const attribute = `${indentation}- ${statusChangedAtSource}`;
+    changes.push(attributeLineInsertion(content, lines, lineNumber - 1, attribute));
   }
 
   const updated = applyTextChanges(content, changes);
-  return { changed: true, content: updated, changes };
+  return {
+    changed: true,
+    content: updated,
+    changes,
+    previousStatusChangedAtSource,
+    statusChangedAtSource,
+  };
+}
+
+function unchangedStatusChange(
+  content: string,
+  statusChangedAtSource: string | null,
+): TaskStatusContentChange {
+  return {
+    changed: false,
+    content,
+    changes: [],
+    previousStatusChangedAtSource: null,
+    statusChangedAtSource,
+  };
 }
 
 function directChildAttributeLine(
@@ -133,6 +191,62 @@ function childIndentation(lines: ContentLine[], parentIndex: number) {
   return `${parentPrefix.indentation}${" ".repeat(
     parentPrefix.listContentFrom - parentPrefix.indentation.length,
   )}`;
+}
+
+function attributeLineInsertion(
+  content: string,
+  lines: ContentLine[],
+  parentIndex: number,
+  attribute: string,
+): TextChange {
+  const parentIndent = indentationWidth(lines[parentIndex].text);
+  const fallbackEol = content.includes("\r\n") ? "\r\n" : "\n";
+
+  for (let index = parentIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.text.trim()) {
+      continue;
+    }
+
+    const indent = indentationWidth(line.text);
+    const startsChildBlock = indent > parentIndent && parseListItemPrefix(line.text) !== null;
+    if (indent <= parentIndent || startsChildBlock) {
+      return {
+        from: line.from,
+        to: line.from,
+        insert: `${attribute}${fallbackEol}`,
+      };
+    }
+  }
+
+  if (content.endsWith("\n")) {
+    return {
+      from: content.length,
+      to: content.length,
+      insert: `${attribute}${fallbackEol}`,
+    };
+  }
+
+  return {
+    from: content.length,
+    to: content.length,
+    insert: `${fallbackEol}${attribute}`,
+  };
+}
+
+function attributeLineRemoval(content: string, line: ContentLine): TextChange {
+  if (line.eol) {
+    return { from: line.from, to: line.fullTo, insert: "" };
+  }
+
+  let from = line.from;
+  if (from > 0 && content[from - 1] === "\n") {
+    from -= 1;
+    if (from > 0 && content[from - 1] === "\r") {
+      from -= 1;
+    }
+  }
+  return { from, to: line.to, insert: "" };
 }
 
 function indentationWidth(line: string) {

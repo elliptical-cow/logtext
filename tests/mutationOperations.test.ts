@@ -25,7 +25,13 @@ function harness(editor: EditorState) {
     },
     setEditorTaskStatus: (line, currentStatus, nextStatus, _taskStates, changedAt) => {
       calls.push(`editor-status:${line}:${currentStatus}->${nextStatus}:${changedAt}`);
-      return true;
+      return {
+        changed: true,
+        content: "",
+        changes: [],
+        previousStatusChangedAtSource: null,
+        statusChangedAtSource: `status-changed-at:: ${changedAt}`,
+      };
     },
     setEditorTaskPriority: (line, priority) => {
       calls.push(`editor-priority:${line}:${priority ?? "none"}`);
@@ -41,7 +47,11 @@ function harness(editor: EditorState) {
     },
     updateTaskStatus: async (path, line, currentStatus, nextStatus, changedAt) => {
       calls.push(`disk-status:${path}:${line}:${currentStatus}->${nextStatus}:${changedAt}`);
-      return { task: task(path, line, nextStatus, null) };
+      return {
+        task: task(path, line, nextStatus, null),
+        previousStatusChangedAtSource: null,
+        statusChangedAtSource: `status-changed-at:: ${changedAt}`,
+      };
     },
     updateTaskPriority: async (path, line, priority) => {
       calls.push(`disk-priority:${path}:${line}:${priority ?? "none"}`);
@@ -145,6 +155,8 @@ test("records the canonical task location returned by the backend", async () => 
   const { dependencies, undoOperations } = harness(editor);
   dependencies.updateTaskStatus = async (_path, _line, _currentStatus, nextStatus) => ({
     task: task("tasks/Inbox.md", 5, nextStatus, null),
+    previousStatusChangedAtSource: null,
+    statusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
   });
   const operations = createMutationOperations(dependencies);
 
@@ -157,6 +169,8 @@ test("records the canonical task location returned by the backend", async () => 
       line: 5,
       beforeStatus: "TODO",
       afterStatus: "DONE",
+      beforeStatusChangedAtSource: null,
+      afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
     },
   ]);
 });

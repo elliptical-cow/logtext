@@ -161,6 +161,50 @@ test("groups tasks by multiple, empty, and missing attribute values", () => {
   assert.deepEqual(availableTaskAttributeNames(tasks), [["team", "team"]]);
 });
 
+test("keeps group identities separate from display labels and normalizes values", () => {
+  const duplicateTitleLink = {
+    ...peter,
+    target: "teams/Peter",
+    resolvedPath: "teams/Peter.md",
+  };
+  const linkedGroups = groupTasks(
+    [
+      task({ linkedPages: [peter] }),
+      task({ line: 2, linkedPages: [duplicateTitleLink] }),
+    ],
+    "linked-page",
+    "",
+    () => "Peter",
+  );
+  assert.deepEqual(linkedGroups.map((group) => [group.label, group.items.length]), [
+    ["Peter", 1],
+    ["Peter", 1],
+  ]);
+
+  const attributeGroups = groupTasks(
+    [
+      task({ attributes: [{ line: 2, name: "team", value: "Core", inherited: false }] }),
+      task({ line: 3, attributes: [{ line: 4, name: "team", value: "core", inherited: false }] }),
+      task({ line: 5, attributes: [{ line: 6, name: "team", value: "", inherited: false }] }),
+      task({
+        line: 7,
+        attributes: [{ line: 8, name: "team", value: "(empty)", inherited: false }],
+      }),
+    ],
+    "attribute",
+    "team",
+    (link) => link.label,
+  );
+  assert.deepEqual(
+    attributeGroups.map((group) => [group.label, group.items.map((item) => item.line)]),
+    [
+      ["(empty)", [5]],
+      ["(empty)", [7]],
+      ["Core", [1, 3]],
+    ],
+  );
+});
+
 test("formats valid status timestamps locally and preserves invalid values", () => {
   const valid = {
     line: 2,
@@ -179,6 +223,8 @@ test("wires linked-page and attribute state through the task overview config", (
     join(root, "src/lib/components/TaskOverview.svelte"),
     "utf8",
   );
+  const workspaceStore = readFileSync(join(root, "src/lib/stores/workspace.ts"), "utf8");
+  const api = readFileSync(join(root, "src/lib/api.ts"), "utf8");
 
   for (const field of [
     "linkedPageFilter",
@@ -192,4 +238,12 @@ test("wires linked-page and attribute state through the task overview config", (
   }
   assert.match(component, /class="task-overview-attributes"/);
   assert.match(component, /attribute\.inherited/);
+  assert.match(component, /\$: taskOverviewConfigDraft = \{/);
+  assert.match(
+    component,
+    /scheduleTaskOverviewConfigSave\(taskOverviewConfigDraft, \$workspaceStore\.root\)/,
+  );
+  assert.match(component, /if \(\$workspaceStore\.root === root && loadedRoot === root\)/);
+  assert.match(workspaceStore, /saveTaskOverviewConfigCommand\(taskOverview, root\)/);
+  assert.match(api, /expectedWorkspaceRoot/);
 });

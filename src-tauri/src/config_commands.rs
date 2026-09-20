@@ -169,14 +169,29 @@ pub fn save_expanded_folders(
 #[tauri::command]
 pub fn save_task_overview_config(
     task_overview: TaskOverviewConfig,
+    expected_workspace_root: String,
     state: State<'_, AppState>,
 ) -> Result<TaskOverviewConfig, String> {
     state.with_workspace_mut(|workspace| {
-        let normalized = normalize_task_overview_config(task_overview);
-        workspace.config.task_overview = normalized.clone();
-        save_workspace_config(&workspace.root, &workspace.config)?;
-        Ok(normalized)
+        save_task_overview_config_in_workspace(workspace, &expected_workspace_root, task_overview)
     })?
+}
+
+fn save_task_overview_config_in_workspace(
+    workspace: &mut crate::app_state::WorkspaceState,
+    expected_workspace_root: &str,
+    task_overview: TaskOverviewConfig,
+) -> Result<TaskOverviewConfig, String> {
+    if workspace.root.to_string_lossy() != expected_workspace_root {
+        return Err("Workspace changed before task overview settings could be saved".to_string());
+    }
+
+    let normalized = normalize_task_overview_config(task_overview);
+    let mut next_config = workspace.config.clone();
+    next_config.task_overview = normalized.clone();
+    save_workspace_config(&workspace.root, &next_config)?;
+    workspace.config = next_config;
+    Ok(normalized)
 }
 
 #[tauri::command]
@@ -411,6 +426,52 @@ mod tests {
             &["TODO".to_string(), "DONE".to_string()]
         )
         .is_ok());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn task_overview_save_rejects_a_stale_workspace_root() {
+        let root = temp_workspace();
+        let mut workspace = indexed_workspace(root.clone());
+        let original = workspace.config.task_overview.clone();
+
+        let error = save_task_overview_config_in_workspace(
+            &mut workspace,
+            "/another/workspace",
+            TaskOverviewConfig {
+                text_filter: "stale".to_string(),
+                ..TaskOverviewConfig::default()
+            },
+        )
+        .unwrap_err();
+
+        assert!(error.contains("Workspace changed"));
+        assert_eq!(workspace.config.task_overview, original);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn task_overview_save_preserves_unrelated_workspace_config() {
+        let root = temp_workspace();
+        let mut workspace = indexed_workspace(root.clone());
+        workspace.config.page_favorites = vec!["Keep.md".to_string()];
+        let expected_root = root.to_string_lossy().to_string();
+
+        let saved = save_task_overview_config_in_workspace(
+            &mut workspace,
+            &expected_root,
+            TaskOverviewConfig {
+                text_filter: "owner".to_string(),
+                group_mode: "attribute".to_string(),
+                group_attribute_name: "owner".to_string(),
+                ..TaskOverviewConfig::default()
+            },
+        )
+        .unwrap();
+
+        assert_eq!(saved.text_filter, "owner");
+        assert_eq!(workspace.config.task_overview, saved);
+        assert_eq!(workspace.config.page_favorites, vec!["Keep.md"]);
         fs::remove_dir_all(root).unwrap();
     }
 

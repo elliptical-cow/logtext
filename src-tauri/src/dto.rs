@@ -222,6 +222,14 @@ pub struct TaskLinkDto {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateTaskStatusResultDto {
     pub task: TaskItemDto,
+    pub previous_status_changed_at_source: Option<String>,
+    pub status_changed_at_source: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTaskPriorityResultDto {
+    pub task: TaskItemDto,
 }
 
 #[derive(Debug, Clone, Serialize)]

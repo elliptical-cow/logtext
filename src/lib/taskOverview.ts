@@ -22,6 +22,11 @@ export type TaskGroup = {
   items: TaskItem[];
 };
 
+type TaskGroupKey = {
+  id: string;
+  label: string;
+};
+
 export function taskLinkIdentity(link: TaskLink) {
   return link.resolvedPath
     ? `path:${normalizeIdentity(link.resolvedPath)}`
@@ -117,16 +122,21 @@ export function groupTasks(
   groupAttributeName: string,
   linkedPageLabel: (link: TaskLink) => string,
 ): TaskGroup[] {
-  const groups = new Map<string, TaskItem[]>();
+  const groups = new Map<string, TaskGroup>();
 
   for (const task of tasks) {
     for (const key of groupKeys(task, mode, groupAttributeName, linkedPageLabel)) {
-      groups.set(key, [...(groups.get(key) ?? []), task]);
+      const group = groups.get(key.id);
+      if (group) {
+        group.items.push(task);
+      } else {
+        groups.set(key.id, { label: key.label, items: [task] });
+      }
     }
   }
 
-  return [...groups.entries()]
-    .map(([label, items]) => ({ label, items: [...items].sort(compareTasks) }))
+  return [...groups.values()]
+    .map((group) => ({ ...group, items: group.items.sort(compareTasks) }))
     .sort((left, right) => left.label.localeCompare(right.label));
 }
 
@@ -158,29 +168,48 @@ function groupKeys(
   linkedPageLabel: (link: TaskLink) => string,
 ) {
   if (mode === "status") {
-    return [task.status];
+    return [groupKey(`status:${normalizeIdentity(task.status)}`, task.status)];
   }
   if (mode === "folder") {
-    return [task.path.includes("/") ? task.path.split("/").slice(0, -1).join("/") : "/"];
+    const folder = task.path.includes("/") ? task.path.split("/").slice(0, -1).join("/") : "/";
+    return [groupKey(`folder:${normalizeIdentity(folder)}`, folder)];
   }
   if (mode === "priority") {
-    return [task.priority ? `#${task.priority}` : "No priority"];
+    return task.priority
+      ? [groupKey(`priority:${normalizeIdentity(task.priority)}`, `#${task.priority}`)]
+      : [groupKey("priority:missing", "No priority")];
   }
   if (mode === "linked-page") {
     return task.linkedPages.length === 0
-      ? ["No linked page"]
-      : uniqueStrings(task.linkedPages.map(linkedPageLabel));
+      ? [groupKey("linked-page:missing", "No linked page")]
+      : uniqueGroupKeys(
+          task.linkedPages.map((link) =>
+            groupKey(`linked-page:${taskLinkIdentity(link)}`, linkedPageLabel(link)),
+          ),
+        );
   }
   if (mode === "attribute") {
     const normalizedName = normalizeAttributeName(groupAttributeName);
     const values = task.attributes
       .filter((attribute) => normalizeAttributeName(attribute.name) === normalizedName)
-      .map((attribute) => attribute.value || "(empty)");
+      .map((attribute) =>
+        attribute.value
+          ? groupKey(
+              `attribute:${normalizedName}:value:${normalizeIdentity(attribute.value)}`,
+              attribute.value,
+            )
+          : groupKey(`attribute:${normalizedName}:empty`, "(empty)"),
+      );
     return values.length > 0
-      ? uniqueStrings(values)
-      : [`No ${groupAttributeName || "attribute"}`];
+      ? uniqueGroupKeys(values)
+      : [
+          groupKey(
+            `attribute:${normalizedName}:missing`,
+            `No ${groupAttributeName || "attribute"}`,
+          ),
+        ];
   }
-  return [task.title];
+  return [groupKey(`source:${normalizeIdentity(task.path)}`, task.title)];
 }
 
 function compareTasks(left: TaskItem, right: TaskItem) {
@@ -217,14 +246,17 @@ function taskLinkOptionLabel(link: TaskLink) {
   return link.exists ? link.label : `Missing: ${link.label || link.target}`;
 }
 
-function uniqueStrings(values: string[]) {
+function groupKey(id: string, label: string): TaskGroupKey {
+  return { id, label };
+}
+
+function uniqueGroupKeys(values: TaskGroupKey[]) {
   const seen = new Set<string>();
   return values.filter((value) => {
-    const normalized = value.toLowerCase();
-    if (seen.has(normalized)) {
+    if (seen.has(value.id)) {
       return false;
     }
-    seen.add(normalized);
+    seen.add(value.id);
     return true;
   });
 }

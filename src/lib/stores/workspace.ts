@@ -478,17 +478,29 @@ function createWorkspaceStore() {
       }
     },
     async saveTaskOverviewConfig(taskOverview: TaskOverviewConfig) {
-      update((state) => ({ ...state, taskOverview, error: null }));
+      const root = currentState.root;
+      if (!root) {
+        return null;
+      }
+      update((state) =>
+        state.root === root ? { ...state, taskOverview, error: null } : state,
+      );
 
       try {
-        const saved = await saveTaskOverviewConfigCommand(taskOverview);
-        update((state) => ({ ...state, taskOverview: saved, error: null }));
+        const saved = await saveTaskOverviewConfigCommand(taskOverview, root);
+        update((state) =>
+          state.root === root ? { ...state, taskOverview: saved, error: null } : state,
+        );
         return saved;
       } catch (error) {
-        update((state) => ({
-          ...state,
-          ...configSaveError("task overview settings", error),
-        }));
+        update((state) =>
+          state.root === root
+            ? {
+                ...state,
+                ...configSaveError("task overview settings", error),
+              }
+            : state,
+        );
         return null;
       }
     },

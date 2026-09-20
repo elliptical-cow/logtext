@@ -271,6 +271,10 @@ Direct editor changes use CodeMirror undo. Task and checkbox changes made in
 rendered views use Logtext's application-level undo stack. The Edit menu names
 the next application action when available.
 
+Undoing a task-state change also restores the previous
+`status-changed-at::` line exactly. If the state change created that attribute,
+undo removes it again.
+
 - Undo: `Cmd/Ctrl+Z`
 - Redo: `Cmd/Ctrl+Shift+Z` or `Cmd/Ctrl+Y`
 
@@ -364,6 +368,9 @@ Each task row shows its effective attributes in a compact metadata line.
 Inherited values carry a small inheritance marker and source-line tooltip.
 `status-changed-at` is shown in local time while the Markdown source remains a
 UTC timestamp.
+
+Task Overview remembers its active filters and grouping in the current
+workspace's `.config`.
 
 Clicking a task opens its source page in the right pane. `Edit` opens the source
 in the middle pane and selects its line.

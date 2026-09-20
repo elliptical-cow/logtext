@@ -225,6 +225,7 @@ pub fn run() {
             commands::search_pages,
             commands::list_tasks,
             commands::update_task_status,
+            commands::restore_task_status,
             commands::update_task_priority,
             commands::toggle_checkbox,
             media::save_pasted_image,

@@ -25,6 +25,7 @@ import type {
   ThemeMode,
   ToggleCheckboxResult,
   UpdateTaskStatusResult,
+  UpdateTaskPriorityResult,
   WorkspaceState,
   WorkspacePreferences,
   MediaCleanupCandidate,
@@ -123,8 +124,12 @@ export function saveExpandedFolders(expandedFolders: string[]): Promise<void> {
 
 export function saveTaskOverviewConfig(
   taskOverview: TaskOverviewConfig,
+  expectedWorkspaceRoot: string,
 ): Promise<TaskOverviewConfig> {
-  return invokeTauri<TaskOverviewConfig>("save_task_overview_config", { taskOverview });
+  return invokeTauri<TaskOverviewConfig>("save_task_overview_config", {
+    taskOverview,
+    expectedWorkspaceRoot,
+  });
 }
 
 export function saveBacklinkViewConfig(
@@ -302,12 +307,28 @@ export function updateTaskStatus(
   });
 }
 
+export function restoreTaskStatus(
+  path: string,
+  line: number,
+  expectedStatus: TaskStatus,
+  newStatus: TaskStatus,
+  statusChangedAtSource: string | null,
+): Promise<UpdateTaskStatusResult> {
+  return invokeTauri<UpdateTaskStatusResult>("restore_task_status", {
+    path,
+    line,
+    expectedStatus,
+    newStatus,
+    statusChangedAtSource,
+  });
+}
+
 export function updateTaskPriority(
   path: string,
   line: number,
   priority: string | null,
-): Promise<UpdateTaskStatusResult> {
-  return invokeTauri<UpdateTaskStatusResult>("update_task_priority", {
+): Promise<UpdateTaskPriorityResult> {
+  return invokeTauri<UpdateTaskPriorityResult>("update_task_priority", {
     path,
     line,
     priority,

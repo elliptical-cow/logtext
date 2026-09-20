@@ -17,29 +17,36 @@ const initialState: TaskStoreState = {
   error: null,
 };
 
-function createTaskStore() {
+export function createTaskStore(loadTasks: typeof listTasks = listTasks) {
   const { subscribe, set, update } = writable<TaskStoreState>(initialState);
+  let requestGeneration = 0;
 
   return {
     subscribe,
     clear() {
+      requestGeneration += 1;
       set(initialState);
     },
     clearError() {
       update((state) => ({ ...state, error: null }));
     },
     async refresh() {
+      const generation = ++requestGeneration;
       update((state) => ({ ...state, loading: true, error: null }));
 
       try {
-        const tasks = await listTasks();
-        set({ tasks, loading: false, loaded: true, error: null });
+        const tasks = await loadTasks();
+        if (generation === requestGeneration) {
+          set({ tasks, loading: false, loaded: true, error: null });
+        }
       } catch (error) {
-        update((state) => ({
-          ...state,
-          loading: false,
-          error: toErrorMessage(error),
-        }));
+        if (generation === requestGeneration) {
+          update((state) => ({
+            ...state,
+            loading: false,
+            error: toErrorMessage(error),
+          }));
+        }
       }
     },
   };
