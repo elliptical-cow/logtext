@@ -244,6 +244,10 @@ test("wires linked-page and attribute state through the task overview config", (
     /scheduleTaskOverviewConfigSave\(taskOverviewConfigDraft, \$workspaceStore\.root\)/,
   );
   assert.match(component, /if \(\$workspaceStore\.root === root && loadedRoot === root\)/);
+  assert.match(component, /!\$workspaceStore\.taskStates\.includes\(statusFilter\)/);
+  assert.match(component, /statusFilter = "OPEN"/);
+  assert.match(component, /!availablePriorities\.includes\(priorityFilter\)/);
+  assert.match(component, /priorityFilter = "ALL"/);
   assert.match(workspaceStore, /saveTaskOverviewConfigCommand\(taskOverview, root\)/);
   assert.match(api, /expectedWorkspaceRoot/);
 });

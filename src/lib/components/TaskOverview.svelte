@@ -77,6 +77,22 @@
   $: availableAttributes = availableTaskAttributeNames($taskStore.tasks);
   $: if (
     $taskStore.loaded &&
+    statusFilter !== "OPEN" &&
+    statusFilter !== "ALL" &&
+    !$workspaceStore.taskStates.includes(statusFilter)
+  ) {
+    statusFilter = "OPEN";
+  }
+  $: if (
+    $taskStore.loaded &&
+    priorityFilter !== "ALL" &&
+    priorityFilter !== "NONE" &&
+    !availablePriorities.includes(priorityFilter)
+  ) {
+    priorityFilter = "ALL";
+  }
+  $: if (
+    $taskStore.loaded &&
     linkedPageFilter &&
     !availableLinks.some(([identity]) => identity === linkedPageFilter)
   ) {

@@ -12,6 +12,7 @@ pub struct ParsedBlock {
     pub links: Vec<WikiLink>,
     pub attributes: Vec<BlockAttribute>,
     pub children: Vec<ParsedBlock>,
+    is_protected: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,6 +33,7 @@ struct FlatBlock {
     task_priority: Option<String>,
     markdown_lines: Vec<String>,
     links: Vec<WikiLink>,
+    is_protected: bool,
 }
 
 pub fn parse_blocks(markdown: &str) -> Vec<ParsedBlock> {
@@ -98,6 +100,7 @@ fn parse_flat_blocks(lines: &[String], task_states: &[String]) -> Vec<FlatBlock>
                 task_priority: task_marker.priority,
                 markdown_lines: vec![line.to_string()],
                 links: line_links,
+                is_protected: is_protected_line,
             });
             continue;
         }
@@ -134,6 +137,7 @@ fn parse_flat_blocks(lines: &[String], task_states: &[String]) -> Vec<FlatBlock>
                 task_priority: task_marker.priority,
                 markdown_lines: vec![line.to_string()],
                 links: line_links,
+                is_protected: is_protected_line,
             });
         }
     }
@@ -191,6 +195,7 @@ fn build_tree(
             .unwrap_or(block.line_end);
         let attributes = children
             .iter()
+            .filter(|child| !child.is_protected)
             .filter_map(|child| parse_block_attribute(&child.text, child.line_start))
             .collect();
 
@@ -205,6 +210,7 @@ fn build_tree(
             links: block.links.clone(),
             attributes,
             children,
+            is_protected: block.is_protected,
         });
 
         index = next_index;
@@ -258,13 +264,17 @@ fn parse_list_item(line: &str) -> Option<ListItem<'_>> {
         digit_count + 1
     };
 
-    if !matches!(trimmed.as_bytes().get(marker_end), Some(b' ')) {
+    let whitespace_length = trimmed[marker_end..]
+        .bytes()
+        .take_while(|byte| matches!(byte, b' ' | b'\t'))
+        .count();
+    if whitespace_length == 0 {
         return None;
     }
 
     Some(ListItem {
         indent,
-        text: &trimmed[marker_end + 1..],
+        text: &trimmed[marker_end + whitespace_length..],
     })
 }
 
@@ -548,6 +558,28 @@ mod tests {
             blocks.last().map(|block| block.text.as_str()),
             Some("TODO Real task")
         );
+    }
+
+    #[test]
+    fn ignores_attributes_inside_fenced_code_blocks() {
+        let blocks = parse_blocks(
+            "- Parent\n  ```md\n  - owner:: [[people/Peter]]\n  ```\n  - owner:: [[people/Jens]]",
+        );
+
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0].attributes.len(), 1);
+        assert_eq!(blocks[0].attributes[0].name, "owner");
+        assert_eq!(blocks[0].attributes[0].value, "[[people/Jens]]");
+    }
+
+    #[test]
+    fn consumes_all_spacing_after_a_list_marker() {
+        let blocks = parse_blocks("- Parent\n  -   owner:: Peter\n1.\tTODO Task");
+
+        assert_eq!(blocks[0].children[0].text, "owner:: Peter");
+        assert_eq!(blocks[0].attributes[0].name, "owner");
+        assert_eq!(blocks[1].text, "TODO Task");
+        assert_eq!(blocks[1].task_status.as_deref(), Some("TODO"));
     }
 
     #[test]

@@ -559,7 +559,8 @@ and reused by task queries and the backlink index. Frontend recognition lives
 in `blockAttributes.ts` and is shared by editor decoration and rendered-view
 preprocessing. Both surfaces keep the list bullet visible, render the complete
 attribute content at a reduced size, and style the attribute key as subdued
-monospace text.
+monospace text. Fenced code and math blocks remain protected while the block
+tree is built, so attribute-shaped examples inside them never become metadata.
 
 Task queries resolve effective attributes while traversing the parsed block
 tree. Direct attributes precede inherited attributes; a nearer definition
@@ -586,8 +587,12 @@ A newly created status attribute is placed after the task's own continuation
 lines and before its first child block. Forward mutations return the exact
 previous attribute source. Application-level undo restores that source, or
 removes an attribute that the forward action inserted, instead of generating a
-new timestamp. Rust and TypeScript run the same JSON fixtures for the core
-status/attribute text transformations, including CRLF input.
+new timestamp. Undo and redo require the current attribute source to match the
+recorded operation and abort on an external or manual metadata change. A loose
+task line is normalized to a `-` list block on its first transition so its
+generated attribute has an unambiguous Markdown parent. Rust and TypeScript run
+the same JSON fixtures for the core status/attribute text transformations,
+including CRLF input.
 
 Block-folding metadata is computed once per CodeMirror document version in a
 state field. Gutter rendering, context-menu checks, and collapse commands use
@@ -665,8 +670,10 @@ Forward mutations initiated outside CodeMirror go through
 `src/lib/stores/mutationOperations.ts`. This layer decides whether the target
 is the open editor page or a disk-backed page, isolates active editor history, waits
 for save success, records one global undo operation, refreshes derived views,
-and gates the task completion sound. Svelte components retain presentation and
-menu state but do not duplicate this orchestration.
+and gates the task completion sound. It also permits only one rendered mutation
+per normalized file path at a time, preventing timestamp insertion from making
+a second operation's source line stale. Svelte components retain presentation
+and menu state but do not duplicate this orchestration.
 
 The native Edit menu is synchronized from the frontend so menu labels and
 enabled states reflect the current undo/redo action.

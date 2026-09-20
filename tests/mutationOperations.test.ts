@@ -6,6 +6,7 @@ import {
   type MutationOperationDependencies,
 } from "../src/lib/stores/mutationOperations.js";
 import type { AppUndoMutationOperation } from "../src/lib/stores/appUndo.js";
+import type { UpdateTaskStatusResult } from "../src/lib/types.js";
 
 type EditorState = ReturnType<MutationOperationDependencies["getEditorState"]>;
 
@@ -231,6 +232,41 @@ test("returns a contextual failure when a disk mutation is rejected", async () =
   });
   assert.deepEqual(calls, ["isolate", "isolate"]);
   assert.deepEqual(undoOperations, []);
+});
+
+test("serializes rendered mutations for the same file", async () => {
+  const editor = editorState(null);
+  const { dependencies } = harness(editor);
+  let finishStatusChange!: (result: UpdateTaskStatusResult) => void;
+  dependencies.updateTaskStatus = () =>
+    new Promise((resolve) => {
+      finishStatusChange = resolve;
+    });
+  const operations = createMutationOperations(dependencies);
+
+  const statusChange = operations.setTaskStatus("Tasks.md", 1, "TODO", "DONE");
+  const overlappingPriorityChange = await operations.setTaskPriority(
+    "tasks.md",
+    3,
+    null,
+    "A",
+  );
+
+  assert.deepEqual(overlappingPriorityChange, {
+    status: "failed",
+    error: "Wait for the current file change to finish before changing this task priority.",
+  });
+
+  finishStatusChange({
+    task: task("Tasks.md", 1, "DONE", null),
+    previousStatusChangedAtSource: null,
+    statusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
+  });
+  assert.deepEqual(await statusChange, { status: "changed", error: null });
+  assert.deepEqual(
+    await operations.setTaskPriority("Tasks.md", 3, null, "A"),
+    { status: "changed", error: null },
+  );
 });
 
 test("treats requests without an actual state transition as unchanged", async () => {

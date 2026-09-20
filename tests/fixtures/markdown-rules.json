@@ -307,6 +307,15 @@
     ],
     "taskStatusChanges": [
       {
+        "name": "loose task becomes a list block",
+        "source": "TODO Loose item",
+        "line": 1,
+        "currentStatus": "TODO",
+        "nextStatus": "DONE",
+        "changedAt": "2026-09-16T12:32:18Z",
+        "expected": "- DONE Loose item\n  - status-changed-at:: 2026-09-16T12:32:18Z"
+      },
+      {
         "name": "plain task adds metadata",
         "source": "- TODO Item",
         "line": 1,

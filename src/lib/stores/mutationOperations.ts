@@ -114,6 +114,8 @@ const defaultDependencies: MutationOperationDependencies = {
 export function createMutationOperations(
   dependencies: MutationOperationDependencies = defaultDependencies,
 ) {
+  const activePaths = new Set<string>();
+
   return {
     async toggleCheckbox(
       path: string | null,
@@ -127,6 +129,12 @@ export function createMutationOperations(
       const guard = editorGuard(dependencies.getEditorState(), path, "changing this checkbox");
       if (guard) {
         return guard;
+      }
+      const mutationKey = beginFileMutation(activePaths, path);
+      if (!mutationKey) {
+        return failed(
+          "Wait for the current file change to finish before changing this checkbox.",
+        );
       }
 
       dependencies.isolateEditorHistory();
@@ -164,6 +172,7 @@ export function createMutationOperations(
       } catch (error) {
         return failed(`Could not change checkbox: ${toErrorMessage(error)}`);
       } finally {
+        activePaths.delete(mutationKey);
         dependencies.isolateEditorHistory();
       }
     },
@@ -181,6 +190,12 @@ export function createMutationOperations(
       const guard = editorGuard(dependencies.getEditorState(), path, "changing this task status");
       if (guard) {
         return guard;
+      }
+      const mutationKey = beginFileMutation(activePaths, path);
+      if (!mutationKey) {
+        return failed(
+          "Wait for the current file change to finish before changing this task status.",
+        );
       }
 
       const { taskStates, taskDoneSoundEnabled } = dependencies.getTaskConfig();
@@ -240,6 +255,7 @@ export function createMutationOperations(
       } catch (error) {
         return failed(`Could not change task status: ${toErrorMessage(error)}`);
       } finally {
+        activePaths.delete(mutationKey);
         dependencies.isolateEditorHistory();
       }
     },
@@ -257,6 +273,12 @@ export function createMutationOperations(
       const guard = editorGuard(dependencies.getEditorState(), path, "changing this task priority");
       if (guard) {
         return guard;
+      }
+      const mutationKey = beginFileMutation(activePaths, path);
+      if (!mutationKey) {
+        return failed(
+          "Wait for the current file change to finish before changing this task priority.",
+        );
       }
 
       const { taskStates } = dependencies.getTaskConfig();
@@ -293,10 +315,20 @@ export function createMutationOperations(
       } catch (error) {
         return failed(`Could not change task priority: ${toErrorMessage(error)}`);
       } finally {
+        activePaths.delete(mutationKey);
         dependencies.isolateEditorHistory();
       }
     },
   };
+}
+
+function beginFileMutation(activePaths: Set<string>, path: string) {
+  const key = path.replaceAll("\\", "/").toLowerCase();
+  if (activePaths.has(key)) {
+    return null;
+  }
+  activePaths.add(key);
+  return key;
 }
 
 function editorGuard(

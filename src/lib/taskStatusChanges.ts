@@ -59,6 +59,25 @@ export function restoreTaskStatusInContent(
   );
 }
 
+export function statusChangedAtSourceInContent(content: string, lineNumber: number) {
+  if (lineNumber <= 0) {
+    return null;
+  }
+
+  const lines = contentLines(content);
+  const attributeLine = directChildAttributeLine(
+    lines,
+    lineNumber - 1,
+    STATUS_CHANGED_AT_ATTRIBUTE,
+  );
+  if (!attributeLine) {
+    return null;
+  }
+
+  const attribute = blockAttributeMatch(attributeLine.text, attributeLine.from);
+  return attribute ? content.slice(attribute.from, attribute.to) : null;
+}
+
 function setTaskStatusInContent(
   content: string,
   lineNumber: number,
@@ -82,8 +101,9 @@ function setTaskStatusInContent(
     return unchangedStatusChange(content, statusChangedAtSource);
   }
 
+  const listPrefix = parseListItemPrefix(line.text);
   const changes: TextChange[] = [
-    { from: status.from, to: status.to, insert: nextStatus },
+    { from: status.from, to: status.to, insert: `${listPrefix ? "" : "- "}${nextStatus}` },
   ];
   const attributeLine = directChildAttributeLine(
     lines,

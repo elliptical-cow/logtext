@@ -312,6 +312,7 @@ export function restoreTaskStatus(
   line: number,
   expectedStatus: TaskStatus,
   newStatus: TaskStatus,
+  expectedStatusChangedAtSource: string | null,
   statusChangedAtSource: string | null,
 ): Promise<UpdateTaskStatusResult> {
   return invokeTauri<UpdateTaskStatusResult>("restore_task_status", {
@@ -319,6 +320,7 @@ export function restoreTaskStatus(
     line,
     expectedStatus,
     newStatus,
+    expectedStatusChangedAtSource,
     statusChangedAtSource,
   });
 }

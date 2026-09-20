@@ -273,7 +273,8 @@ the next application action when available.
 
 Undoing a task-state change also restores the previous
 `status-changed-at::` line exactly. If the state change created that attribute,
-undo removes it again.
+undo removes it again. Undo is blocked if that attribute was edited separately
+after the state change, so the newer Markdown is not overwritten.
 
 - Undo: `Cmd/Ctrl+Z`
 - Redo: `Cmd/Ctrl+Shift+Z` or `Cmd/Ctrl+Y`
@@ -317,7 +318,8 @@ attribute with a second-precision UTC timestamp:
 
 The value records the latest state transition. When a completed task is
 reopened, the timestamp is therefore replaced rather than retained as a
-completion history.
+completion history. A task without a list marker is converted to a normal `-`
+list item on its first state change so the timestamp is a valid child block.
 
 ### Block attributes
 

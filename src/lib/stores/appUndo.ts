@@ -8,7 +8,10 @@ import {
 import { toErrorMessage } from "../errors.js";
 import { parseCheckboxListItem } from "../markdownPatterns.js";
 import { priorityCookieMatch, taskKeywordMatch } from "../taskKeywords.js";
-import type { TaskStatusContentChange } from "../taskStatusChanges.js";
+import {
+  statusChangedAtSourceInContent,
+  type TaskStatusContentChange,
+} from "../taskStatusChanges.js";
 import { editorSessionStore } from "./editorSession.js";
 import { rightPaneStore } from "./rightPane.js";
 import { taskStore } from "./tasks.js";
@@ -398,8 +401,18 @@ async function applyTaskStatusOperation(
     direction === "undo"
       ? operation.beforeStatusChangedAtSource
       : operation.afterStatusChangedAtSource;
+  const expectedStatusChangedAtSource =
+    direction === "undo"
+      ? operation.afterStatusChangedAtSource
+      : operation.beforeStatusChangedAtSource;
 
   if (editor.path === operation.path) {
+    if (
+      statusChangedAtSourceInContent(editor.content, operation.line) !==
+      expectedStatusChangedAtSource
+    ) {
+      throw new Error("Task status metadata changed. Refresh tasks.");
+    }
     const change = dependencies.restoreEditorTaskStatusLine(
       operation.line,
       fromStatus,
@@ -430,6 +443,7 @@ async function applyTaskStatusOperation(
     operation.line,
     fromStatus,
     toStatus,
+    expectedStatusChangedAtSource,
     statusChangedAtSource,
   );
   await refreshDerivedViews(dependencies);

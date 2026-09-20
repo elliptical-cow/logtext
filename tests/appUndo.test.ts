@@ -7,7 +7,10 @@ import {
   type AppUndoDependencies,
 } from "../src/lib/stores/appUndo.js";
 import { taskPriorityChange } from "../src/lib/taskKeywords.js";
-import { restoreTaskStatusInContent } from "../src/lib/taskStatusChanges.js";
+import {
+  restoreTaskStatusInContent,
+  statusChangedAtSourceInContent,
+} from "../src/lib/taskStatusChanges.js";
 import type { TaskItem } from "../src/lib/types.js";
 
 type EditorState = ReturnType<AppUndoDependencies["getEditorState"]>;
@@ -81,9 +84,14 @@ function baseHarness(editor: EditorState) {
       line,
       currentStatus,
       nextStatus,
+      expectedStatusChangedAtSource,
       statusChangedAtSource,
     ) => {
       const content = disk.get(path) ?? "";
+      assert.equal(
+        statusChangedAtSourceInContent(content, line),
+        expectedStatusChangedAtSource,
+      );
       const result = restoreTaskStatusInContent(
         content,
         line,
@@ -318,6 +326,52 @@ test("removes inserted status metadata on undo so earlier task lines stay valid"
   );
   assert.equal(await store.undoLast(), true);
   assert.equal(disk.get("Tasks.md"), "- TODO First\n- TODO Second");
+});
+
+test("keeps undo pending when editor task metadata changed independently", async () => {
+  const editor = editorState(
+    "Inbox.md",
+    "- DONE Item\n  - status-changed-at:: manually changed",
+  );
+  const { dependencies } = baseHarness(editor);
+  const store = createAppUndoStore(dependencies);
+  store.push({
+    kind: "task-status",
+    path: "Inbox.md",
+    line: 1,
+    beforeStatus: "TODO",
+    afterStatus: "DONE",
+    beforeStatusChangedAtSource: null,
+    afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
+  });
+
+  assert.equal(await store.undoLast(), false);
+  assert.equal(
+    editor.content,
+    "- DONE Item\n  - status-changed-at:: manually changed",
+  );
+  assert.equal(get(store).undoStack.length, 1);
+  assert.equal(get(store).error, "Task status metadata changed. Refresh tasks.");
+});
+
+test("keeps undo pending when disk task metadata changed independently", async () => {
+  const editor = editorState("Other.md", "- TODO Other");
+  const { dependencies, disk } = baseHarness(editor);
+  const store = createAppUndoStore(dependencies);
+  disk.set("Tasks.md", "- DONE Item\n  - status-changed-at:: manually changed");
+  store.push({
+    kind: "task-status",
+    path: "Tasks.md",
+    line: 1,
+    beforeStatus: "TODO",
+    afterStatus: "DONE",
+    beforeStatusChangedAtSource: null,
+    afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
+  });
+
+  assert.equal(await store.undoLast(), false);
+  assert.equal(disk.get("Tasks.md"), "- DONE Item\n  - status-changed-at:: manually changed");
+  assert.equal(get(store).undoStack.length, 1);
 });
 
 test("keeps a failed operation on the undo stack and reports the save error", async () => {

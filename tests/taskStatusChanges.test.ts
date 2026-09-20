@@ -53,7 +53,7 @@ test("updates an existing direct status attribute and preserves arbitrary attrib
 test("supports plain task blocks and ignores no-op transitions", () => {
   assert.equal(
     changeTaskStatusInContent("TODO Plain", 1, "TODO", "DONE", states, changedAt).content,
-    "DONE Plain\n  - status-changed-at:: 2026-09-16T12:32:18Z",
+    "- DONE Plain\n  - status-changed-at:: 2026-09-16T12:32:18Z",
   );
   assert.equal(
     changeTaskStatusInContent("- TODO Same", 1, "TODO", "TODO", states, changedAt).changed,

@@ -154,6 +154,7 @@ pub(crate) fn update_task_status_in_workspace(
         line,
         expected_status,
         new_status,
+        StatusChangedAtExpectation::Ignore,
         Some(&status_changed_at_source),
     )
 }
@@ -164,6 +165,7 @@ pub(crate) fn restore_task_status_in_workspace(
     line: usize,
     expected_status: &str,
     new_status: &str,
+    expected_status_changed_at_source: Option<&str>,
     status_changed_at_source: Option<&str>,
 ) -> Result<UpdateTaskStatusResultDto, String> {
     if let Some(source) = status_changed_at_source {
@@ -175,6 +177,7 @@ pub(crate) fn restore_task_status_in_workspace(
         line,
         expected_status,
         new_status,
+        StatusChangedAtExpectation::Exact(expected_status_changed_at_source),
         status_changed_at_source,
     )
 }
@@ -185,6 +188,7 @@ fn set_task_status_in_workspace(
     line: usize,
     expected_status: &str,
     new_status: &str,
+    expected_status_changed_at_source: StatusChangedAtExpectation<'_>,
     status_changed_at_source: Option<&str>,
 ) -> Result<UpdateTaskStatusResultDto, String> {
     if line == 0 {
@@ -229,9 +233,14 @@ fn set_task_status_in_workspace(
     let blocks = parse_blocks_with_task_states(&content, &workspace.config.task_states);
     let task_block = find_block_by_start_line(&blocks, line)
         .ok_or_else(|| format!("Task block on line {line} could not be parsed"))?;
+    let normalized_status = if list_marker_end(line_text).is_some() {
+        new_status.to_string()
+    } else {
+        format!("- {new_status}")
+    };
     let mut changes = vec![(
         line_range.start + status_span.start..line_range.start + status_span.end,
-        new_status.to_string(),
+        normalized_status,
     )];
 
     let existing_attribute = task_block
@@ -241,6 +250,12 @@ fn set_task_status_in_workspace(
     let previous_status_changed_at_source = existing_attribute
         .map(|attribute| status_changed_at_source_from_content(&content, attribute.line))
         .transpose()?;
+
+    if let StatusChangedAtExpectation::Exact(expected) = expected_status_changed_at_source {
+        if expected != previous_status_changed_at_source.as_deref() {
+            return Err("Task status metadata changed. Refresh tasks.".to_string());
+        }
+    }
 
     if let Some(attribute) = existing_attribute {
         let attribute_range = line_content_range(&content, attribute.line)
@@ -300,6 +315,12 @@ fn set_task_status_in_workspace(
         previous_status_changed_at_source,
         status_changed_at_source: status_changed_at_source.unwrap_or_default().to_string(),
     })
+}
+
+#[derive(Debug, Clone, Copy)]
+enum StatusChangedAtExpectation<'a> {
+    Ignore,
+    Exact(Option<&'a str>),
 }
 
 fn find_block_by_start_line(blocks: &[ParsedBlock], line: usize) -> Option<&ParsedBlock> {

@@ -236,6 +236,7 @@ pub fn restore_task_status(
     line: usize,
     expected_status: String,
     new_status: String,
+    expected_status_changed_at_source: Option<String>,
     status_changed_at_source: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<UpdateTaskStatusResultDto, String> {
@@ -246,6 +247,7 @@ pub fn restore_task_status(
             line,
             &expected_status,
             &new_status,
+            expected_status_changed_at_source.as_deref(),
             status_changed_at_source.as_deref(),
         )
     })?
@@ -1375,6 +1377,7 @@ mod tests {
             1,
             "DONE",
             "TODO",
+            Some(&first.status_changed_at_source),
             first.previous_status_changed_at_source.as_deref(),
         )
         .unwrap();
@@ -1407,12 +1410,48 @@ mod tests {
             1,
             "DONE",
             "TODO",
+            Some(&second.status_changed_at_source),
             second.previous_status_changed_at_source.as_deref(),
         )
         .unwrap();
         assert_eq!(
             fs::read_to_string(root.join("Inbox.md")).unwrap(),
             "- TODO First\n  - STATUS-CHANGED-AT:: old value\n"
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn restore_task_status_rejects_externally_changed_metadata() {
+        let root = temp_workspace();
+        fs::write(
+            root.join("Inbox.md"),
+            "- DONE Item\n  - status-changed-at:: manually changed\n",
+        )
+        .unwrap();
+        let mut workspace = test_workspace_state(
+            root.clone(),
+            PageIndex::from_paths(vec!["Inbox.md".to_string()]),
+        );
+
+        let result = restore_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "DONE",
+            "TODO",
+            Some("status-changed-at:: 2026-09-16T12:32:18Z"),
+            None,
+        );
+
+        assert_eq!(
+            result.unwrap_err(),
+            "Task status metadata changed. Refresh tasks."
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("Inbox.md")).unwrap(),
+            "- DONE Item\n  - status-changed-at:: manually changed\n"
         );
 
         fs::remove_dir_all(root).unwrap();
@@ -1585,7 +1624,7 @@ mod tests {
         assert_eq!(result.task.status, "WAITING");
         assert_eq!(
             fs::read_to_string(root.join("Inbox.md")).unwrap(),
-            "WAITING Prepare kickoff\n  - status-changed-at:: 2026-09-16T12:32:18Z\n"
+            "- WAITING Prepare kickoff\n  - status-changed-at:: 2026-09-16T12:32:18Z\n"
         );
 
         fs::remove_dir_all(root).unwrap();
