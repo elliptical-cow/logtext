@@ -10,7 +10,8 @@ use crate::dto::{
     page_summaries, workspace_state, CreateFolderResultDto, CreatePageResultDto,
     DeleteFolderResultDto, DeletePageResultDto, MovePageResultDto, PageContentDto, PageSummaryDto,
     PageViewDto, RenameFolderResultDto, RenamePageResultDto, SavePageResultDto, SearchResultDto,
-    TaskItemDto, ToggleCheckboxResultDto, UpdateTaskStatusResultDto, WorkspaceStateDto,
+    TaskItemDto, ToggleCheckboxResultDto, UpdateTaskPriorityResultDto, UpdateTaskStatusResultDto,
+    WorkspaceStateDto,
 };
 use crate::index::backlink_index::BacklinkIndex;
 use crate::index::page_index::{markdown_with_default_h1, PageIndex};
@@ -24,8 +25,9 @@ use crate::page_ops::{
 };
 use crate::page_view::get_page_view_from_workspace;
 use crate::query::{
-    list_tasks_in_workspace, search_pages_in_workspace, toggle_checkbox_in_workspace,
-    update_task_priority_in_workspace, update_task_status_in_workspace,
+    list_tasks_in_workspace, restore_task_status_in_workspace, search_pages_in_workspace,
+    toggle_checkbox_in_workspace, update_task_priority_in_workspace,
+    update_task_status_in_workspace,
 };
 use crate::user_config::{load_or_create_user_config, save_last_workspace};
 use crate::watcher::start_workspace_watcher;
@@ -213,10 +215,41 @@ pub fn update_task_status(
     line: usize,
     expected_status: String,
     new_status: String,
+    changed_at: String,
     state: State<'_, AppState>,
 ) -> Result<UpdateTaskStatusResultDto, String> {
     state.with_workspace_mut(|workspace| {
-        update_task_status_in_workspace(workspace, &path, line, &expected_status, &new_status)
+        update_task_status_in_workspace(
+            workspace,
+            &path,
+            line,
+            &expected_status,
+            &new_status,
+            &changed_at,
+        )
+    })?
+}
+
+#[tauri::command]
+pub fn restore_task_status(
+    path: String,
+    line: usize,
+    expected_status: String,
+    new_status: String,
+    expected_status_changed_at_source: Option<String>,
+    status_changed_at_source: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<UpdateTaskStatusResultDto, String> {
+    state.with_workspace_mut(|workspace| {
+        restore_task_status_in_workspace(
+            workspace,
+            &path,
+            line,
+            &expected_status,
+            &new_status,
+            expected_status_changed_at_source.as_deref(),
+            status_changed_at_source.as_deref(),
+        )
     })?
 }
 
@@ -226,7 +259,7 @@ pub fn update_task_priority(
     line: usize,
     priority: Option<String>,
     state: State<'_, AppState>,
-) -> Result<UpdateTaskStatusResultDto, String> {
+) -> Result<UpdateTaskPriorityResultDto, String> {
     state.with_workspace_mut(|workspace| {
         update_task_priority_in_workspace(workspace, &path, line, priority)
     })?
@@ -268,8 +301,35 @@ mod tests {
 
     use super::*;
     use crate::workspace_config::WorkspaceConfig;
+    use serde::Deserialize;
 
     static TEMP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+    const STATUS_CHANGED_AT: &str = "2026-09-16T12:32:18Z";
+
+    #[derive(Deserialize)]
+    struct TaskStatusRulesFixture {
+        shared: TaskStatusSharedFixture,
+    }
+
+    #[derive(Deserialize)]
+    struct TaskStatusSharedFixture {
+        #[serde(rename = "taskStatusChanges")]
+        task_status_changes: Vec<TaskStatusChangeFixture>,
+    }
+
+    #[derive(Deserialize)]
+    struct TaskStatusChangeFixture {
+        name: String,
+        source: String,
+        line: usize,
+        #[serde(rename = "currentStatus")]
+        current_status: String,
+        #[serde(rename = "nextStatus")]
+        next_status: String,
+        #[serde(rename = "changedAt")]
+        changed_at: String,
+        expected: String,
+    }
 
     #[test]
     fn save_page_writes_when_expected_metadata_matches() {
@@ -1102,6 +1162,67 @@ mod tests {
     }
 
     #[test]
+    fn list_tasks_inherits_effective_parent_attributes_and_their_links() {
+        let root = temp_workspace();
+        fs::create_dir_all(root.join("people")).unwrap();
+        fs::create_dir_all(root.join("projects")).unwrap();
+        fs::write(
+            root.join("Inbox.md"),
+            "- Other\n  - reviewer:: [[people/Peter]]\n- Area [[projects/Alpha]]\n  - owner:: [[people/Peter]]\n  - Workstream\n    - owner:: [[people/Maria]]\n    - region:: North\n    - TODO Prepare plan\n      - due-date:: 2026-09-30",
+        )
+        .unwrap();
+        fs::write(root.join("people").join("Peter.md"), "# Peter").unwrap();
+        fs::write(root.join("people").join("Maria.md"), "# Maria").unwrap();
+        fs::write(root.join("projects").join("Alpha.md"), "# Alpha").unwrap();
+        let workspace = test_workspace_state(
+            root.clone(),
+            PageIndex::from_paths(vec![
+                "Inbox.md".to_string(),
+                "people/Peter.md".to_string(),
+                "people/Maria.md".to_string(),
+                "projects/Alpha.md".to_string(),
+            ]),
+        );
+
+        let tasks = list_tasks_in_workspace(&workspace).unwrap();
+        let task = &tasks[0];
+
+        assert_eq!(
+            task.attributes
+                .iter()
+                .map(|attribute| (
+                    attribute.name.as_str(),
+                    attribute.value.as_str(),
+                    attribute.inherited,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("due-date", "2026-09-30", false),
+                ("owner", "[[people/Maria]]", true),
+                ("region", "North", true),
+            ]
+        );
+        assert!(task
+            .linked_pages
+            .iter()
+            .any(|link| link.resolved_path.as_deref() == Some("people/Maria.md")));
+        assert!(task
+            .linked_pages
+            .iter()
+            .any(|link| link.resolved_path.as_deref() == Some("projects/Alpha.md")));
+        assert!(!task
+            .linked_pages
+            .iter()
+            .any(|link| link.resolved_path.as_deref() == Some("people/Peter.md")));
+        assert!(!task
+            .attributes
+            .iter()
+            .any(|attribute| attribute.name == "reviewer"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn list_tasks_returns_heading_and_parent_context() {
         let root = temp_workspace();
         fs::write(
@@ -1133,7 +1254,42 @@ mod tests {
     }
 
     #[test]
-    fn update_task_status_replaces_only_the_task_keyword() {
+    fn applies_shared_task_status_change_fixtures() {
+        let fixtures: TaskStatusRulesFixture =
+            serde_json::from_str(include_str!("../../tests/fixtures/markdown-rules.json")).unwrap();
+        let root = temp_workspace();
+        let mut workspace = test_workspace_state(
+            root.clone(),
+            PageIndex::from_paths(vec!["Inbox.md".to_string()]),
+        );
+
+        for fixture in fixtures.shared.task_status_changes {
+            fs::write(root.join("Inbox.md"), &fixture.source).unwrap();
+            workspace.index_page_content("Inbox.md".to_string(), fixture.source);
+
+            update_task_status_in_workspace(
+                &mut workspace,
+                "Inbox.md",
+                fixture.line,
+                &fixture.current_status,
+                &fixture.next_status,
+                &fixture.changed_at,
+            )
+            .unwrap_or_else(|error| panic!("{}: {error}", fixture.name));
+
+            assert_eq!(
+                fs::read_to_string(root.join("Inbox.md")).unwrap(),
+                fixture.expected,
+                "{}",
+                fixture.name
+            );
+        }
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn update_task_status_inserts_timestamp_and_preserves_existing_children() {
         let root = temp_workspace();
         fs::write(
             root.join("Inbox.md"),
@@ -1145,14 +1301,215 @@ mod tests {
             PageIndex::from_paths(vec!["Inbox.md".to_string()]),
         );
 
-        let result =
-            update_task_status_in_workspace(&mut workspace, "Inbox.md", 1, "TODO", "DONE").unwrap();
+        let result = update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "DONE",
+            STATUS_CHANGED_AT,
+        )
+        .unwrap();
 
         assert_eq!(result.task.status, "DONE");
         assert_eq!(result.task.line, 1);
         assert_eq!(
             fs::read_to_string(root.join("Inbox.md")).unwrap(),
-            "- DONE [#A] Prepare kickoff\r\n  - Child remains untouched\r\n\r\n"
+            "- DONE [#A] Prepare kickoff\r\n  - status-changed-at:: 2026-09-16T12:32:18Z\r\n  - Child remains untouched\r\n\r\n"
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn update_task_status_preserves_continuation_lines_before_children() {
+        let root = temp_workspace();
+        fs::write(
+            root.join("Inbox.md"),
+            "- TODO Decision\n  Supporting context\n\n  - Existing child\n- TODO Sibling\n",
+        )
+        .unwrap();
+        let mut workspace = test_workspace_state(
+            root.clone(),
+            PageIndex::from_paths(vec!["Inbox.md".to_string()]),
+        );
+
+        update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "DONE",
+            STATUS_CHANGED_AT,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(root.join("Inbox.md")).unwrap(),
+            "- DONE Decision\n  Supporting context\n\n  - status-changed-at:: 2026-09-16T12:32:18Z\n  - Existing child\n- TODO Sibling\n"
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn restore_task_status_removes_inserted_metadata_and_restores_existing_source() {
+        let root = temp_workspace();
+        fs::write(root.join("Inbox.md"), "- TODO First\n- TODO Second\n").unwrap();
+        let mut workspace = test_workspace_state(
+            root.clone(),
+            PageIndex::from_paths(vec!["Inbox.md".to_string()]),
+        );
+
+        let first = update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "DONE",
+            STATUS_CHANGED_AT,
+        )
+        .unwrap();
+        assert_eq!(first.previous_status_changed_at_source, None);
+        restore_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "DONE",
+            "TODO",
+            Some(&first.status_changed_at_source),
+            first.previous_status_changed_at_source.as_deref(),
+        )
+        .unwrap();
+        assert_eq!(
+            fs::read_to_string(root.join("Inbox.md")).unwrap(),
+            "- TODO First\n- TODO Second\n"
+        );
+
+        fs::write(
+            root.join("Inbox.md"),
+            "- TODO First\n  - STATUS-CHANGED-AT:: old value\n",
+        )
+        .unwrap();
+        workspace.index_page_content(
+            "Inbox.md".to_string(),
+            "- TODO First\n  - STATUS-CHANGED-AT:: old value\n".to_string(),
+        );
+        let second = update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "DONE",
+            STATUS_CHANGED_AT,
+        )
+        .unwrap();
+        restore_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "DONE",
+            "TODO",
+            Some(&second.status_changed_at_source),
+            second.previous_status_changed_at_source.as_deref(),
+        )
+        .unwrap();
+        assert_eq!(
+            fs::read_to_string(root.join("Inbox.md")).unwrap(),
+            "- TODO First\n  - STATUS-CHANGED-AT:: old value\n"
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn restore_task_status_rejects_externally_changed_metadata() {
+        let root = temp_workspace();
+        fs::write(
+            root.join("Inbox.md"),
+            "- DONE Item\n  - status-changed-at:: manually changed\n",
+        )
+        .unwrap();
+        let mut workspace = test_workspace_state(
+            root.clone(),
+            PageIndex::from_paths(vec!["Inbox.md".to_string()]),
+        );
+
+        let result = restore_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "DONE",
+            "TODO",
+            Some("status-changed-at:: 2026-09-16T12:32:18Z"),
+            None,
+        );
+
+        assert_eq!(
+            result.unwrap_err(),
+            "Task status metadata changed. Refresh tasks."
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("Inbox.md")).unwrap(),
+            "- DONE Item\n  - status-changed-at:: manually changed\n"
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn update_task_status_replaces_the_existing_status_timestamp_without_duplicating_it() {
+        let root = temp_workspace();
+        fs::write(
+            root.join("Inbox.md"),
+            "- TODO Prepare kickoff\n  - owner:: Jens\n  - status-changed-at:: 2026-09-15T08:00:00Z\n  - Detail\n",
+        )
+        .unwrap();
+        let mut workspace = test_workspace_state(
+            root.clone(),
+            PageIndex::from_paths(vec!["Inbox.md".to_string()]),
+        );
+
+        update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "DONE",
+            STATUS_CHANGED_AT,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(root.join("Inbox.md")).unwrap(),
+            "- DONE Prepare kickoff\n  - owner:: Jens\n  - status-changed-at:: 2026-09-16T12:32:18Z\n  - Detail\n"
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn update_task_status_rejects_invalid_status_timestamp() {
+        let root = temp_workspace();
+        fs::write(root.join("Inbox.md"), "- TODO Prepare kickoff\n").unwrap();
+        let mut workspace = test_workspace_state(
+            root.clone(),
+            PageIndex::from_paths(vec!["Inbox.md".to_string()]),
+        );
+
+        let result = update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "DONE",
+            "2026-09-16 12:32:18",
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            fs::read_to_string(root.join("Inbox.md")).unwrap(),
+            "- TODO Prepare kickoff\n"
         );
 
         fs::remove_dir_all(root).unwrap();
@@ -1173,11 +1530,19 @@ mod tests {
         )
         .unwrap();
 
-        update_task_status_in_workspace(&mut workspace, "Inbox.md", 3, "TODO", "DONE").unwrap();
+        update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            3,
+            "TODO",
+            "DONE",
+            STATUS_CHANGED_AT,
+        )
+        .unwrap();
 
         assert_eq!(
             fs::read_to_string(&page_path).unwrap(),
-            "# Inbox\n\n- DONE Plan\n- Externally changed detail"
+            "# Inbox\n\n- DONE Plan\n  - status-changed-at:: 2026-09-16T12:32:18Z\n- Externally changed detail"
         );
 
         fs::remove_dir_all(root).unwrap();
@@ -1192,7 +1557,14 @@ mod tests {
             PageIndex::from_paths(vec!["Inbox.md".to_string()]),
         );
 
-        let result = update_task_status_in_workspace(&mut workspace, "Inbox.md", 1, "TODO", "DONE");
+        let result = update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "DONE",
+            STATUS_CHANGED_AT,
+        );
 
         assert!(result.is_err());
         assert_eq!(
@@ -1212,8 +1584,14 @@ mod tests {
             PageIndex::from_paths(vec!["Inbox.md".to_string()]),
         );
 
-        let result =
-            update_task_status_in_workspace(&mut workspace, "Inbox.md", 1, "TODO", "BLOCKED");
+        let result = update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "BLOCKED",
+            STATUS_CHANGED_AT,
+        );
 
         assert!(result.is_err());
         assert_eq!(
@@ -1233,14 +1611,20 @@ mod tests {
             PageIndex::from_paths(vec!["Inbox.md".to_string()]),
         );
 
-        let result =
-            update_task_status_in_workspace(&mut workspace, "Inbox.md", 1, "TODO", "WAITING")
-                .unwrap();
+        let result = update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "WAITING",
+            STATUS_CHANGED_AT,
+        )
+        .unwrap();
 
         assert_eq!(result.task.status, "WAITING");
         assert_eq!(
             fs::read_to_string(root.join("Inbox.md")).unwrap(),
-            "WAITING Prepare kickoff\n"
+            "- WAITING Prepare kickoff\n  - status-changed-at:: 2026-09-16T12:32:18Z\n"
         );
 
         fs::remove_dir_all(root).unwrap();
@@ -1255,14 +1639,20 @@ mod tests {
             PageIndex::from_paths(vec!["Inbox.md".to_string()]),
         );
 
-        let result =
-            update_task_status_in_workspace(&mut workspace, "Inbox.md", 1, "TODO", "INPROGRESS")
-                .unwrap();
+        let result = update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "INPROGRESS",
+            STATUS_CHANGED_AT,
+        )
+        .unwrap();
 
         assert_eq!(result.task.status, "INPROGRESS");
         assert_eq!(
             fs::read_to_string(root.join("Inbox.md")).unwrap(),
-            "- [ ]   INPROGRESS Prepare kickoff\n"
+            "- [ ]   INPROGRESS Prepare kickoff\n  - status-changed-at:: 2026-09-16T12:32:18Z\n"
         );
 
         fs::remove_dir_all(root).unwrap();
@@ -1277,14 +1667,21 @@ mod tests {
             PageIndex::from_paths(vec!["Inbox.md".to_string()]),
         );
 
-        let result =
-            update_task_status_in_workspace(&mut workspace, "Inbox.md", 1, "TODO", "DONE").unwrap();
+        let result = update_task_status_in_workspace(
+            &mut workspace,
+            "Inbox.md",
+            1,
+            "TODO",
+            "DONE",
+            STATUS_CHANGED_AT,
+        )
+        .unwrap();
 
         assert_eq!(result.task.status, "DONE");
         assert_eq!(result.task.priority.as_deref(), Some("A"));
         assert_eq!(
             fs::read_to_string(root.join("Inbox.md")).unwrap(),
-            "- DONE[#A] Prepare kickoff\n"
+            "- DONE[#A] Prepare kickoff\n  - status-changed-at:: 2026-09-16T12:32:18Z\n"
         );
 
         fs::remove_dir_all(root).unwrap();

@@ -1,8 +1,17 @@
 import { get, writable } from "svelte/store";
-import { getPageView, toggleCheckbox, updateTaskPriority, updateTaskStatus } from "../api.js";
+import {
+  getPageView,
+  restoreTaskStatus,
+  toggleCheckbox,
+  updateTaskPriority,
+} from "../api.js";
 import { toErrorMessage } from "../errors.js";
 import { parseCheckboxListItem } from "../markdownPatterns.js";
 import { priorityCookieMatch, taskKeywordMatch } from "../taskKeywords.js";
+import {
+  statusChangedAtSourceInContent,
+  type TaskStatusContentChange,
+} from "../taskStatusChanges.js";
 import { editorSessionStore } from "./editorSession.js";
 import { rightPaneStore } from "./rightPane.js";
 import { taskStore } from "./tasks.js";
@@ -19,6 +28,8 @@ export type TaskStatusOperation = {
   line: number;
   beforeStatus: string;
   afterStatus: string;
+  beforeStatusChangedAtSource: string | null;
+  afterStatusChangedAtSource: string;
 };
 
 export type TaskPriorityOperation = {
@@ -72,12 +83,13 @@ export type AppUndoDependencies = {
   requestEditorHistoryChange: (direction: "undo" | "redo") => Promise<boolean>;
   isolateEditorHistory: () => void;
   setEditorCheckboxLine: (line: number, checked: boolean) => boolean;
-  setEditorTaskStatusLine: (
+  restoreEditorTaskStatusLine: (
     line: number,
     currentStatus: string,
     nextStatus: string,
     taskStates: string[],
-  ) => boolean;
+    statusChangedAtSource: string | null,
+  ) => TaskStatusContentChange;
   setEditorTaskPriorityLine: (
     line: number,
     priority: string | null,
@@ -86,7 +98,7 @@ export type AppUndoDependencies = {
   saveEditor: () => Promise<boolean>;
   getPageView: typeof getPageView;
   toggleCheckbox: typeof toggleCheckbox;
-  updateTaskStatus: typeof updateTaskStatus;
+  restoreTaskStatus: typeof restoreTaskStatus;
   updateTaskPriority: typeof updateTaskPriority;
   refreshTasks: () => Promise<void>;
   refreshRightPane: () => Promise<void>;
@@ -111,14 +123,26 @@ const defaultDependencies: AppUndoDependencies = {
     window.dispatchEvent(new CustomEvent("logtext-editor-isolate-history"));
   },
   setEditorCheckboxLine: (line, checked) => editorSessionStore.setCheckboxLine(line, checked),
-  setEditorTaskStatusLine: (line, currentStatus, nextStatus, taskStates) =>
-    editorSessionStore.setTaskStatusLine(line, currentStatus, nextStatus, taskStates),
+  restoreEditorTaskStatusLine: (
+    line,
+    currentStatus,
+    nextStatus,
+    taskStates,
+    statusChangedAtSource,
+  ) =>
+    editorSessionStore.restoreTaskStatusLine(
+      line,
+      currentStatus,
+      nextStatus,
+      taskStates,
+      statusChangedAtSource,
+    ),
   setEditorTaskPriorityLine: (line, priority, taskStates) =>
     editorSessionStore.setTaskPriorityLine(line, priority, taskStates),
   saveEditor: () => editorSessionStore.save(),
   getPageView,
   toggleCheckbox,
-  updateTaskStatus,
+  restoreTaskStatus,
   updateTaskPriority,
   refreshTasks: () => taskStore.refresh(),
   refreshRightPane: () => rightPaneStore.refresh(),
@@ -373,15 +397,30 @@ async function applyTaskStatusOperation(
   const editor = dependencies.getEditorState();
   const fromStatus = direction === "undo" ? operation.afterStatus : operation.beforeStatus;
   const toStatus = direction === "undo" ? operation.beforeStatus : operation.afterStatus;
+  const statusChangedAtSource =
+    direction === "undo"
+      ? operation.beforeStatusChangedAtSource
+      : operation.afterStatusChangedAtSource;
+  const expectedStatusChangedAtSource =
+    direction === "undo"
+      ? operation.afterStatusChangedAtSource
+      : operation.beforeStatusChangedAtSource;
 
   if (editor.path === operation.path) {
-    const changed = dependencies.setEditorTaskStatusLine(
+    if (
+      statusChangedAtSourceInContent(editor.content, operation.line) !==
+      expectedStatusChangedAtSource
+    ) {
+      throw new Error("Task status metadata changed. Refresh tasks.");
+    }
+    const change = dependencies.restoreEditorTaskStatusLine(
       operation.line,
       fromStatus,
       toStatus,
       taskStates,
+      statusChangedAtSource,
     );
-    if (!changed) {
+    if (!change.changed) {
       throw new Error(`Line ${operation.line} is not a recognized task. Refresh tasks.`);
     }
     await saveEditorOrThrow(dependencies);
@@ -399,7 +438,14 @@ async function applyTaskStatusOperation(
     throw new Error(`Task line ${operation.line} changed from '${fromStatus}' to '${currentStatus}'.`);
   }
 
-  await dependencies.updateTaskStatus(operation.path, operation.line, fromStatus, toStatus);
+  await dependencies.restoreTaskStatus(
+    operation.path,
+    operation.line,
+    fromStatus,
+    toStatus,
+    expectedStatusChangedAtSource,
+    statusChangedAtSource,
+  );
   await refreshDerivedViews(dependencies);
 }
 

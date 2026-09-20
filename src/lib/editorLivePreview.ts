@@ -8,6 +8,7 @@ import {
   taskKeywordMatch,
 } from "./taskKeywords.js";
 import { taskColorStyle } from "./taskColors.js";
+import { blockAttributeMatch } from "./blockAttributes.js";
 import { wikiLinkColorStyle } from "./folderColors.js";
 import { parseCheckboxListItem, parseListItemPrefix } from "./markdownPatterns.js";
 import {
@@ -82,6 +83,8 @@ const strikethroughText = Decoration.mark({ class: "cm-live-strikethrough" });
 const inlineCodeText = Decoration.mark({ class: "cm-live-inline-code" });
 const markdownLinkText = Decoration.mark({ class: "cm-live-markdown-link" });
 const taskPriority = Decoration.mark({ class: "cm-live-priority" });
+const blockAttributeKey = Decoration.mark({ class: "cm-live-block-attribute-key" });
+const blockAttributeContent = Decoration.mark({ class: "cm-live-block-attribute" });
 const latexSource = Decoration.mark({ class: "cm-live-latex-source" });
 const latexBlockSourceLine = Decoration.line({ class: "cm-live-latex-block-source" });
 
@@ -122,6 +125,7 @@ export function previewDecorationsForLine(
   addAlternativeListMarkerDecoration(lineText, lineFrom, decorations);
   addCheckboxDecorations(lineText, lineFrom, decorations);
   addTaskDecorations(lineText, lineFrom, decorations, taskStates, taskStateColors);
+  addBlockAttributeDecorations(lineText, lineFrom, decorations);
   addMarkdownLinkDecorations(lineText, lineFrom, decorations);
   addWikiLinkDecorations(lineText, lineFrom, decorations, pages, folderColors);
   addInlineCodeDecorations(lineText, lineFrom, decorations);
@@ -409,6 +413,13 @@ const livePreviewTheme = EditorView.baseTheme({
     padding: "0 4px",
     fontSize: "0.92em",
     fontWeight: "700",
+  },
+  ".cm-live-block-attribute-key": {
+    color: "var(--text-muted)",
+    fontFamily: '\"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace',
+  },
+  ".cm-live-block-attribute": {
+    fontSize: "0.88em",
   },
 });
 
@@ -1019,6 +1030,28 @@ function addTaskDecorations(
       decoration: taskPriority,
     });
   }
+}
+
+function addBlockAttributeDecorations(
+  lineText: string,
+  lineFrom: number,
+  decorations: PreviewDecoration[],
+) {
+  const attribute = blockAttributeMatch(lineText, lineFrom);
+  if (!attribute) {
+    return;
+  }
+
+  decorations.push({
+    from: attribute.from,
+    to: attribute.to,
+    decoration: blockAttributeContent,
+  });
+  decorations.push({
+    from: attribute.nameFrom,
+    to: attribute.nameTo,
+    decoration: blockAttributeKey,
+  });
 }
 
 function addAlternativeListMarkerDecoration(

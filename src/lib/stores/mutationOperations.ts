@@ -2,7 +2,15 @@ import { get } from "svelte/store";
 import { toggleCheckbox, updateTaskPriority, updateTaskStatus } from "../api.js";
 import { toErrorMessage } from "../errors.js";
 import { playTaskDoneSound } from "../taskCompletionSound.js";
-import type { ToggleCheckboxResult, UpdateTaskStatusResult } from "../types.js";
+import {
+  statusChangedAtTimestamp,
+  type TaskStatusContentChange,
+} from "../taskStatusChanges.js";
+import type {
+  ToggleCheckboxResult,
+  UpdateTaskPriorityResult,
+  UpdateTaskStatusResult,
+} from "../types.js";
 import {
   appUndoStore,
   type AppUndoMutationOperation,
@@ -37,7 +45,8 @@ export type MutationOperationDependencies = {
     currentStatus: string,
     nextStatus: string,
     taskStates: string[],
-  ) => boolean;
+    changedAt: string,
+  ) => TaskStatusContentChange;
   setEditorTaskPriority: (
     line: number,
     priority: string | null,
@@ -50,17 +59,19 @@ export type MutationOperationDependencies = {
     line: number,
     currentStatus: string,
     nextStatus: string,
+    changedAt: string,
   ) => Promise<UpdateTaskStatusResult>;
   updateTaskPriority: (
     path: string,
     line: number,
     priority: string | null,
-  ) => Promise<UpdateTaskStatusResult>;
+  ) => Promise<UpdateTaskPriorityResult>;
   pushUndo: (operation: AppUndoMutationOperation) => void;
   isolateEditorHistory: () => void;
   refreshTasks: () => Promise<void>;
   refreshRightPane: () => Promise<void>;
   playDoneSound: (nextStatus: string, taskStates: string[], enabled: boolean) => void;
+  now: () => Date;
 };
 
 const changed: MutationOutcome = { status: "changed", error: null };
@@ -76,8 +87,14 @@ const defaultDependencies: MutationOperationDependencies = {
     };
   },
   toggleEditorCheckbox: (line) => editorSessionStore.toggleCheckboxLine(line),
-  setEditorTaskStatus: (line, currentStatus, nextStatus, taskStates) =>
-    editorSessionStore.setTaskStatusLine(line, currentStatus, nextStatus, taskStates),
+  setEditorTaskStatus: (line, currentStatus, nextStatus, taskStates, changedAt) =>
+    editorSessionStore.setTaskStatusLine(
+      line,
+      currentStatus,
+      nextStatus,
+      taskStates,
+      changedAt,
+    ),
   setEditorTaskPriority: (line, priority, taskStates) =>
     editorSessionStore.setTaskPriorityLine(line, priority, taskStates),
   saveEditor: () => editorSessionStore.save(),
@@ -91,11 +108,14 @@ const defaultDependencies: MutationOperationDependencies = {
   refreshTasks: () => taskStore.refresh(),
   refreshRightPane: () => rightPaneStore.refresh(),
   playDoneSound: playTaskDoneSound,
+  now: () => new Date(),
 };
 
 export function createMutationOperations(
   dependencies: MutationOperationDependencies = defaultDependencies,
 ) {
+  const activePaths = new Set<string>();
+
   return {
     async toggleCheckbox(
       path: string | null,
@@ -109,6 +129,12 @@ export function createMutationOperations(
       const guard = editorGuard(dependencies.getEditorState(), path, "changing this checkbox");
       if (guard) {
         return guard;
+      }
+      const mutationKey = beginFileMutation(activePaths, path);
+      if (!mutationKey) {
+        return failed(
+          "Wait for the current file change to finish before changing this checkbox.",
+        );
       }
 
       dependencies.isolateEditorHistory();
@@ -146,6 +172,7 @@ export function createMutationOperations(
       } catch (error) {
         return failed(`Could not change checkbox: ${toErrorMessage(error)}`);
       } finally {
+        activePaths.delete(mutationKey);
         dependencies.isolateEditorHistory();
       }
     },
@@ -164,16 +191,32 @@ export function createMutationOperations(
       if (guard) {
         return guard;
       }
+      const mutationKey = beginFileMutation(activePaths, path);
+      if (!mutationKey) {
+        return failed(
+          "Wait for the current file change to finish before changing this task status.",
+        );
+      }
 
       const { taskStates, taskDoneSoundEnabled } = dependencies.getTaskConfig();
+      const changedAt = statusChangedAtTimestamp(dependencies.now());
 
       dependencies.isolateEditorHistory();
       try {
         const editor = dependencies.getEditorState();
         let operationPath = path;
         let operationLine = line;
+        let beforeStatusChangedAtSource: string | null = null;
+        let afterStatusChangedAtSource = "";
         if (editor.path === path) {
-          if (!dependencies.setEditorTaskStatus(line, currentStatus, nextStatus, taskStates)) {
+          const editorChange = dependencies.setEditorTaskStatus(
+            line,
+            currentStatus,
+            nextStatus,
+            taskStates,
+            changedAt,
+          );
+          if (!editorChange.changed) {
             return failed(`Line ${line} is not a recognized task. Refresh tasks.`);
           }
           if (!(await dependencies.saveEditor())) {
@@ -181,15 +224,20 @@ export function createMutationOperations(
               dependencies.getEditorState().error ?? "Task status could not be saved.",
             );
           }
+          beforeStatusChangedAtSource = editorChange.previousStatusChangedAtSource;
+          afterStatusChangedAtSource = editorChange.statusChangedAtSource ?? "";
         } else {
           const result = await dependencies.updateTaskStatus(
             path,
             line,
             currentStatus,
             nextStatus,
+            changedAt,
           );
           operationPath = result.task.path;
           operationLine = result.task.line;
+          beforeStatusChangedAtSource = result.previousStatusChangedAtSource;
+          afterStatusChangedAtSource = result.statusChangedAtSource;
         }
 
         dependencies.pushUndo({
@@ -198,6 +246,8 @@ export function createMutationOperations(
           line: operationLine,
           beforeStatus: currentStatus,
           afterStatus: nextStatus,
+          beforeStatusChangedAtSource,
+          afterStatusChangedAtSource,
         });
         dependencies.playDoneSound(nextStatus, taskStates, taskDoneSoundEnabled);
         await refreshDerivedViews(dependencies);
@@ -205,6 +255,7 @@ export function createMutationOperations(
       } catch (error) {
         return failed(`Could not change task status: ${toErrorMessage(error)}`);
       } finally {
+        activePaths.delete(mutationKey);
         dependencies.isolateEditorHistory();
       }
     },
@@ -222,6 +273,12 @@ export function createMutationOperations(
       const guard = editorGuard(dependencies.getEditorState(), path, "changing this task priority");
       if (guard) {
         return guard;
+      }
+      const mutationKey = beginFileMutation(activePaths, path);
+      if (!mutationKey) {
+        return failed(
+          "Wait for the current file change to finish before changing this task priority.",
+        );
       }
 
       const { taskStates } = dependencies.getTaskConfig();
@@ -258,10 +315,20 @@ export function createMutationOperations(
       } catch (error) {
         return failed(`Could not change task priority: ${toErrorMessage(error)}`);
       } finally {
+        activePaths.delete(mutationKey);
         dependencies.isolateEditorHistory();
       }
     },
   };
+}
+
+function beginFileMutation(activePaths: Set<string>, path: string) {
+  const key = path.replaceAll("\\", "/").toLowerCase();
+  if (activePaths.has(key)) {
+    return null;
+  }
+  activePaths.add(key);
+  return key;
 }
 
 function editorGuard(

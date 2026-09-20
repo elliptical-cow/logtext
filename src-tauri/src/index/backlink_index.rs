@@ -36,15 +36,21 @@ impl BacklinkIndex {
         let blocks = parse_blocks(markdown);
         let heading_contexts = heading_contexts_by_line(markdown);
         let source_lines: Vec<&str> = markdown.lines().collect();
+        let page_context = BacklinkPageContext {
+            source_path: &source_path,
+            source_title: &source_title,
+            heading_contexts: &heading_contexts,
+            source_lines: &source_lines,
+        };
         let mut backlinks = Vec::new();
         let mut ancestors = Vec::new();
+        let mut seen = HashSet::new();
         collect_backlinks(
             &blocks,
-            &source_path,
-            &source_title,
-            &heading_contexts,
-            &source_lines,
+            &page_context,
             &mut ancestors,
+            &HashSet::new(),
+            &mut seen,
             &mut backlinks,
         );
 
@@ -104,46 +110,81 @@ impl BacklinkIndex {
     }
 }
 
+struct BacklinkPageContext<'a> {
+    source_path: &'a str,
+    source_title: &'a str,
+    heading_contexts: &'a [Vec<String>],
+    source_lines: &'a [&'a str],
+}
+
 fn collect_backlinks<'a>(
     blocks: &'a [ParsedBlock],
-    source_path: &str,
-    source_title: &str,
-    heading_contexts: &[Vec<String>],
-    source_lines: &[&str],
+    page: &BacklinkPageContext<'_>,
     ancestors: &mut Vec<&'a ParsedBlock>,
+    attribute_lines: &HashSet<usize>,
+    seen: &mut HashSet<(String, usize)>,
     backlinks: &mut Vec<Backlink>,
 ) {
     for block in blocks {
-        for link in &block.links {
-            if let Some(target_key) = page_key_from_link_target(&link.target) {
-                let context = backlink_context_markdown(source_lines, ancestors, block);
-                backlinks.push(Backlink {
-                    target_key,
-                    source_path: source_path.to_string(),
-                    source_title: source_title.to_string(),
-                    source_headings: heading_contexts
-                        .get(block.line_start.saturating_sub(1))
-                        .cloned()
-                        .unwrap_or_default(),
-                    block_markdown: context.markdown,
-                    line_numbers: context.line_numbers,
-                    line_start: block.line_start,
-                });
+        if !attribute_lines.contains(&block.line_start) {
+            for link in &block.links {
+                add_backlink(link, block, page, ancestors, seen, backlinks);
+            }
+        }
+
+        for attribute in &block.attributes {
+            for link in &attribute.links {
+                add_backlink(link, block, page, ancestors, seen, backlinks);
             }
         }
 
         ancestors.push(block);
+        let child_attribute_lines = block
+            .attributes
+            .iter()
+            .map(|attribute| attribute.line)
+            .collect();
         collect_backlinks(
             &block.children,
-            source_path,
-            source_title,
-            heading_contexts,
-            source_lines,
+            page,
             ancestors,
+            &child_attribute_lines,
+            seen,
             backlinks,
         );
         ancestors.pop();
     }
+}
+
+fn add_backlink(
+    link: &crate::parser::wiki_links::WikiLink,
+    context_block: &ParsedBlock,
+    page: &BacklinkPageContext<'_>,
+    ancestors: &[&ParsedBlock],
+    seen: &mut HashSet<(String, usize)>,
+    backlinks: &mut Vec<Backlink>,
+) {
+    let Some(target_key) = page_key_from_link_target(&link.target) else {
+        return;
+    };
+    if !seen.insert((target_key.clone(), context_block.line_start)) {
+        return;
+    }
+
+    let context = backlink_context_markdown(page.source_lines, ancestors, context_block);
+    backlinks.push(Backlink {
+        target_key,
+        source_path: page.source_path.to_string(),
+        source_title: page.source_title.to_string(),
+        source_headings: page
+            .heading_contexts
+            .get(context_block.line_start.saturating_sub(1))
+            .cloned()
+            .unwrap_or_default(),
+        block_markdown: context.markdown,
+        line_numbers: context.line_numbers,
+        line_start: context_block.line_start,
+    });
 }
 
 struct BacklinkContext {
@@ -338,6 +379,22 @@ mod tests {
     }
 
     #[test]
+    fn reindexes_attribute_backlinks_after_their_value_changes() {
+        let mut index = BacklinkIndex::default();
+        index.index_page(
+            "A.md".to_string(),
+            "- Project\n  - owner:: [[Alpha]]\n  - Note",
+        );
+        index.index_page(
+            "A.md".to_string(),
+            "- Project\n  - owner:: [[Beta]]\n  - Note",
+        );
+
+        assert!(index.backlinks_for_target_key("alpha").is_empty());
+        assert_eq!(index.backlinks_for_target_key("beta").len(), 1);
+    }
+
+    #[test]
     fn sorts_backlinks_by_reverse_source_path_and_line() {
         let mut index = BacklinkIndex::default();
         index.index_page("B.md".to_string(), "\n- Later [[Alpha]]");
@@ -381,6 +438,61 @@ mod tests {
             "- Parent\n    - Child [[Alpha]]\n        - Detail"
         );
         assert_eq!(backlinks[0].line_numbers, vec![1, 3, 4]);
+    }
+
+    #[test]
+    fn anchors_attribute_links_to_the_complete_owning_block() {
+        let mut index = BacklinkIndex::default();
+        index.index_page(
+            "Journal.md".to_string(),
+            "- A\n  - owner:: [[Peter]]\n  - remember planning",
+        );
+
+        let backlinks = index.backlinks_for_target_key("peter");
+        assert_eq!(backlinks.len(), 1);
+        assert_eq!(backlinks[0].line_start, 1);
+        assert_eq!(
+            backlinks[0].block_markdown,
+            "- A\n  - owner:: [[Peter]]\n  - remember planning"
+        );
+        assert_eq!(backlinks[0].line_numbers, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn keeps_the_ancestor_path_and_complete_nested_attribute_owner() {
+        let mut index = BacklinkIndex::default();
+        index.index_page(
+            "Journal.md".to_string(),
+            "- Root\n  - Unrelated\n  - A\n    - owner:: [[Peter]]\n    - remember planning\n  - Other",
+        );
+
+        let backlinks = index.backlinks_for_target_key("peter");
+        assert_eq!(backlinks.len(), 1);
+        assert_eq!(backlinks[0].line_start, 3);
+        assert_eq!(
+            backlinks[0].block_markdown,
+            "- Root\n  - A\n    - owner:: [[Peter]]\n    - remember planning"
+        );
+        assert_eq!(backlinks[0].line_numbers, vec![1, 3, 4, 5]);
+    }
+
+    #[test]
+    fn deduplicates_attribute_and_owner_links_with_the_same_target() {
+        let mut index = BacklinkIndex::default();
+        index.index_page(
+            "Journal.md".to_string(),
+            "- A [[Peter]]\n  - owner:: [[Peter]]\n  - reviewer:: [[Peter]]",
+        );
+
+        assert_eq!(index.backlinks_for_target_key("peter").len(), 1);
+    }
+
+    #[test]
+    fn does_not_treat_plain_attribute_values_as_links() {
+        let mut index = BacklinkIndex::default();
+        index.index_page("Journal.md".to_string(), "- A\n  - owner:: Peter");
+
+        assert!(index.backlinks_for_target_key("peter").is_empty());
     }
 
     #[test]

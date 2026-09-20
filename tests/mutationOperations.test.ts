@@ -6,6 +6,7 @@ import {
   type MutationOperationDependencies,
 } from "../src/lib/stores/mutationOperations.js";
 import type { AppUndoMutationOperation } from "../src/lib/stores/appUndo.js";
+import type { UpdateTaskStatusResult } from "../src/lib/types.js";
 
 type EditorState = ReturnType<MutationOperationDependencies["getEditorState"]>;
 
@@ -23,9 +24,15 @@ function harness(editor: EditorState) {
       calls.push(`editor-checkbox:${line}`);
       return true;
     },
-    setEditorTaskStatus: (line, currentStatus, nextStatus) => {
-      calls.push(`editor-status:${line}:${currentStatus}->${nextStatus}`);
-      return true;
+    setEditorTaskStatus: (line, currentStatus, nextStatus, _taskStates, changedAt) => {
+      calls.push(`editor-status:${line}:${currentStatus}->${nextStatus}:${changedAt}`);
+      return {
+        changed: true,
+        content: "",
+        changes: [],
+        previousStatusChangedAtSource: null,
+        statusChangedAtSource: `status-changed-at:: ${changedAt}`,
+      };
     },
     setEditorTaskPriority: (line, priority) => {
       calls.push(`editor-priority:${line}:${priority ?? "none"}`);
@@ -39,9 +46,13 @@ function harness(editor: EditorState) {
       calls.push(`disk-checkbox:${path}:${line}`);
       return { path, line, checked: true };
     },
-    updateTaskStatus: async (path, line, currentStatus, nextStatus) => {
-      calls.push(`disk-status:${path}:${line}:${currentStatus}->${nextStatus}`);
-      return { task: task(path, line, nextStatus, null) };
+    updateTaskStatus: async (path, line, currentStatus, nextStatus, changedAt) => {
+      calls.push(`disk-status:${path}:${line}:${currentStatus}->${nextStatus}:${changedAt}`);
+      return {
+        task: task(path, line, nextStatus, null),
+        previousStatusChangedAtSource: null,
+        statusChangedAtSource: `status-changed-at:: ${changedAt}`,
+      };
     },
     updateTaskPriority: async (path, line, priority) => {
       calls.push(`disk-priority:${path}:${line}:${priority ?? "none"}`);
@@ -63,6 +74,7 @@ function harness(editor: EditorState) {
     playDoneSound: (status, taskStates, enabled) => {
       calls.push(`sound:${status}:${taskStates.at(-1)}:${enabled}`);
     },
+    now: () => new Date("2026-09-16T12:32:18Z"),
   };
 
   return { calls, dependencies, undoOperations };
@@ -123,7 +135,7 @@ test("routes disk-backed status and priority changes through the same policy", a
 
   assert.deepEqual(calls, [
     "isolate",
-    "disk-status:Tasks.md:2:TODO->DONE",
+    "disk-status:Tasks.md:2:TODO->DONE:2026-09-16T12:32:18Z",
     "undo:task-status",
     "sound:DONE:DONE:true",
     "refresh-tasks",
@@ -144,6 +156,8 @@ test("records the canonical task location returned by the backend", async () => 
   const { dependencies, undoOperations } = harness(editor);
   dependencies.updateTaskStatus = async (_path, _line, _currentStatus, nextStatus) => ({
     task: task("tasks/Inbox.md", 5, nextStatus, null),
+    previousStatusChangedAtSource: null,
+    statusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
   });
   const operations = createMutationOperations(dependencies);
 
@@ -156,6 +170,8 @@ test("records the canonical task location returned by the backend", async () => 
       line: 5,
       beforeStatus: "TODO",
       afterStatus: "DONE",
+      beforeStatusChangedAtSource: null,
+      afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
     },
   ]);
 });
@@ -191,7 +207,12 @@ test("does not report success, record undo, refresh, or play sound after a faile
   const outcome = await operations.setTaskStatus("Inbox.md", 3, "TODO", "DONE");
 
   assert.deepEqual(outcome, { status: "failed", error: "File changed on disk." });
-  assert.deepEqual(calls, ["isolate", "editor-status:3:TODO->DONE", "save", "isolate"]);
+  assert.deepEqual(calls, [
+    "isolate",
+    "editor-status:3:TODO->DONE:2026-09-16T12:32:18Z",
+    "save",
+    "isolate",
+  ]);
   assert.deepEqual(undoOperations, []);
 });
 
@@ -211,6 +232,41 @@ test("returns a contextual failure when a disk mutation is rejected", async () =
   });
   assert.deepEqual(calls, ["isolate", "isolate"]);
   assert.deepEqual(undoOperations, []);
+});
+
+test("serializes rendered mutations for the same file", async () => {
+  const editor = editorState(null);
+  const { dependencies } = harness(editor);
+  let finishStatusChange!: (result: UpdateTaskStatusResult) => void;
+  dependencies.updateTaskStatus = () =>
+    new Promise((resolve) => {
+      finishStatusChange = resolve;
+    });
+  const operations = createMutationOperations(dependencies);
+
+  const statusChange = operations.setTaskStatus("Tasks.md", 1, "TODO", "DONE");
+  const overlappingPriorityChange = await operations.setTaskPriority(
+    "tasks.md",
+    3,
+    null,
+    "A",
+  );
+
+  assert.deepEqual(overlappingPriorityChange, {
+    status: "failed",
+    error: "Wait for the current file change to finish before changing this task priority.",
+  });
+
+  finishStatusChange({
+    task: task("Tasks.md", 1, "DONE", null),
+    previousStatusChangedAtSource: null,
+    statusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
+  });
+  assert.deepEqual(await statusChange, { status: "changed", error: null });
+  assert.deepEqual(
+    await operations.setTaskPriority("Tasks.md", 3, null, "A"),
+    { status: "changed", error: null },
+  );
 });
 
 test("treats requests without an actual state transition as unchanged", async () => {
@@ -243,6 +299,7 @@ function task(path: string, line: number, status: string, priority: string | nul
     sourceHeadings: [],
     parentBlocks: [],
     linkedPages: [],
+    attributes: [],
     text: "Task",
     markdown: `- ${status} Task`,
   };

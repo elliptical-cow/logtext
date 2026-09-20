@@ -304,6 +304,53 @@
         "depth": 64,
         "continuationLines": 512
       }
+    ],
+    "taskStatusChanges": [
+      {
+        "name": "loose task becomes a list block",
+        "source": "TODO Loose item",
+        "line": 1,
+        "currentStatus": "TODO",
+        "nextStatus": "DONE",
+        "changedAt": "2026-09-16T12:32:18Z",
+        "expected": "- DONE Loose item\n  - status-changed-at:: 2026-09-16T12:32:18Z"
+      },
+      {
+        "name": "plain task adds metadata",
+        "source": "- TODO Item",
+        "line": 1,
+        "currentStatus": "TODO",
+        "nextStatus": "DONE",
+        "changedAt": "2026-09-16T12:32:18Z",
+        "expected": "- DONE Item\n  - status-changed-at:: 2026-09-16T12:32:18Z"
+      },
+      {
+        "name": "continuation lines remain task content",
+        "source": "- TODO Decision\n  Supporting context\n\n  - Existing child\n- TODO Sibling",
+        "line": 1,
+        "currentStatus": "TODO",
+        "nextStatus": "DONE",
+        "changedAt": "2026-09-16T12:32:18Z",
+        "expected": "- DONE Decision\n  Supporting context\n\n  - status-changed-at:: 2026-09-16T12:32:18Z\n  - Existing child\n- TODO Sibling"
+      },
+      {
+        "name": "existing metadata keeps its line and is normalized",
+        "source": "- WAITING Item\n  - STATUS-CHANGED-AT:: old value\n  - Child",
+        "line": 1,
+        "currentStatus": "WAITING",
+        "nextStatus": "DONE",
+        "changedAt": "2026-09-16T12:32:18Z",
+        "expected": "- DONE Item\n  - status-changed-at:: 2026-09-16T12:32:18Z\n  - Child"
+      },
+      {
+        "name": "CRLF task keeps line endings",
+        "source": "1. TODO Item\r\n   Continuation\r\n   - Child\r\n",
+        "line": 1,
+        "currentStatus": "TODO",
+        "nextStatus": "DONE",
+        "changedAt": "2026-09-16T12:32:18Z",
+        "expected": "1. DONE Item\r\n   Continuation\r\n   - status-changed-at:: 2026-09-16T12:32:18Z\r\n   - Child\r\n"
+      }
     ]
   },
   "frontendOnly": {

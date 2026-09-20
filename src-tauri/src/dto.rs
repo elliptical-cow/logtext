@@ -195,8 +195,18 @@ pub struct TaskItemDto {
     pub source_headings: Vec<String>,
     pub parent_blocks: Vec<String>,
     pub linked_pages: Vec<TaskLinkDto>,
+    pub attributes: Vec<TaskAttributeDto>,
     pub text: String,
     pub markdown: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskAttributeDto {
+    pub line: usize,
+    pub name: String,
+    pub value: String,
+    pub inherited: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -211,6 +221,14 @@ pub struct TaskLinkDto {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateTaskStatusResultDto {
+    pub task: TaskItemDto,
+    pub previous_status_changed_at_source: Option<String>,
+    pub status_changed_at_source: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTaskPriorityResultDto {
     pub task: TaskItemDto,
 }
 

@@ -2,6 +2,10 @@ import { EditorSelection, Prec, type ChangeSpec, type EditorState } from "@codem
 import { keymap, type Command } from "@codemirror/view";
 import { listItemTextFrom, parseListItemPrefix } from "./markdownPatterns.js";
 import { DEFAULT_TASK_STATES, taskKeywordMatch } from "./taskKeywords.js";
+import {
+  changeTaskStatusInContent,
+  statusChangedAtTimestamp,
+} from "./taskStatusChanges.js";
 
 const blockIndent = "  ";
 
@@ -313,6 +317,7 @@ export function toggleCurrentTaskStatus(
     }
 
     const line = view.state.doc.lineAt(selection.head);
+    const currentStatus = taskKeywordMatch(line.text, 0, taskStates)?.status ?? null;
     const nextLineText = nextTaskLineText(line.text, taskStates);
     if (nextLineText === null) {
       return false;
@@ -320,6 +325,23 @@ export function toggleCurrentTaskStatus(
 
     const cursorOffset = Math.min(selection.head - line.from, nextLineText.length);
     const nextStatus = taskKeywordMatch(nextLineText, 0, taskStates)?.status ?? null;
+    if (currentStatus && nextStatus) {
+      const result = changeTaskStatusInContent(
+        view.state.doc.toString(),
+        line.number,
+        currentStatus,
+        nextStatus,
+        taskStates,
+        statusChangedAtTimestamp(),
+      );
+      if (!result.changed) {
+        return false;
+      }
+      view.dispatch({ changes: result.changes, scrollIntoView: true });
+      onStatusChange(nextStatus);
+      return true;
+    }
+
     view.dispatch({
       changes: { from: line.from, to: line.to, insert: nextLineText },
       selection: EditorSelection.cursor(line.from + cursorOffset),

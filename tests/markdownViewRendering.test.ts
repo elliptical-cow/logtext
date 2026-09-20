@@ -97,6 +97,21 @@ test("keeps wide rendered Markdown tables horizontally scrollable", () => {
   );
 });
 
+test("uses the same reduced size for complete block attribute lines", () => {
+  const styles = readFileSync(join(root, "src/styles.css"), "utf8");
+  const livePreview = readFileSync(join(root, "src/lib/editorLivePreview.ts"), "utf8");
+
+  assert.match(styles, /\.markdown-view \.block-attribute\s*\{[^}]*font-size: 0\.88em;/s);
+  assert.match(
+    livePreview,
+    /"\.cm-live-block-attribute"\s*:\s*\{[^}]*fontSize: "0\.88em"/s,
+  );
+  assert.equal(
+    /\.markdown-view \.block-attribute-key\s*\{[^}]*font-size:/s.test(styles),
+    false,
+  );
+});
+
 test("keeps rendering after malformed LaTeX and ignores formulas in Markdown code", () => {
   const markdown = createMarkdownRenderer({ breaks: true });
   const malformed = markdown.render(String.raw`Before $\notacommand{$ after **still here**.`);

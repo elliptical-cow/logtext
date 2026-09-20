@@ -7,6 +7,10 @@ import {
   type AppUndoDependencies,
 } from "../src/lib/stores/appUndo.js";
 import { taskPriorityChange } from "../src/lib/taskKeywords.js";
+import {
+  restoreTaskStatusInContent,
+  statusChangedAtSourceInContent,
+} from "../src/lib/taskStatusChanges.js";
 import type { TaskItem } from "../src/lib/types.js";
 
 type EditorState = ReturnType<AppUndoDependencies["getEditorState"]>;
@@ -30,13 +34,24 @@ function baseHarness(editor: EditorState) {
       editor.content = editor.content.replace(/\[[ xX]\]/, checked ? "[x]" : "[ ]");
       return true;
     },
-    setEditorTaskStatusLine: (_line, currentStatus, nextStatus) => {
+    restoreEditorTaskStatusLine: (
+      line,
+      currentStatus,
+      nextStatus,
+      taskStates,
+      statusChangedAtSource,
+    ) => {
       calls.push(`status:${currentStatus}->${nextStatus}`);
-      if (!editor.content.includes(currentStatus)) {
-        return false;
-      }
-      editor.content = editor.content.replace(currentStatus, nextStatus);
-      return true;
+      const result = restoreTaskStatusInContent(
+        editor.content,
+        line,
+        currentStatus,
+        nextStatus,
+        taskStates,
+        statusChangedAtSource,
+      );
+      editor.content = result.content;
+      return result;
     },
     setEditorTaskPriorityLine: (_line, priority, taskStates) => {
       calls.push(`priority:${priority ?? "none"}`);
@@ -64,11 +79,34 @@ function baseHarness(editor: EditorState) {
       calls.push(`disk-checkbox:${checked}`);
       return { path, line, checked };
     },
-    updateTaskStatus: async (path, line, currentStatus, nextStatus) => {
+    restoreTaskStatus: async (
+      path,
+      line,
+      currentStatus,
+      nextStatus,
+      expectedStatusChangedAtSource,
+      statusChangedAtSource,
+    ) => {
       const content = disk.get(path) ?? "";
-      disk.set(path, content.replace(currentStatus, nextStatus));
+      assert.equal(
+        statusChangedAtSourceInContent(content, line),
+        expectedStatusChangedAtSource,
+      );
+      const result = restoreTaskStatusInContent(
+        content,
+        line,
+        currentStatus,
+        nextStatus,
+        ["TODO", "WAITING", "DONE"],
+        statusChangedAtSource,
+      );
+      disk.set(path, result.content);
       calls.push(`disk-status:${currentStatus}->${nextStatus}`);
-      return { task: task(path, line, nextStatus, priorityFromContent(disk.get(path) ?? "")) };
+      return {
+        task: task(path, line, nextStatus, priorityFromContent(disk.get(path) ?? "")),
+        previousStatusChangedAtSource: result.previousStatusChangedAtSource,
+        statusChangedAtSource: result.statusChangedAtSource ?? "",
+      };
     },
     updateTaskPriority: async (path, line, priority) => {
       const content = disk.get(path) ?? "";
@@ -146,7 +184,10 @@ test("undoes and redoes editor, right-pane checkbox, editor in strict order", as
 });
 
 test("routes status and priority undo through an open editor page", async () => {
-  const editor = editorState("Inbox.md", "- DONE [#B] Item");
+  const editor = editorState(
+    "Inbox.md",
+    "- DONE [#B] Item\n  - status-changed-at:: 2026-09-16T12:32:18Z",
+  );
   const { calls, dependencies } = baseHarness(editor);
   const store = createAppUndoStore(dependencies);
 
@@ -156,6 +197,8 @@ test("routes status and priority undo through an open editor page", async () => 
     line: 1,
     beforeStatus: "TODO",
     afterStatus: "DONE",
+    beforeStatusChangedAtSource: "status-changed-at:: 2026-09-15T08:00:00Z",
+    afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
   });
   store.push({
     kind: "task-priority",
@@ -167,10 +210,16 @@ test("routes status and priority undo through an open editor page", async () => 
 
   assert.equal(await store.undoLast(), true);
   assert.equal(await store.undoLast(), true);
-  assert.equal(editor.content, "- TODO [#A] Item");
+  assert.equal(
+    editor.content,
+    "- TODO [#A] Item\n  - status-changed-at:: 2026-09-15T08:00:00Z",
+  );
   assert.equal(await store.redoLast(), true);
   assert.equal(await store.redoLast(), true);
-  assert.equal(editor.content, "- DONE [#B] Item");
+  assert.equal(
+    editor.content,
+    "- DONE [#B] Item\n  - status-changed-at:: 2026-09-16T12:32:18Z",
+  );
   assert.deepEqual(
     calls.filter((call) => call.startsWith("status:") || call.startsWith("priority:")),
     ["priority:A", "status:DONE->TODO", "status:TODO->DONE", "priority:B"],
@@ -193,7 +242,10 @@ test("keeps task-overview and backlink task changes in one disk-backed history",
   const editor = editorState("Other.md", "- TODO Other");
   const { calls, dependencies, disk } = baseHarness(editor);
   const store = createAppUndoStore(dependencies);
-  disk.set("Tasks.md", "- DONE [#B] Shared task");
+  disk.set(
+    "Tasks.md",
+    "- DONE [#B] Shared task\n  - status-changed-at:: 2026-09-16T12:32:18Z",
+  );
 
   const taskOverviewStatusChange = {
     kind: "task-status" as const,
@@ -201,6 +253,8 @@ test("keeps task-overview and backlink task changes in one disk-backed history",
     line: 1,
     beforeStatus: "TODO",
     afterStatus: "DONE",
+    beforeStatusChangedAtSource: null,
+    afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
   };
   const backlinkPriorityChange = {
     kind: "task-priority" as const,
@@ -217,7 +271,10 @@ test("keeps task-overview and backlink task changes in one disk-backed history",
   assert.equal(disk.get("Tasks.md"), "- TODO [#A] Shared task");
   assert.equal(await store.redoLast(), true);
   assert.equal(await store.redoLast(), true);
-  assert.equal(disk.get("Tasks.md"), "- DONE [#B] Shared task");
+  assert.equal(
+    disk.get("Tasks.md"),
+    "- DONE [#B] Shared task\n  - status-changed-at:: 2026-09-16T12:32:18Z",
+  );
   assert.deepEqual(
     calls.filter((call) => call.startsWith("disk-")),
     [
@@ -227,6 +284,94 @@ test("keeps task-overview and backlink task changes in one disk-backed history",
       "disk-priority:B",
     ],
   );
+});
+
+test("removes inserted status metadata on undo so earlier task lines stay valid", async () => {
+  const editor = editorState("Other.md", "- TODO Other");
+  const { dependencies, disk } = baseHarness(editor);
+  const store = createAppUndoStore(dependencies);
+  disk.set(
+    "Tasks.md",
+    [
+      "- DONE First",
+      "  - status-changed-at:: 2026-09-16T12:32:18Z",
+      "- DONE Second",
+      "  - status-changed-at:: 2026-09-16T12:31:00Z",
+    ].join("\n"),
+  );
+
+  store.push({
+    kind: "task-status",
+    path: "Tasks.md",
+    line: 2,
+    beforeStatus: "TODO",
+    afterStatus: "DONE",
+    beforeStatusChangedAtSource: null,
+    afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:31:00Z",
+  });
+  store.push({
+    kind: "task-status",
+    path: "Tasks.md",
+    line: 1,
+    beforeStatus: "TODO",
+    afterStatus: "DONE",
+    beforeStatusChangedAtSource: null,
+    afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
+  });
+
+  assert.equal(await store.undoLast(), true);
+  assert.equal(
+    disk.get("Tasks.md"),
+    "- TODO First\n- DONE Second\n  - status-changed-at:: 2026-09-16T12:31:00Z",
+  );
+  assert.equal(await store.undoLast(), true);
+  assert.equal(disk.get("Tasks.md"), "- TODO First\n- TODO Second");
+});
+
+test("keeps undo pending when editor task metadata changed independently", async () => {
+  const editor = editorState(
+    "Inbox.md",
+    "- DONE Item\n  - status-changed-at:: manually changed",
+  );
+  const { dependencies } = baseHarness(editor);
+  const store = createAppUndoStore(dependencies);
+  store.push({
+    kind: "task-status",
+    path: "Inbox.md",
+    line: 1,
+    beforeStatus: "TODO",
+    afterStatus: "DONE",
+    beforeStatusChangedAtSource: null,
+    afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
+  });
+
+  assert.equal(await store.undoLast(), false);
+  assert.equal(
+    editor.content,
+    "- DONE Item\n  - status-changed-at:: manually changed",
+  );
+  assert.equal(get(store).undoStack.length, 1);
+  assert.equal(get(store).error, "Task status metadata changed. Refresh tasks.");
+});
+
+test("keeps undo pending when disk task metadata changed independently", async () => {
+  const editor = editorState("Other.md", "- TODO Other");
+  const { dependencies, disk } = baseHarness(editor);
+  const store = createAppUndoStore(dependencies);
+  disk.set("Tasks.md", "- DONE Item\n  - status-changed-at:: manually changed");
+  store.push({
+    kind: "task-status",
+    path: "Tasks.md",
+    line: 1,
+    beforeStatus: "TODO",
+    afterStatus: "DONE",
+    beforeStatusChangedAtSource: null,
+    afterStatusChangedAtSource: "status-changed-at:: 2026-09-16T12:32:18Z",
+  });
+
+  assert.equal(await store.undoLast(), false);
+  assert.equal(disk.get("Tasks.md"), "- DONE Item\n  - status-changed-at:: manually changed");
+  assert.equal(get(store).undoStack.length, 1);
 });
 
 test("keeps a failed operation on the undo stack and reports the save error", async () => {
@@ -279,6 +424,7 @@ function task(path: string, line: number, status: string, priority: string | nul
     sourceHeadings: [],
     parentBlocks: [],
     linkedPages: [],
+    attributes: [],
     text: "Shared task",
     markdown: `- ${status} Shared task`,
   };

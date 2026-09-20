@@ -410,6 +410,25 @@ test("finds a plain task keyword at its document position", () => {
   });
 });
 
+test("styles block attribute content without shrinking its indentation", () => {
+  const decorations = previewDecorationsForLine("  - owner-name:: Jens", 20);
+  const content = decorations.find(
+    ({ decoration }) => decoration.spec.class === "cm-live-block-attribute",
+  );
+  const attribute = decorations.find(
+    ({ decoration }) => decoration.spec.class === "cm-live-block-attribute-key",
+  );
+
+  assert.deepEqual(
+    content && { from: content.from, to: content.to },
+    { from: 24, to: 41 },
+  );
+  assert.deepEqual(
+    attribute && { from: attribute.from, to: attribute.to },
+    { from: 24, to: 36 },
+  );
+});
+
 test("creates preview decorations for task priority cookies", () => {
   const decorations = previewDecorationsForLine("- TODO [#A] Finish report");
 

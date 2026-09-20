@@ -17,6 +17,7 @@ import {
   renderTaskKeywords,
   taskKeywordMatch,
 } from "../src/lib/taskKeywords.js";
+import { changeTaskStatusInContent } from "../src/lib/taskStatusChanges.js";
 import type { PageSummary } from "../src/lib/types.js";
 import {
   normalizeWikiTargetKey,
@@ -67,6 +68,15 @@ type MarkdownRulesFixture = {
       name: string;
       depth: number;
       continuationLines: number;
+    }[];
+    taskStatusChanges: {
+      name: string;
+      source: string;
+      line: number;
+      currentStatus: string;
+      nextStatus: string;
+      changedAt: string;
+      expected: string;
     }[];
   };
   frontendOnly: {
@@ -151,6 +161,20 @@ test("parses shared task fixtures consistently", () => {
 
     assert.equal(task?.status ?? null, fixture.status, fixture.name);
     assert.equal(priority?.priority ?? null, fixture.priority, fixture.name);
+  }
+});
+
+test("applies shared task-status mutation fixtures consistently", () => {
+  for (const fixture of fixtures.shared.taskStatusChanges) {
+    const result = changeTaskStatusInContent(
+      fixture.source,
+      fixture.line,
+      fixture.currentStatus,
+      fixture.nextStatus,
+      fixtures.shared.defaultTaskStates,
+      fixture.changedAt,
+    );
+    assert.equal(result.content, fixture.expected, fixture.name);
   }
 });
 

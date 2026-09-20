@@ -2,10 +2,11 @@ use std::fs;
 
 use crate::app_state::WorkspaceState;
 use crate::dto::{
-    SearchResultDto, TaskItemDto, TaskLinkDto, ToggleCheckboxResultDto, UpdateTaskStatusResultDto,
+    SearchResultDto, TaskAttributeDto, TaskItemDto, TaskLinkDto, ToggleCheckboxResultDto,
+    UpdateTaskPriorityResultDto, UpdateTaskStatusResultDto,
 };
 use crate::index::page_index::Page;
-use crate::parser::blocks::{parse_blocks_with_task_states, ParsedBlock};
+use crate::parser::blocks::{parse_blocks_with_task_states, BlockAttribute, ParsedBlock};
 use crate::parser::wiki_links::{parse_wiki_links, WikiLink};
 use crate::workspace::paths::resolve_workspace_relative_path;
 
@@ -143,6 +144,52 @@ pub(crate) fn update_task_status_in_workspace(
     line: usize,
     expected_status: &str,
     new_status: &str,
+    changed_at: &str,
+) -> Result<UpdateTaskStatusResultDto, String> {
+    validate_status_changed_at(changed_at)?;
+    let status_changed_at_source = format!("status-changed-at:: {changed_at}");
+    set_task_status_in_workspace(
+        workspace,
+        path,
+        line,
+        expected_status,
+        new_status,
+        StatusChangedAtExpectation::Ignore,
+        Some(&status_changed_at_source),
+    )
+}
+
+pub(crate) fn restore_task_status_in_workspace(
+    workspace: &mut WorkspaceState,
+    path: &str,
+    line: usize,
+    expected_status: &str,
+    new_status: &str,
+    expected_status_changed_at_source: Option<&str>,
+    status_changed_at_source: Option<&str>,
+) -> Result<UpdateTaskStatusResultDto, String> {
+    if let Some(source) = status_changed_at_source {
+        validate_status_changed_at_source(source)?;
+    }
+    set_task_status_in_workspace(
+        workspace,
+        path,
+        line,
+        expected_status,
+        new_status,
+        StatusChangedAtExpectation::Exact(expected_status_changed_at_source),
+        status_changed_at_source,
+    )
+}
+
+fn set_task_status_in_workspace(
+    workspace: &mut WorkspaceState,
+    path: &str,
+    line: usize,
+    expected_status: &str,
+    new_status: &str,
+    expected_status_changed_at_source: StatusChangedAtExpectation<'_>,
+    status_changed_at_source: Option<&str>,
 ) -> Result<UpdateTaskStatusResultDto, String> {
     if line == 0 {
         return Err("Task line must be greater than 0".to_string());
@@ -183,11 +230,72 @@ pub(crate) fn update_task_status_in_workspace(
         ));
     }
 
-    let mut updated_content = content.clone();
-    updated_content.replace_range(
+    let blocks = parse_blocks_with_task_states(&content, &workspace.config.task_states);
+    let task_block = find_block_by_start_line(&blocks, line)
+        .ok_or_else(|| format!("Task block on line {line} could not be parsed"))?;
+    let normalized_status = if list_marker_end(line_text).is_some() {
+        new_status.to_string()
+    } else {
+        format!("- {new_status}")
+    };
+    let mut changes = vec![(
         line_range.start + status_span.start..line_range.start + status_span.end,
-        new_status,
-    );
+        normalized_status,
+    )];
+
+    let existing_attribute = task_block
+        .attributes
+        .iter()
+        .find(|attribute| attribute.name.eq_ignore_ascii_case("status-changed-at"));
+    let previous_status_changed_at_source = existing_attribute
+        .map(|attribute| status_changed_at_source_from_content(&content, attribute.line))
+        .transpose()?;
+
+    if let StatusChangedAtExpectation::Exact(expected) = expected_status_changed_at_source {
+        if expected != previous_status_changed_at_source.as_deref() {
+            return Err("Task status metadata changed. Refresh tasks.".to_string());
+        }
+    }
+
+    if let Some(attribute) = existing_attribute {
+        let attribute_range = line_content_range(&content, attribute.line)
+            .ok_or_else(|| format!("Attribute line {} does not exist", attribute.line))?;
+        let attribute_line = &content[attribute_range.clone()];
+        let content_start = list_marker_end(attribute_line)
+            .ok_or_else(|| format!("Attribute line {} is not a list item", attribute.line))?;
+
+        if let Some(source) = status_changed_at_source {
+            changes.push((
+                attribute_range.start + content_start..attribute_range.end,
+                source.to_string(),
+            ));
+        } else {
+            changes.push((
+                full_line_removal_range(&content, attribute.line)
+                    .ok_or_else(|| format!("Attribute line {} does not exist", attribute.line))?,
+                String::new(),
+            ));
+        }
+    } else if let Some(source) = status_changed_at_source {
+        let indentation = child_attribute_indentation(&content, line_text, task_block);
+        let attribute_line = format!("{indentation}- {source}");
+        let insertion_after_line = task_block
+            .children
+            .first()
+            .map(|child| child.line_start.saturating_sub(1))
+            .unwrap_or(task_block.line_end);
+        let insertion_anchor = line_content_range(&content, insertion_after_line)
+            .ok_or_else(|| format!("Task block line {insertion_after_line} does not exist"))?;
+        let (insertion_point, insertion) =
+            attribute_line_insertion(&content, &insertion_anchor, &attribute_line);
+        changes.push((insertion_point..insertion_point, insertion));
+    }
+
+    changes.sort_by_key(|change| std::cmp::Reverse(change.0.start));
+    let mut updated_content = content.clone();
+    for (range, replacement) in changes {
+        updated_content.replace_range(range, &replacement);
+    }
 
     fs::write(&absolute_path, &updated_content)
         .map_err(|error| format!("Failed to write page '{}': {error}", resolved_path))?;
@@ -202,7 +310,146 @@ pub(crate) fn update_task_status_in_workspace(
         .find(|task| task.line == line)
         .ok_or_else(|| "Updated task could not be read back".to_string())?;
 
-    Ok(UpdateTaskStatusResultDto { task })
+    Ok(UpdateTaskStatusResultDto {
+        task,
+        previous_status_changed_at_source,
+        status_changed_at_source: status_changed_at_source.unwrap_or_default().to_string(),
+    })
+}
+
+#[derive(Debug, Clone, Copy)]
+enum StatusChangedAtExpectation<'a> {
+    Ignore,
+    Exact(Option<&'a str>),
+}
+
+fn find_block_by_start_line(blocks: &[ParsedBlock], line: usize) -> Option<&ParsedBlock> {
+    for block in blocks {
+        if block.line_start == line {
+            return Some(block);
+        }
+        if let Some(found) = find_block_by_start_line(&block.children, line) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+fn child_attribute_indentation(content: &str, task_line: &str, task_block: &ParsedBlock) -> String {
+    if let Some(child) = task_block.children.first() {
+        if let Some(range) = line_content_range(content, child.line_start) {
+            let child_line = &content[range];
+            return child_line[..leading_indent_end(child_line)].to_string();
+        }
+    }
+
+    if let Some(marker_end) = list_marker_end(task_line) {
+        return " ".repeat(marker_end);
+    }
+
+    format!("{}  ", &task_line[..leading_indent_end(task_line)])
+}
+
+fn attribute_line_insertion(
+    content: &str,
+    task_range: &std::ops::Range<usize>,
+    attribute_line: &str,
+) -> (usize, String) {
+    let remaining = &content[task_range.end..];
+    if remaining.starts_with("\r\n") {
+        return (task_range.end + 2, format!("{attribute_line}\r\n"));
+    }
+    if remaining.starts_with('\n') {
+        return (task_range.end + 1, format!("{attribute_line}\n"));
+    }
+
+    let newline = if content.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    (task_range.end, format!("{newline}{attribute_line}"))
+}
+
+fn status_changed_at_source_from_content(content: &str, line: usize) -> Result<String, String> {
+    let range = line_content_range(content, line)
+        .ok_or_else(|| format!("Attribute line {line} does not exist"))?;
+    let line_text = &content[range];
+    let content_start = list_marker_end(line_text)
+        .ok_or_else(|| format!("Attribute line {line} is not a list item"))?;
+    Ok(line_text[content_start..].to_string())
+}
+
+fn full_line_removal_range(content: &str, line: usize) -> Option<std::ops::Range<usize>> {
+    let range = line_content_range(content, line)?;
+    let remaining = &content[range.end..];
+    if remaining.starts_with("\r\n") {
+        return Some(range.start..range.end + 2);
+    }
+    if remaining.starts_with('\n') {
+        return Some(range.start..range.end + 1);
+    }
+
+    let mut start = range.start;
+    if start > 0 && content.as_bytes()[start - 1] == b'\n' {
+        start -= 1;
+        if start > 0 && content.as_bytes()[start - 1] == b'\r' {
+            start -= 1;
+        }
+    }
+    Some(start..range.end)
+}
+
+fn validate_status_changed_at(value: &str) -> Result<(), String> {
+    let bytes = value.as_bytes();
+    let separators_are_valid = bytes.len() == 20
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes[10] == b'T'
+        && bytes[13] == b':'
+        && bytes[16] == b':'
+        && bytes[19] == b'Z';
+    let digits_are_valid = bytes
+        .iter()
+        .enumerate()
+        .all(|(index, byte)| matches!(index, 4 | 7 | 10 | 13 | 16 | 19) || byte.is_ascii_digit());
+    if !separators_are_valid || !digits_are_valid {
+        return Err("Task status timestamp must use UTC YYYY-MM-DDTHH:MM:SSZ format".to_string());
+    }
+
+    let number = |range: std::ops::Range<usize>| {
+        value[range]
+            .parse::<u32>()
+            .map_err(|_| "Task status timestamp contains an invalid number".to_string())
+    };
+    let month = number(5..7)?;
+    let day = number(8..10)?;
+    let hour = number(11..13)?;
+    let minute = number(14..16)?;
+    let second = number(17..19)?;
+    if !(1..=12).contains(&month)
+        || !(1..=31).contains(&day)
+        || hour > 23
+        || minute > 59
+        || second > 59
+    {
+        return Err("Task status timestamp is outside the supported UTC range".to_string());
+    }
+
+    Ok(())
+}
+
+fn validate_status_changed_at_source(source: &str) -> Result<(), String> {
+    if source.contains(['\r', '\n']) {
+        return Err("Task status attribute must fit on one line".to_string());
+    }
+    let Some((name, _)) = source.split_once("::") else {
+        return Err("Task status attribute must use status-changed-at:: value".to_string());
+    };
+    if !name.eq_ignore_ascii_case("status-changed-at") {
+        return Err("Task status attribute must use status-changed-at:: value".to_string());
+    }
+    Ok(())
 }
 
 pub(crate) fn update_task_priority_in_workspace(
@@ -210,7 +457,7 @@ pub(crate) fn update_task_priority_in_workspace(
     path: &str,
     line: usize,
     priority: Option<String>,
-) -> Result<UpdateTaskStatusResultDto, String> {
+) -> Result<UpdateTaskPriorityResultDto, String> {
     if line == 0 {
         return Err("Task line must be greater than 0".to_string());
     }
@@ -275,7 +522,7 @@ pub(crate) fn update_task_priority_in_workspace(
         .find(|task| task.line == line)
         .ok_or_else(|| "Updated task could not be read back".to_string())?;
 
-    Ok(UpdateTaskStatusResultDto { task })
+    Ok(UpdateTaskPriorityResultDto { task })
 }
 
 pub(crate) fn toggle_checkbox_in_workspace(
@@ -328,52 +575,100 @@ fn collect_task_items(
     heading_contexts: &[Vec<String>],
     tasks: &mut Vec<TaskItemDto>,
 ) {
-    collect_task_items_with_context(blocks, page, workspace, heading_contexts, tasks, &[], &[]);
+    TaskCollector {
+        page,
+        workspace,
+        heading_contexts,
+        tasks,
+    }
+    .collect(blocks, &[], &[], &[]);
 }
 
-fn collect_task_items_with_context(
-    blocks: &[ParsedBlock],
-    page: &Page,
-    workspace: &WorkspaceState,
-    heading_contexts: &[Vec<String>],
-    tasks: &mut Vec<TaskItemDto>,
-    parent_links: &[WikiLink],
-    parent_blocks: &[String],
-) {
-    for block in blocks {
-        if let Some(status) = &block.task_status {
-            tasks.push(TaskItemDto {
-                path: page.path.clone(),
-                title: page.title.clone(),
-                line: block.line_start,
-                status: status.clone(),
-                priority: block.task_priority.clone(),
-                source_headings: heading_contexts
-                    .get(block.line_start.saturating_sub(1))
-                    .cloned()
-                    .unwrap_or_default(),
-                parent_blocks: parent_blocks.to_vec(),
-                linked_pages: task_links(&block.markdown, parent_links, workspace),
-                text: block.text.clone(),
-                markdown: block.markdown.clone(),
-            });
+struct TaskCollector<'a> {
+    page: &'a Page,
+    workspace: &'a WorkspaceState,
+    heading_contexts: &'a [Vec<String>],
+    tasks: &'a mut Vec<TaskItemDto>,
+}
+
+impl TaskCollector<'_> {
+    fn collect(
+        &mut self,
+        blocks: &[ParsedBlock],
+        parent_links: &[WikiLink],
+        parent_attributes: &[BlockAttribute],
+        parent_blocks: &[String],
+    ) {
+        for block in blocks {
+            let effective_attributes =
+                merge_effective_attributes(parent_attributes, &block.attributes);
+
+            if let Some(status) = &block.task_status {
+                let direct_attribute_count = block.attributes.len();
+                self.tasks.push(TaskItemDto {
+                    path: self.page.path.clone(),
+                    title: self.page.title.clone(),
+                    line: block.line_start,
+                    status: status.clone(),
+                    priority: block.task_priority.clone(),
+                    source_headings: self
+                        .heading_contexts
+                        .get(block.line_start.saturating_sub(1))
+                        .cloned()
+                        .unwrap_or_default(),
+                    parent_blocks: parent_blocks.to_vec(),
+                    linked_pages: task_links(
+                        block,
+                        parent_links,
+                        &effective_attributes[direct_attribute_count..],
+                        self.workspace,
+                    ),
+                    attributes: effective_attributes
+                        .iter()
+                        .enumerate()
+                        .map(|(index, attribute)| TaskAttributeDto {
+                            line: attribute.line,
+                            name: attribute.name.clone(),
+                            value: attribute.value.clone(),
+                            inherited: index >= direct_attribute_count,
+                        })
+                        .collect(),
+                    text: block.text.clone(),
+                    markdown: block.markdown.clone(),
+                });
+            }
+
+            let mut child_parent_links = parent_links.to_vec();
+            child_parent_links.extend(block.links.iter().cloned());
+            let mut child_parent_blocks = parent_blocks.to_vec();
+            child_parent_blocks.push(block_context_text(block));
+
+            self.collect(
+                &block.children,
+                &child_parent_links,
+                &effective_attributes,
+                &child_parent_blocks,
+            );
         }
-
-        let mut child_parent_links = parent_links.to_vec();
-        child_parent_links.extend(block.links.iter().cloned());
-        let mut child_parent_blocks = parent_blocks.to_vec();
-        child_parent_blocks.push(block_context_text(block));
-
-        collect_task_items_with_context(
-            &block.children,
-            page,
-            workspace,
-            heading_contexts,
-            tasks,
-            &child_parent_links,
-            &child_parent_blocks,
-        );
     }
+}
+
+fn merge_effective_attributes(
+    parent_attributes: &[BlockAttribute],
+    direct_attributes: &[BlockAttribute],
+) -> Vec<BlockAttribute> {
+    let direct_names = direct_attributes
+        .iter()
+        .map(|attribute| attribute.name.to_ascii_lowercase())
+        .collect::<std::collections::HashSet<_>>();
+    let mut attributes = direct_attributes.to_vec();
+    attributes.extend(
+        parent_attributes
+            .iter()
+            .filter(|attribute| !direct_names.contains(&attribute.name.to_ascii_lowercase()))
+            .cloned(),
+    );
+    attributes
 }
 
 fn block_context_text(block: &ParsedBlock) -> String {
@@ -408,15 +703,23 @@ fn parse_heading(line: &str) -> Option<(usize, &str)> {
 }
 
 fn task_links(
-    markdown: &str,
+    block: &ParsedBlock,
     parent_links: &[WikiLink],
+    inherited_attributes: &[BlockAttribute],
     workspace: &WorkspaceState,
 ) -> Vec<TaskLinkDto> {
+    let mut subtree_links = Vec::new();
+    collect_block_subtree_links(block, &mut subtree_links);
+
     parent_links
         .iter()
         .cloned()
-        .chain(parse_wiki_links(markdown))
-        .into_iter()
+        .chain(
+            inherited_attributes
+                .iter()
+                .flat_map(|attribute| attribute.links.iter().cloned()),
+        )
+        .chain(subtree_links)
         .map(|link| match workspace.pages.resolve_path(&link.target) {
             Ok(Some(resolved_path)) => {
                 let label = workspace
@@ -440,6 +743,13 @@ fn task_links(
             },
         })
         .collect()
+}
+
+fn collect_block_subtree_links(block: &ParsedBlock, links: &mut Vec<WikiLink>) {
+    links.extend(block.links.iter().cloned());
+    for child in &block.children {
+        collect_block_subtree_links(child, links);
+    }
 }
 
 fn line_content_range(content: &str, target_line: usize) -> Option<std::ops::Range<usize>> {

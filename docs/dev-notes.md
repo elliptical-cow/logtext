@@ -162,7 +162,8 @@ Important backend structures:
   index, backlink index, and content snapshot
 - `PageIndex`: in-memory index of Markdown pages by relative path and
   case-insensitive page key
-- `BacklinkIndex`: in-memory index of wiki-link backlinks by target page key
+- `BacklinkIndex`: in-memory index of wiki-link backlinks by target page key;
+  links in block attributes are anchored to the complete owning block
 - `ContentSnapshot`: disposable page content used by whole-workspace queries to
   avoid opening every Markdown file for every search or Task Overview load
 
@@ -307,6 +308,12 @@ Workspace-level config:
 
 The workspace config is normalized when loaded. Invalid or unknown values are
 discarded or replaced with defaults where practical.
+
+Task Overview filter and grouping changes are saved with a short debounce. The
+save command carries the workspace root that produced the draft; the backend
+rejects it if the active workspace changed before execution. The frontend also
+uses request/root guards so a late response cannot overwrite the newly opened
+workspace's state.
 
 The Preferences dialog edits a typed `WorkspacePreferences` subset rather than
 the complete config object. Its single backend command clones the current
@@ -460,6 +467,8 @@ Stores:
 - `mainView.ts`: editor versus task overview mode
 - `editorMode.ts`: source versus live preview editing mode
 - `tasks.ts`: task overview data and updates
+- `taskOverview.ts`: pure task filtering, grouping, link identity, and
+  attribute display helpers
 - `appUndo.ts`: global undo/redo actions outside CodeMirror-local editing
 - `appErrors.ts`: app-wide popup reporting for otherwise-unhandled direct user
   actions and infrastructure calls
@@ -542,6 +551,49 @@ forms without relying only on rendered order. The loose-list transformation
 preserves and accepts source-line attributes on Markdown-it's intermediate
 paragraph element.
 
+Block attributes use direct child list items in the form
+`- attribute-name:: value`. The Rust block parser keeps recognized direct-child
+attributes as structured metadata while retaining the original child blocks
+and Markdown unchanged. Wiki links in values are parsed once with the attribute
+and reused by task queries and the backlink index. Frontend recognition lives
+in `blockAttributes.ts` and is shared by editor decoration and rendered-view
+preprocessing. Both surfaces keep the list bullet visible, render the complete
+attribute content at a reduced size, and style the attribute key as subdued
+monospace text. Fenced code and math blocks remain protected while the block
+tree is built, so attribute-shaped examples inside them never become metadata.
+
+Task queries resolve effective attributes while traversing the parsed block
+tree. Direct attributes precede inherited attributes; a nearer definition
+replaces the same case-insensitive key from outer parents. The resulting DTO is
+the sole source for Task Overview display, filtering, grouping, and text
+search. Parent-line links and links from effective inherited attributes are
+merged into the task's linked-page context. Frontend code does not repeat the
+hierarchy resolution.
+
+For backlinks, a link in an attribute is indexed once at the attribute's owning
+block. Backlink Markdown contains that owner's complete subtree plus only the
+necessary ancestor path. Regular child-block links retain their narrower
+branch context, and inherited task metadata does not create duplicate
+backlinks for descendant tasks.
+
+Task-state actions atomically update the task keyword and its direct
+`status-changed-at::` child. `taskStatusChanges.ts` owns the editor-side text
+operation; the backend applies the same policy to disk-backed mutations and
+validates the second-precision UTC timestamp passed by the action coordinator.
+All task-state entry points, including `Cmd/Ctrl+Enter`, context menus,
+backlinks, and Task Overview, use this policy.
+
+A newly created status attribute is placed after the task's own continuation
+lines and before its first child block. Forward mutations return the exact
+previous attribute source. Application-level undo restores that source, or
+removes an attribute that the forward action inserted, instead of generating a
+new timestamp. Undo and redo require the current attribute source to match the
+recorded operation and abort on an external or manual metadata change. A loose
+task line is normalized to a `-` list block on its first transition so its
+generated attribute has an unambiguous Markdown parent. Rust and TypeScript run
+the same JSON fixtures for the core status/attribute text transformations,
+including CRLF input.
+
 Block-folding metadata is computed once per CodeMirror document version in a
 state field. Gutter rendering, context-menu checks, and collapse commands use
 line-number maps from that snapshot instead of rebuilding the document line
@@ -603,7 +655,9 @@ history entries.
 Application-level changes outside direct editor typing are recorded in
 `src/lib/stores/appUndo.ts`. Examples include checkbox toggles, task state
 changes, and task priority changes made from rendered views or the task
-overview.
+overview. Task-state operations retain both the previous and resulting
+`status-changed-at::` source so undo and redo restore the complete Markdown
+state and keep following task line numbers stable.
 
 The application-level undo store exposes injectable effect dependencies for
 tests. `tests/appUndo.test.ts` is the behavioral contract for ordering mixed
@@ -616,8 +670,10 @@ Forward mutations initiated outside CodeMirror go through
 `src/lib/stores/mutationOperations.ts`. This layer decides whether the target
 is the open editor page or a disk-backed page, isolates active editor history, waits
 for save success, records one global undo operation, refreshes derived views,
-and gates the task completion sound. Svelte components retain presentation and
-menu state but do not duplicate this orchestration.
+and gates the task completion sound. It also permits only one rendered mutation
+per normalized file path at a time, preventing timestamp insertion from making
+a second operation's source line stale. Svelte components retain presentation
+and menu state but do not duplicate this orchestration.
 
 The native Edit menu is synchronized from the frontend so menu labels and
 enabled states reflect the current undo/redo action.

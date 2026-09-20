@@ -469,10 +469,13 @@ test("updates task status lines in editor content", async () => {
     "TODO",
     "WAITING",
     "DONE",
-  ]);
+  ], "2026-09-16T12:32:18Z");
 
-  assert.equal(changed, true);
-  assert.equal(get(store).content, "- TODO First\r\n  - DONE Second\r\n");
+  assert.equal(changed.changed, true);
+  assert.equal(
+    get(store).content,
+    "- TODO First\r\n  - DONE Second\r\n    - status-changed-at:: 2026-09-16T12:32:18Z\r\n",
+  );
   assert.equal(get(store).dirty, true);
 });
 
