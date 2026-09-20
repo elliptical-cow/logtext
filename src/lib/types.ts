@@ -65,7 +65,14 @@ export type TaskColorName = "red" | "yellow" | "green" | "blue" | "grey" | "oran
 export type TaskStateColors = Record<string, TaskColorName>;
 export type FolderColors = Record<string, TaskColorName>;
 
-export type TaskOverviewGroupMode = "status" | "priority" | "source" | "folder" | "linked-page";
+export type TaskOverviewGroupMode =
+  | "status"
+  | "priority"
+  | "source"
+  | "folder"
+  | "linked-page"
+  | "attribute";
+export type TaskAttributeFilterMode = "has" | "missing";
 export type PageSortMode =
   | "name-desc"
   | "name-asc"
@@ -89,7 +96,12 @@ export type TaskOverviewConfig = {
   statusFilter: string;
   priorityFilter: string;
   textFilter: string;
+  linkedPageFilter: string;
+  attributeFilterName: string;
+  attributeFilterMode: TaskAttributeFilterMode;
+  attributeFilterValue: string;
   groupMode: TaskOverviewGroupMode;
+  groupAttributeName: string;
 };
 
 export type BacklinkViewConfig = {
@@ -103,6 +115,13 @@ export type TaskLink = {
   exists: boolean;
 };
 
+export type TaskAttribute = {
+  line: number;
+  name: string;
+  value: string;
+  inherited: boolean;
+};
+
 export type TaskItem = {
   path: string;
   title: string;
@@ -112,6 +131,7 @@ export type TaskItem = {
   sourceHeadings: string[];
   parentBlocks: string[];
   linkedPages: TaskLink[];
+  attributes: TaskAttribute[];
   text: string;
   markdown: string;
 };

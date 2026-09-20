@@ -195,8 +195,18 @@ pub struct TaskItemDto {
     pub source_headings: Vec<String>,
     pub parent_blocks: Vec<String>,
     pub linked_pages: Vec<TaskLinkDto>,
+    pub attributes: Vec<TaskAttributeDto>,
     pub text: String,
     pub markdown: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskAttributeDto {
+    pub line: usize,
+    pub name: String,
+    pub value: String,
+    pub inherited: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

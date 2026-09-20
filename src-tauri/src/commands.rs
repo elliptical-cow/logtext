@@ -1111,6 +1111,67 @@ mod tests {
     }
 
     #[test]
+    fn list_tasks_inherits_effective_parent_attributes_and_their_links() {
+        let root = temp_workspace();
+        fs::create_dir_all(root.join("people")).unwrap();
+        fs::create_dir_all(root.join("projects")).unwrap();
+        fs::write(
+            root.join("Inbox.md"),
+            "- Other\n  - reviewer:: [[people/Peter]]\n- Area [[projects/Alpha]]\n  - owner:: [[people/Peter]]\n  - Workstream\n    - owner:: [[people/Maria]]\n    - region:: North\n    - TODO Prepare plan\n      - due-date:: 2026-09-30",
+        )
+        .unwrap();
+        fs::write(root.join("people").join("Peter.md"), "# Peter").unwrap();
+        fs::write(root.join("people").join("Maria.md"), "# Maria").unwrap();
+        fs::write(root.join("projects").join("Alpha.md"), "# Alpha").unwrap();
+        let workspace = test_workspace_state(
+            root.clone(),
+            PageIndex::from_paths(vec![
+                "Inbox.md".to_string(),
+                "people/Peter.md".to_string(),
+                "people/Maria.md".to_string(),
+                "projects/Alpha.md".to_string(),
+            ]),
+        );
+
+        let tasks = list_tasks_in_workspace(&workspace).unwrap();
+        let task = &tasks[0];
+
+        assert_eq!(
+            task.attributes
+                .iter()
+                .map(|attribute| (
+                    attribute.name.as_str(),
+                    attribute.value.as_str(),
+                    attribute.inherited,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("due-date", "2026-09-30", false),
+                ("owner", "[[people/Maria]]", true),
+                ("region", "North", true),
+            ]
+        );
+        assert!(task
+            .linked_pages
+            .iter()
+            .any(|link| link.resolved_path.as_deref() == Some("people/Maria.md")));
+        assert!(task
+            .linked_pages
+            .iter()
+            .any(|link| link.resolved_path.as_deref() == Some("projects/Alpha.md")));
+        assert!(!task
+            .linked_pages
+            .iter()
+            .any(|link| link.resolved_path.as_deref() == Some("people/Peter.md")));
+        assert!(!task
+            .attributes
+            .iter()
+            .any(|attribute| attribute.name == "reviewer"));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn list_tasks_returns_heading_and_parent_context() {
         let root = temp_workspace();
         fs::write(

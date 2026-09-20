@@ -249,6 +249,7 @@ function task(path: string, line: number, status: string, priority: string | nul
     sourceHeadings: [],
     parentBlocks: [],
     linkedPages: [],
+    attributes: [],
     text: "Task",
     markdown: `- ${status} Task`,
   };

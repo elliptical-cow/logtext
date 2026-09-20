@@ -2,10 +2,11 @@ use std::fs;
 
 use crate::app_state::WorkspaceState;
 use crate::dto::{
-    SearchResultDto, TaskItemDto, TaskLinkDto, ToggleCheckboxResultDto, UpdateTaskStatusResultDto,
+    SearchResultDto, TaskAttributeDto, TaskItemDto, TaskLinkDto, ToggleCheckboxResultDto,
+    UpdateTaskStatusResultDto,
 };
 use crate::index::page_index::Page;
-use crate::parser::blocks::{parse_blocks_with_task_states, ParsedBlock};
+use crate::parser::blocks::{parse_blocks_with_task_states, BlockAttribute, ParsedBlock};
 use crate::parser::wiki_links::{parse_wiki_links, WikiLink};
 use crate::workspace::paths::resolve_workspace_relative_path;
 
@@ -447,7 +448,16 @@ fn collect_task_items(
     heading_contexts: &[Vec<String>],
     tasks: &mut Vec<TaskItemDto>,
 ) {
-    collect_task_items_with_context(blocks, page, workspace, heading_contexts, tasks, &[], &[]);
+    collect_task_items_with_context(
+        blocks,
+        page,
+        workspace,
+        heading_contexts,
+        tasks,
+        &[],
+        &[],
+        &[],
+    );
 }
 
 fn collect_task_items_with_context(
@@ -457,10 +467,14 @@ fn collect_task_items_with_context(
     heading_contexts: &[Vec<String>],
     tasks: &mut Vec<TaskItemDto>,
     parent_links: &[WikiLink],
+    parent_attributes: &[BlockAttribute],
     parent_blocks: &[String],
 ) {
     for block in blocks {
+        let effective_attributes = merge_effective_attributes(parent_attributes, &block.attributes);
+
         if let Some(status) = &block.task_status {
+            let direct_attribute_count = block.attributes.len();
             tasks.push(TaskItemDto {
                 path: page.path.clone(),
                 title: page.title.clone(),
@@ -472,7 +486,22 @@ fn collect_task_items_with_context(
                     .cloned()
                     .unwrap_or_default(),
                 parent_blocks: parent_blocks.to_vec(),
-                linked_pages: task_links(&block.markdown, parent_links, workspace),
+                linked_pages: task_links(
+                    block,
+                    parent_links,
+                    &effective_attributes[direct_attribute_count..],
+                    workspace,
+                ),
+                attributes: effective_attributes
+                    .iter()
+                    .enumerate()
+                    .map(|(index, attribute)| TaskAttributeDto {
+                        line: attribute.line,
+                        name: attribute.name.clone(),
+                        value: attribute.value.clone(),
+                        inherited: index >= direct_attribute_count,
+                    })
+                    .collect(),
                 text: block.text.clone(),
                 markdown: block.markdown.clone(),
             });
@@ -490,9 +519,28 @@ fn collect_task_items_with_context(
             heading_contexts,
             tasks,
             &child_parent_links,
+            &effective_attributes,
             &child_parent_blocks,
         );
     }
+}
+
+fn merge_effective_attributes(
+    parent_attributes: &[BlockAttribute],
+    direct_attributes: &[BlockAttribute],
+) -> Vec<BlockAttribute> {
+    let direct_names = direct_attributes
+        .iter()
+        .map(|attribute| attribute.name.to_ascii_lowercase())
+        .collect::<std::collections::HashSet<_>>();
+    let mut attributes = direct_attributes.to_vec();
+    attributes.extend(
+        parent_attributes
+            .iter()
+            .filter(|attribute| !direct_names.contains(&attribute.name.to_ascii_lowercase()))
+            .cloned(),
+    );
+    attributes
 }
 
 fn block_context_text(block: &ParsedBlock) -> String {
@@ -527,14 +575,23 @@ fn parse_heading(line: &str) -> Option<(usize, &str)> {
 }
 
 fn task_links(
-    markdown: &str,
+    block: &ParsedBlock,
     parent_links: &[WikiLink],
+    inherited_attributes: &[BlockAttribute],
     workspace: &WorkspaceState,
 ) -> Vec<TaskLinkDto> {
+    let mut subtree_links = Vec::new();
+    collect_block_subtree_links(block, &mut subtree_links);
+
     parent_links
         .iter()
         .cloned()
-        .chain(parse_wiki_links(markdown))
+        .chain(
+            inherited_attributes
+                .iter()
+                .flat_map(|attribute| attribute.links.iter().cloned()),
+        )
+        .chain(subtree_links)
         .into_iter()
         .map(|link| match workspace.pages.resolve_path(&link.target) {
             Ok(Some(resolved_path)) => {
@@ -559,6 +616,13 @@ fn task_links(
             },
         })
         .collect()
+}
+
+fn collect_block_subtree_links(block: &ParsedBlock, links: &mut Vec<WikiLink>) {
+    links.extend(block.links.iter().cloned());
+    for child in &block.children {
+        collect_block_subtree_links(child, links);
+    }
 }
 
 fn line_content_range(content: &str, target_line: usize) -> Option<std::ops::Range<usize>> {

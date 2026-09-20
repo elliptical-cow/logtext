@@ -6,12 +6,14 @@ import type { TaskItem } from "../types.js";
 type TaskStoreState = {
   tasks: TaskItem[];
   loading: boolean;
+  loaded: boolean;
   error: string | null;
 };
 
 const initialState: TaskStoreState = {
   tasks: [],
   loading: false,
+  loaded: false,
   error: null,
 };
 
@@ -31,7 +33,7 @@ function createTaskStore() {
 
       try {
         const tasks = await listTasks();
-        set({ tasks, loading: false, error: null });
+        set({ tasks, loading: false, loaded: true, error: null });
       } catch (error) {
         update((state) => ({
           ...state,

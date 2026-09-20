@@ -19,6 +19,7 @@ pub struct BlockAttribute {
     pub line: usize,
     pub name: String,
     pub value: String,
+    pub links: Vec<WikiLink>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -224,10 +225,14 @@ fn parse_block_attribute(text: &str, line: usize) -> Option<BlockAttribute> {
         return None;
     }
 
+    let value = value.trim_start_matches([' ', '\t']).to_string();
+    let links = parse_wiki_links(&value);
+
     Some(BlockAttribute {
         line,
         name: name.to_string(),
-        value: value.trim_start_matches([' ', '\t']).to_string(),
+        value,
+        links,
     })
 }
 
@@ -430,17 +435,29 @@ mod tests {
                     line: 2,
                     name: "owner".to_string(),
                     value: "Jens".to_string(),
+                    links: Vec::new(),
                 },
                 BlockAttribute {
                     line: 3,
                     name: "due-date".to_string(),
                     value: "2026-09-20".to_string(),
+                    links: Vec::new(),
                 },
             ]
         );
         assert!(blocks[0].children[2].attributes.iter().any(|attribute| {
             attribute.name == "nested" && attribute.value == "not-parent-metadata"
         }));
+    }
+
+    #[test]
+    fn parses_links_in_block_attribute_values_once() {
+        let blocks = parse_blocks("- Project\n  - owner:: [[people/Peter|Peter]] and #teams/core");
+
+        let attribute = &blocks[0].attributes[0];
+        assert_eq!(attribute.links.len(), 2);
+        assert_eq!(attribute.links[0].target, "people/Peter");
+        assert_eq!(attribute.links[1].target, "teams/core");
     }
 
     #[test]
@@ -455,6 +472,7 @@ mod tests {
                 line: 5,
                 name: "owner".to_string(),
                 value: String::new(),
+                links: Vec::new(),
             }]
         );
         assert_eq!(blocks[0].children.len(), 4);

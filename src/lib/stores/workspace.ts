@@ -54,7 +54,12 @@ const DEFAULT_TASK_OVERVIEW_CONFIG: TaskOverviewConfig = {
   statusFilter: "OPEN",
   priorityFilter: "ALL",
   textFilter: "",
+  linkedPageFilter: "",
+  attributeFilterName: "",
+  attributeFilterMode: "has",
+  attributeFilterValue: "",
   groupMode: "status",
+  groupAttributeName: "",
 };
 const DEFAULT_PAGE_SORT: PageSortMode = "name-desc";
 const DEFAULT_NAVIGATION_LAYOUT: NavigationLayoutConfig = {

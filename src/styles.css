@@ -1813,6 +1813,13 @@ textarea {
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.task-overview-toolbar-secondary {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
 .task-overview-toolbar input {
   min-width: 0;
   padding: 0 9px;
@@ -1941,6 +1948,45 @@ textarea {
   margin-right: 6px;
   color: var(--text-faint);
   content: ">";
+}
+
+.task-overview-attributes {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.82em;
+  line-height: 1.4;
+}
+
+.task-overview-attribute {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.task-overview-attribute.inherited {
+  color: var(--text-faint);
+}
+
+.task-overview-attribute-inherited {
+  font-size: 0.9em;
+}
+
+.task-overview-attribute-key {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.task-overview-attribute-value p {
+  display: inline;
+  margin: 0;
+}
+
+.task-overview-attribute-value a {
+  text-decoration: none;
 }
 
 .task-priority {

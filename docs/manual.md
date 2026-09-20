@@ -195,6 +195,19 @@ and related configuration paths are updated.
 A block containing a page link becomes a linked reference on the target page.
 Backlinks are calculated from Markdown and are not written into page files.
 
+An explicit wiki link inside a block attribute refers to the block that owns
+the attribute. The linked reference therefore contains that complete block:
+
+```md
+- Project planning
+  - owner:: [[people/Peter]]
+  - Remember budget review
+```
+
+This produces one linked reference on `people/Peter.md` containing all three
+lines. A plain value such as `owner:: Peter` remains text and does not create a
+backlink.
+
 A linked reference can contain:
 
 - source path and page title
@@ -317,8 +330,13 @@ Attributes remain ordinary Markdown list items. Live Preview and rendered
 views keep the bullet visible and display the complete attribute line at a
 slightly smaller size. The `attribute-name::` portion additionally uses a
 subtle monospace style. Attribute values still support the normal inline
-Markdown rendering rules. Querying or grouping by attributes is not yet
-implemented.
+Markdown rendering rules.
+
+Tasks inherit effective attributes from every parent block. A definition on
+the task or a nearer parent overrides the same case-insensitive attribute name
+from a more distant parent. Multiple values on the winning level remain
+available. Explicit wiki links in effective attributes also become linked-page
+context for the task.
 
 ### Priorities
 
@@ -336,9 +354,16 @@ The space between task state and priority is optional.
 Open Task Overview from the left pane or with
 `View > Show Task Overview` (`Cmd/Ctrl+Shift+T`). It supports:
 
-- status, priority, and text filters
-- grouping by status, priority, source, folder, or linked page
-- inherited linked-page context from parent blocks
+- status, priority, text, linked-page, and attribute filters
+- combining all active filters with AND
+- finding tasks that have, contain, or are missing a selected attribute
+- grouping by status, priority, source, folder, linked page, or attribute
+- inherited linked-page and effective attribute context from all parent blocks
+
+Each task row shows its effective attributes in a compact metadata line.
+Inherited values carry a small inheritance marker and source-line tooltip.
+`status-changed-at` is shown in local time while the Markdown source remains a
+UTC timestamp.
 
 Clicking a task opens its source page in the right pane. `Edit` opens the source
 in the middle pane and selects its line.

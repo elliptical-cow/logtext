@@ -211,6 +211,7 @@
       quickAccessHeight = normalizeQuickAccessHeight(
         $workspaceStore.navigationLayout.quickAccessHeight,
       );
+      taskStore.clear();
       void taskStore.refresh();
     } else {
       workspacePath = "";

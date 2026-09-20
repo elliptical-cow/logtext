@@ -83,8 +83,18 @@ pub struct TaskOverviewConfig {
     pub priority_filter: String,
     #[serde(default)]
     pub text_filter: String,
+    #[serde(default)]
+    pub linked_page_filter: String,
+    #[serde(default)]
+    pub attribute_filter_name: String,
+    #[serde(default = "default_attribute_filter_mode")]
+    pub attribute_filter_mode: String,
+    #[serde(default)]
+    pub attribute_filter_value: String,
     #[serde(default = "default_group_mode")]
     pub group_mode: String,
+    #[serde(default)]
+    pub group_attribute_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -108,7 +118,12 @@ impl Default for TaskOverviewConfig {
             status_filter: default_status_filter(),
             priority_filter: default_priority_filter(),
             text_filter: String::new(),
+            linked_page_filter: String::new(),
+            attribute_filter_name: String::new(),
+            attribute_filter_mode: default_attribute_filter_mode(),
+            attribute_filter_value: String::new(),
             group_mode: default_group_mode(),
+            group_attribute_name: String::new(),
         }
     }
 }
@@ -369,7 +384,16 @@ pub fn normalize_task_overview_config(config: TaskOverviewConfig) -> TaskOvervie
         status_filter: normalize_filter_value(config.status_filter, &default_status_filter()),
         priority_filter: normalize_filter_value(config.priority_filter, &default_priority_filter()),
         text_filter: config.text_filter.trim().to_string(),
+        linked_page_filter: config
+            .linked_page_filter
+            .trim()
+            .replace('\\', "/")
+            .to_lowercase(),
+        attribute_filter_name: config.attribute_filter_name.trim().to_ascii_lowercase(),
+        attribute_filter_mode: normalize_attribute_filter_mode(config.attribute_filter_mode),
+        attribute_filter_value: config.attribute_filter_value.trim().to_string(),
         group_mode: normalize_group_mode(config.group_mode),
+        group_attribute_name: config.group_attribute_name.trim().to_ascii_lowercase(),
     }
 }
 
@@ -610,12 +634,23 @@ fn normalize_group_mode(value: String) -> String {
     let trimmed = value.trim();
     if matches!(
         trimmed,
-        "status" | "priority" | "source" | "folder" | "linked-page"
+        "status" | "priority" | "source" | "folder" | "linked-page" | "attribute"
     ) {
         trimmed.to_string()
     } else {
         default_group_mode()
     }
+}
+
+fn normalize_attribute_filter_mode(value: String) -> String {
+    match value.trim() {
+        "missing" => "missing".to_string(),
+        _ => default_attribute_filter_mode(),
+    }
+}
+
+fn default_attribute_filter_mode() -> String {
+    "has".to_string()
 }
 
 fn default_status_filter() -> String {
@@ -1041,7 +1076,7 @@ mod tests {
         let root = temp_workspace();
         fs::write(
             root.join(".config"),
-            r#"{"taskStates":["TODO","DONE"],"taskOverview":{"statusFilter":" DONE ","priorityFilter":" A ","textFilter":" kickoff ","groupMode":"linked-page"}}"#,
+            r#"{"taskStates":["TODO","DONE"],"taskOverview":{"statusFilter":" DONE ","priorityFilter":" A ","textFilter":" kickoff ","linkedPageFilter":" PATH:People/Peter.md ","attributeFilterName":" Owner ","attributeFilterMode":"missing","attributeFilterValue":" Peter ","groupMode":"attribute","groupAttributeName":" Team "}}"#,
         )
         .unwrap();
 
@@ -1053,7 +1088,12 @@ mod tests {
                 status_filter: "DONE".to_string(),
                 priority_filter: "A".to_string(),
                 text_filter: "kickoff".to_string(),
-                group_mode: "linked-page".to_string(),
+                linked_page_filter: "path:people/peter.md".to_string(),
+                attribute_filter_name: "owner".to_string(),
+                attribute_filter_mode: "missing".to_string(),
+                attribute_filter_value: "Peter".to_string(),
+                group_mode: "attribute".to_string(),
+                group_attribute_name: "team".to_string(),
             }
         );
 
@@ -1183,7 +1223,12 @@ mod tests {
                 status_filter: "DONE".to_string(),
                 priority_filter: "A".to_string(),
                 text_filter: "release".to_string(),
+                linked_page_filter: "path:projects/alpha.md".to_string(),
+                attribute_filter_name: "owner".to_string(),
+                attribute_filter_mode: "missing".to_string(),
+                attribute_filter_value: String::new(),
                 group_mode: "priority".to_string(),
+                group_attribute_name: "project".to_string(),
             },
             backlink_view: BacklinkViewConfig {
                 open_tasks_only: true,
@@ -1197,6 +1242,8 @@ mod tests {
         let saved = fs::read_to_string(root.join(".config")).unwrap();
 
         assert!(saved.contains("\"taskOverview\""));
+        assert!(saved.contains("\"linkedPageFilter\": \"path:projects/alpha.md\""));
+        assert!(saved.contains("\"attributeFilterMode\": \"missing\""));
         assert!(saved.contains("\"backlinkView\""));
         assert!(saved.contains("\"themeMode\": \"dark\""));
         assert!(saved.contains("\"openTasksOnly\": true"));

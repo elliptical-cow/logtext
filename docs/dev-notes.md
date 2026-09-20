@@ -162,7 +162,8 @@ Important backend structures:
   index, backlink index, and content snapshot
 - `PageIndex`: in-memory index of Markdown pages by relative path and
   case-insensitive page key
-- `BacklinkIndex`: in-memory index of wiki-link backlinks by target page key
+- `BacklinkIndex`: in-memory index of wiki-link backlinks by target page key;
+  links in block attributes are anchored to the complete owning block
 - `ContentSnapshot`: disposable page content used by whole-workspace queries to
   avoid opening every Markdown file for every search or Task Overview load
 
@@ -460,6 +461,8 @@ Stores:
 - `mainView.ts`: editor versus task overview mode
 - `editorMode.ts`: source versus live preview editing mode
 - `tasks.ts`: task overview data and updates
+- `taskOverview.ts`: pure task filtering, grouping, link identity, and
+  attribute display helpers
 - `appUndo.ts`: global undo/redo actions outside CodeMirror-local editing
 - `appErrors.ts`: app-wide popup reporting for otherwise-unhandled direct user
   actions and infrastructure calls
@@ -545,10 +548,26 @@ paragraph element.
 Block attributes use direct child list items in the form
 `- attribute-name:: value`. The Rust block parser keeps recognized direct-child
 attributes as structured metadata while retaining the original child blocks
-and Markdown unchanged. Frontend recognition lives in `blockAttributes.ts` and
-is shared by editor decoration and rendered-view preprocessing. Both surfaces
-keep the list bullet visible, render the complete attribute content at a
-reduced size, and style the attribute key as subdued monospace text.
+and Markdown unchanged. Wiki links in values are parsed once with the attribute
+and reused by task queries and the backlink index. Frontend recognition lives
+in `blockAttributes.ts` and is shared by editor decoration and rendered-view
+preprocessing. Both surfaces keep the list bullet visible, render the complete
+attribute content at a reduced size, and style the attribute key as subdued
+monospace text.
+
+Task queries resolve effective attributes while traversing the parsed block
+tree. Direct attributes precede inherited attributes; a nearer definition
+replaces the same case-insensitive key from outer parents. The resulting DTO is
+the sole source for Task Overview display, filtering, grouping, and text
+search. Parent-line links and links from effective inherited attributes are
+merged into the task's linked-page context. Frontend code does not repeat the
+hierarchy resolution.
+
+For backlinks, a link in an attribute is indexed once at the attribute's owning
+block. Backlink Markdown contains that owner's complete subtree plus only the
+necessary ancestor path. Regular child-block links retain their narrower
+branch context, and inherited task metadata does not create duplicate
+backlinks for descendant tasks.
 
 Task-state actions atomically update the task keyword and its direct
 `status-changed-at::` child. `taskStatusChanges.ts` owns the editor-side text
