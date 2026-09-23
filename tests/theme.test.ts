@@ -9,6 +9,17 @@ test("uses dark mode before a workspace preference is loaded", () => {
   assert.equal(get(themeStore), "dark");
 });
 
+test("switches repeatedly between light and dark mode", () => {
+  themeStore.set("light");
+
+  assert.equal(themeStore.toggle(), "dark");
+  assert.equal(get(themeStore), "dark");
+  assert.equal(themeStore.toggle(), "light");
+  assert.equal(get(themeStore), "light");
+
+  themeStore.set("dark");
+});
+
 test("marks the initial document as dark before the frontend starts", () => {
   const html = readFileSync(join(process.cwd(), "index.html"), "utf8");
 

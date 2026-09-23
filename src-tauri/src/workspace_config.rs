@@ -425,7 +425,7 @@ pub fn normalize_backlink_view_config(config: BacklinkViewConfig) -> BacklinkVie
 
 pub fn normalize_theme_mode(theme_mode: String) -> String {
     match theme_mode.trim().to_ascii_lowercase().as_str() {
-        "dark" => "dark".to_string(),
+        "light" | "dark" => theme_mode.trim().to_ascii_lowercase(),
         _ => default_theme_mode(),
     }
 }
@@ -1073,6 +1073,16 @@ mod tests {
         let config = load_or_create_workspace_config(&root).unwrap();
 
         assert_eq!(config.theme_mode, "dark");
+
+        fs::write(
+            root.join(".config"),
+            r#"{"taskStates":["TODO","DONE"],"themeMode":" LIGHT "}"#,
+        )
+        .unwrap();
+
+        let config = load_or_create_workspace_config(&root).unwrap();
+
+        assert_eq!(config.theme_mode, "light");
 
         fs::write(
             root.join(".config"),
