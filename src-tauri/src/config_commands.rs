@@ -352,8 +352,10 @@ pub fn save_navigation_layout_config(
 ) -> Result<NavigationLayoutConfig, String> {
     state.with_workspace_mut(|workspace| {
         let navigation_layout = normalize_navigation_layout_config(navigation_layout);
-        workspace.config.navigation_layout = navigation_layout.clone();
-        save_workspace_config(&workspace.root, &workspace.config)?;
+        let mut next_config = workspace.config.clone();
+        next_config.navigation_layout = navigation_layout.clone();
+        save_workspace_config(&workspace.root, &next_config)?;
+        workspace.config = next_config;
         Ok(navigation_layout)
     })?
 }

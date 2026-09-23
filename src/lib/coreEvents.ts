@@ -2,6 +2,7 @@ import {
   closeWorkspace,
   onCoreEvent,
   updateEditorModeMenuLabel,
+  updatePaneVisibilityMenu,
   updatePreferencesMenuEnabled,
   updateEditMenuLabels,
   updateTaskOverviewMenuLabel,
@@ -163,6 +164,7 @@ export async function setupCoreEvents() {
   setupThemeMenuLabel();
   setupTaskOverviewMenuLabel();
   setupEditorModeMenuLabel();
+  setupPaneVisibilityMenu();
   setupPreferencesMenuState();
   window.addEventListener("logtext-editor-history-availability", handleEditorHistoryAvailability);
 
@@ -189,6 +191,18 @@ export async function setupCoreEvents() {
 
   await onCoreEvent("menu-toggle-editor-mode", async () => {
     editorModeStore.toggle();
+  });
+
+  await onCoreEvent("menu-toggle-left-pane", async () => {
+    window.dispatchEvent(new CustomEvent("logtext-toggle-left-pane"));
+  });
+
+  await onCoreEvent("menu-toggle-middle-pane", async () => {
+    window.dispatchEvent(new CustomEvent("logtext-toggle-middle-pane"));
+  });
+
+  await onCoreEvent("menu-toggle-right-pane", async () => {
+    window.dispatchEvent(new CustomEvent("logtext-toggle-right-pane"));
   });
 
   await onCoreEvent("menu-reset-layout", async () => {
@@ -267,6 +281,30 @@ function setupTaskOverviewMenuLabel() {
 function setupEditorModeMenuLabel() {
   editorModeStore.subscribe((mode) => {
     void updateEditorModeMenuLabel(mode === "live-preview").catch(() => {});
+  });
+}
+
+function setupPaneVisibilityMenu() {
+  let lastState = "";
+  workspaceStore.subscribe((workspace) => {
+    const enabled = Boolean(workspace.root);
+    const { leftPaneVisible, middlePaneVisible, rightPaneVisible } = workspace.navigationLayout;
+    const state = JSON.stringify({
+      enabled,
+      leftPaneVisible,
+      middlePaneVisible,
+      rightPaneVisible,
+    });
+    if (state === lastState) {
+      return;
+    }
+    lastState = state;
+    void updatePaneVisibilityMenu(
+      leftPaneVisible,
+      middlePaneVisible,
+      rightPaneVisible,
+      enabled,
+    ).catch(() => {});
   });
 }
 

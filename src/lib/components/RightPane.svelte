@@ -3,6 +3,7 @@
   import JournalFeed from "./JournalFeed.svelte";
   import MarkdownView from "./MarkdownView.svelte";
   import LinkedReferences from "./LinkedReferences.svelte";
+  import PaneVisibilityButton from "./PaneVisibilityButton.svelte";
   import { linkOperations, type LinkTargetPane } from "../stores/linkOperations";
   import { mutationOperations } from "../stores/mutationOperations";
   import { rightPaneStore } from "../stores/rightPane";
@@ -163,6 +164,7 @@
       {#if $rightPaneStore.loading}
         <span class="status">Loading</span>
       {/if}
+      <PaneVisibilityButton pane="right" />
     </div>
   </div>
   <ErrorDialog

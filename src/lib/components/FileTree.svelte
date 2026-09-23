@@ -2100,6 +2100,7 @@
     navigationLayoutSaveTimer = setTimeout(() => {
       navigationLayoutSaveTimer = null;
       void workspaceStore.saveNavigationLayoutConfig({
+        ...$workspaceStore.navigationLayout,
         quickAccessHeight,
       });
     }, 250);

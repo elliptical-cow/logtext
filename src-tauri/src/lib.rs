@@ -36,6 +36,9 @@ const MENU_PREFERENCES: &str = "app.preferences";
 const MENU_TOGGLE_DARK_MODE: &str = "view.toggle_dark_mode";
 const MENU_TOGGLE_TASK_OVERVIEW: &str = "view.toggle_task_overview";
 const MENU_TOGGLE_EDITOR_MODE: &str = "view.toggle_editor_mode";
+const MENU_TOGGLE_LEFT_PANE: &str = "view.toggle_left_pane";
+const MENU_TOGGLE_MIDDLE_PANE: &str = "view.toggle_middle_pane";
+const MENU_TOGGLE_RIGHT_PANE: &str = "view.toggle_right_pane";
 const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_1: &str = "view.collapse_blocks_below_level_1";
 const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_2: &str = "view.collapse_blocks_below_level_2";
 const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_3: &str = "view.collapse_blocks_below_level_3";
@@ -140,6 +143,38 @@ fn update_editor_mode_menu_label(app: AppHandle, is_live_preview: bool) -> Resul
 }
 
 #[tauri::command]
+fn update_pane_visibility_menu(
+    app: AppHandle,
+    left_pane_visible: bool,
+    middle_pane_visible: bool,
+    right_pane_visible: bool,
+    enabled: bool,
+) -> Result<(), String> {
+    let menu = app
+        .menu()
+        .ok_or_else(|| "Application menu is not available".to_string())?;
+
+    set_menu_item_text(
+        &menu,
+        MENU_TOGGLE_LEFT_PANE,
+        &pane_visibility_menu_text("Left", left_pane_visible),
+    )?;
+    set_menu_item_text(
+        &menu,
+        MENU_TOGGLE_MIDDLE_PANE,
+        &pane_visibility_menu_text("Middle", middle_pane_visible),
+    )?;
+    set_menu_item_text(
+        &menu,
+        MENU_TOGGLE_RIGHT_PANE,
+        &pane_visibility_menu_text("Right", right_pane_visible),
+    )?;
+    set_menu_item_enabled(&menu, MENU_TOGGLE_LEFT_PANE, enabled)?;
+    set_menu_item_enabled(&menu, MENU_TOGGLE_MIDDLE_PANE, enabled)?;
+    set_menu_item_enabled(&menu, MENU_TOGGLE_RIGHT_PANE, enabled)
+}
+
+#[tauri::command]
 fn update_preferences_menu_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
     let menu = app
         .menu()
@@ -169,6 +204,9 @@ pub fn run() {
                 MENU_TOGGLE_DARK_MODE => Some("menu-toggle-dark-mode"),
                 MENU_TOGGLE_TASK_OVERVIEW => Some("menu-toggle-task-overview"),
                 MENU_TOGGLE_EDITOR_MODE => Some("menu-toggle-editor-mode"),
+                MENU_TOGGLE_LEFT_PANE => Some("menu-toggle-left-pane"),
+                MENU_TOGGLE_MIDDLE_PANE => Some("menu-toggle-middle-pane"),
+                MENU_TOGGLE_RIGHT_PANE => Some("menu-toggle-right-pane"),
                 MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_1 => Some("menu-collapse-blocks-below-level-1"),
                 MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_2 => Some("menu-collapse-blocks-below-level-2"),
                 MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_3 => Some("menu-collapse-blocks-below-level-3"),
@@ -194,6 +232,7 @@ pub fn run() {
             update_theme_menu_label,
             update_task_overview_menu_label,
             update_editor_mode_menu_label,
+            update_pane_visibility_menu,
             update_preferences_menu_enabled,
             commands::get_last_workspace,
             commands::open_workspace,
@@ -371,6 +410,32 @@ fn ensure_view_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
         MenuItemBuilder::with_id(MENU_TOGGLE_EDITOR_MODE, editor_mode_menu_text(true))
             .accelerator("CmdOrCtrl+Shift+L")
             .build(handle)?;
+    let toggle_left_pane = MenuItemBuilder::with_id(
+        MENU_TOGGLE_LEFT_PANE,
+        pane_visibility_menu_text("Left", true),
+    )
+    .accelerator("CmdOrCtrl+Alt+L")
+    .enabled(false)
+    .build(handle)?;
+    let toggle_middle_pane = MenuItemBuilder::with_id(
+        MENU_TOGGLE_MIDDLE_PANE,
+        pane_visibility_menu_text("Middle", true),
+    )
+    .accelerator("CmdOrCtrl+Alt+M")
+    .enabled(false)
+    .build(handle)?;
+    let toggle_right_pane = MenuItemBuilder::with_id(
+        MENU_TOGGLE_RIGHT_PANE,
+        pane_visibility_menu_text("Right", true),
+    )
+    .accelerator("CmdOrCtrl+Alt+R")
+    .enabled(false)
+    .build(handle)?;
+    let pane_visibility_submenu = SubmenuBuilder::new(handle, "Hide/Show Panes")
+        .item(&toggle_left_pane)
+        .item(&toggle_middle_pane)
+        .item(&toggle_right_pane)
+        .build()?;
     let collapse_below_level_1 =
         MenuItemBuilder::with_id(MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_1, "Level 1")
             .accelerator("CmdOrCtrl+1")
@@ -419,6 +484,7 @@ fn ensure_view_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
                 &separator_after_theme,
                 &toggle_task_overview,
                 &toggle_editor_mode,
+                &pane_visibility_submenu,
                 &separator_after_mode,
                 &collapse_blocks_submenu,
                 &expand_all_blocks,
@@ -437,6 +503,7 @@ fn ensure_view_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
             .separator()
             .item(&toggle_task_overview)
             .item(&toggle_editor_mode)
+            .item(&pane_visibility_submenu)
             .separator()
             .item(&collapse_blocks_submenu)
             .item(&expand_all_blocks)
@@ -530,6 +597,11 @@ fn editor_mode_menu_text(is_live_preview: bool) -> &'static str {
     }
 }
 
+fn pane_visibility_menu_text(pane: &str, visible: bool) -> String {
+    let action = if visible { "Hide" } else { "Show" };
+    format!("{action} {pane} Pane")
+}
+
 fn set_menu_item_text<R: Runtime>(menu: &Menu<R>, id: &str, text: &str) -> Result<(), String> {
     for item in menu
         .items()
@@ -618,7 +690,9 @@ fn set_menu_item_kind_enabled<R: Runtime>(
 
 #[cfg(test)]
 mod tests {
-    use super::{editor_mode_menu_text, task_overview_menu_text, theme_menu_text};
+    use super::{
+        editor_mode_menu_text, pane_visibility_menu_text, task_overview_menu_text, theme_menu_text,
+    };
 
     #[test]
     fn theme_menu_describes_the_available_switch() {
@@ -636,5 +710,15 @@ mod tests {
     fn editor_mode_menu_describes_the_available_mode() {
         assert_eq!(editor_mode_menu_text(true), "Plain markdown edit");
         assert_eq!(editor_mode_menu_text(false), "Live preview edit");
+    }
+
+    #[test]
+    fn pane_menu_describes_the_available_visibility_action() {
+        assert_eq!(pane_visibility_menu_text("Left", true), "Hide Left Pane");
+        assert_eq!(
+            pane_visibility_menu_text("Middle", true),
+            "Hide Middle Pane"
+        );
+        assert_eq!(pane_visibility_menu_text("Right", false), "Show Right Pane");
     }
 }

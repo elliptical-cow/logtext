@@ -6,6 +6,7 @@
   import ErrorDialog from "./lib/components/ErrorDialog.svelte";
   import FileTree from "./lib/components/FileTree.svelte";
   import MediaCleanupDialog from "./lib/components/MediaCleanupDialog.svelte";
+  import PaneVisibilityButton from "./lib/components/PaneVisibilityButton.svelte";
   import PreferencesDialog from "./lib/components/PreferencesDialog.svelte";
   import RightPane from "./lib/components/RightPane.svelte";
   import TaskOverview from "./lib/components/TaskOverview.svelte";
@@ -14,6 +15,12 @@
   import { trapDialogFocus } from "./lib/dialogFocus";
   import { journalPath } from "./lib/journals";
   import { keyboardShortcuts } from "./lib/keyboardShortcuts";
+  import {
+    isPaneVisible,
+    paneGridTemplate,
+    withPaneVisibility,
+    type WorkspacePane,
+  } from "./lib/paneLayout";
   import { appErrorStore, runUserAction } from "./lib/stores/appErrors";
   import { editorSessionStore } from "./lib/stores/editorSession";
   import { mainViewStore } from "./lib/stores/mainView";
@@ -30,6 +37,8 @@
   const minLeftWidth = 220;
   const minEditorWidth = 360;
   const minRightWidth = 280;
+  const resizerWidth = 6;
+  const collapsedPaneWidth = 32;
   const repositoryUrl = "https://github.com/elliptical-cow/logtext";
   const licenseUrl = `${repositoryUrl}/blob/main/LICENSE`;
   let leftWidth = defaultLeftWidth;
@@ -58,6 +67,9 @@
     void initializeApp();
     loadLayout();
     window.addEventListener("logtext-reset-layout", resetLayout);
+    window.addEventListener("logtext-toggle-left-pane", toggleLeftPane);
+    window.addEventListener("logtext-toggle-middle-pane", toggleMiddlePane);
+    window.addEventListener("logtext-toggle-right-pane", toggleRightPane);
     window.addEventListener("logtext-show-about", openAboutDialog);
     window.addEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.addEventListener("logtext-clean-media", handleCleanMediaRequest);
@@ -74,7 +86,15 @@
     isStarting = false;
   }
 
-  $: gridTemplateColumns = `${leftWidth}px 6px minmax(${minEditorWidth}px, 1fr) 6px ${rightWidth}px`;
+  $: gridTemplateColumns = paneGridTemplate($workspaceStore.navigationLayout, {
+    leftWidth,
+    rightWidth,
+    minLeftWidth,
+    minMiddleWidth: minEditorWidth,
+    minRightWidth,
+    resizerWidth,
+    collapsedPaneWidth,
+  });
   $: if ($workspaceStore.root !== sessionRestoreRoot) {
     sessionRestoreRoot = $workspaceStore.root;
     void restoreWorkspaceSession();
@@ -271,20 +291,108 @@
     localStorage.setItem(layoutStorageKey, JSON.stringify({ leftWidth, rightWidth }));
   }
 
-  function resetLayout() {
+  function resetColumnWidths() {
     leftWidth = defaultLeftWidth;
     rightWidth = defaultRightWidth;
     clampLayout(window.innerWidth);
     persistLayout();
   }
 
-  function clampLayout(totalWidth: number) {
-    const available = Math.max(totalWidth - 12, minLeftWidth + minEditorWidth + minRightWidth);
-    leftWidth = Math.max(minLeftWidth, Math.min(leftWidth, available - minEditorWidth - minRightWidth));
-    rightWidth = Math.max(
-      minRightWidth,
-      Math.min(rightWidth, available - minEditorWidth - leftWidth),
+  function resetLayout() {
+    const workspace = get(workspaceStore);
+    const restoredNavigationLayout = {
+      ...workspace.navigationLayout,
+      leftPaneVisible: true,
+      middlePaneVisible: true,
+      rightPaneVisible: true,
+    };
+    leftWidth = defaultLeftWidth;
+    rightWidth = defaultRightWidth;
+    clampLayout(window.innerWidth, restoredNavigationLayout);
+    persistLayout();
+    if (!workspace.root) {
+      return;
+    }
+    void workspaceStore.saveNavigationLayoutConfig(restoredNavigationLayout);
+  }
+
+  function toggleLeftPane(event: Event) {
+    void togglePane("left", shouldFocusPaneControl(event));
+  }
+
+  function toggleMiddlePane(event: Event) {
+    void togglePane("middle", shouldFocusPaneControl(event));
+  }
+
+  function toggleRightPane(event: Event) {
+    void togglePane("right", shouldFocusPaneControl(event));
+  }
+
+  function shouldFocusPaneControl(event: Event) {
+    return event instanceof CustomEvent && event.detail?.focusPaneControl === true;
+  }
+
+  async function togglePane(pane: WorkspacePane, focusPaneControl: boolean) {
+    const workspace = get(workspaceStore);
+    if (!workspace.root) {
+      return;
+    }
+    const currentVisible = isPaneVisible(workspace.navigationLayout, pane);
+    const saved = await workspaceStore.saveNavigationLayoutConfig(
+      withPaneVisibility(workspace.navigationLayout, pane, !currentVisible),
     );
+    if (saved && !currentVisible) {
+      clampLayout(window.innerWidth, saved);
+    }
+    if (saved && focusPaneControl) {
+      window.requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLButtonElement>(
+            `[data-pane-visibility-control="${pane}"][data-pane-expanded="${!currentVisible}"]`,
+          )
+          ?.focus();
+      });
+    }
+  }
+
+  function clampLayout(totalWidth: number, navigationLayout = get(workspaceStore).navigationLayout) {
+    const { leftPaneVisible, middlePaneVisible, rightPaneVisible } = navigationLayout;
+    if (!middlePaneVisible && !rightPaneVisible) {
+      return;
+    }
+
+    if (middlePaneVisible && rightPaneVisible) {
+      const minimumLeftColumnWidth = leftPaneVisible ? minLeftWidth : collapsedPaneWidth;
+      const available = Math.max(
+        totalWidth - resizerWidth * 2,
+        minimumLeftColumnWidth + minEditorWidth + minRightWidth,
+      );
+      if (leftPaneVisible) {
+        leftWidth = Math.max(
+          minLeftWidth,
+          Math.min(leftWidth, available - minEditorWidth - minRightWidth),
+        );
+      }
+      rightWidth = Math.max(
+        minRightWidth,
+        Math.min(
+          rightWidth,
+          available - minEditorWidth - (leftPaneVisible ? leftWidth : collapsedPaneWidth),
+        ),
+      );
+      return;
+    }
+
+    if (!leftPaneVisible) {
+      return;
+    }
+
+    const contentMinWidth = middlePaneVisible ? minEditorWidth : minRightWidth;
+    const available = Math.max(
+      totalWidth - resizerWidth,
+      minLeftWidth + contentMinWidth,
+    );
+    leftWidth = Math.max(minLeftWidth, Math.min(leftWidth, available - contentMinWidth));
   }
 
   function startResize(target: "left" | "right", event: PointerEvent) {
@@ -299,15 +407,13 @@
       return;
     }
 
-    const available = window.innerWidth - 12;
-
     if (activeResize === "left") {
       leftWidth = event.clientX;
     } else {
       rightWidth = window.innerWidth - event.clientX;
     }
 
-    clampLayout(available + 12);
+    clampLayout(window.innerWidth);
   }
 
   function stopResize() {
@@ -410,6 +516,9 @@
     clearWorkspaceSessionSaveTimer();
     window.removeEventListener("pointermove", resizeColumns);
     window.removeEventListener("logtext-reset-layout", resetLayout);
+    window.removeEventListener("logtext-toggle-left-pane", toggleLeftPane);
+    window.removeEventListener("logtext-toggle-middle-pane", toggleMiddlePane);
+    window.removeEventListener("logtext-toggle-right-pane", toggleRightPane);
     window.removeEventListener("logtext-show-about", openAboutDialog);
     window.removeEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.removeEventListener("logtext-clean-media", handleCleanMediaRequest);
@@ -429,29 +538,94 @@
     style:grid-template-columns={gridTemplateColumns}
     style:--app-font-size={`${14 * $zoomStore}px`}
   >
-    <FileTree />
-    <button
-      type="button"
-      class="column-resizer"
-      aria-label="Resize file tree"
-      title="Drag to resize. Double-click to reset columns."
-      on:pointerdown={(event) => startResize("left", event)}
-      on:dblclick={resetLayout}
-    ></button>
-    {#if $mainViewStore === "tasks"}
-      <TaskOverview />
+    <section
+      class="workspace-pane-slot workspace-pane-slot-left"
+      class:workspace-pane-slot-collapsed={!$workspaceStore.navigationLayout.leftPaneVisible}
+      aria-label={$workspaceStore.navigationLayout.leftPaneVisible
+        ? "Left pane"
+        : "Left pane collapsed"}
+    >
+      <div
+        class="workspace-pane-content"
+        hidden={!$workspaceStore.navigationLayout.leftPaneVisible}
+      >
+        <FileTree />
+      </div>
+      {#if !$workspaceStore.navigationLayout.leftPaneVisible}
+        <div class="workspace-pane-rail">
+          <PaneVisibilityButton pane="left" expanded={false} />
+        </div>
+      {/if}
+    </section>
+    {#if $workspaceStore.navigationLayout.leftPaneVisible &&
+    ($workspaceStore.navigationLayout.middlePaneVisible ||
+      $workspaceStore.navigationLayout.rightPaneVisible)}
+      <button
+        type="button"
+        class="column-resizer"
+        aria-label="Resize file tree"
+        title="Drag to resize. Double-click to reset columns."
+        on:pointerdown={(event) => startResize("left", event)}
+        on:dblclick={resetColumnWidths}
+      ></button>
     {:else}
-      <EditorPane />
+      <div class="column-resizer column-resizer-inactive" aria-hidden="true"></div>
     {/if}
-    <button
-      type="button"
-      class="column-resizer"
-      aria-label="Resize right pane"
-      title="Drag to resize. Double-click to reset columns."
-      on:pointerdown={(event) => startResize("right", event)}
-      on:dblclick={resetLayout}
-    ></button>
-    <RightPane />
+    <section
+      class="workspace-pane-slot"
+      class:workspace-pane-slot-collapsed={!$workspaceStore.navigationLayout.middlePaneVisible}
+      aria-label={$workspaceStore.navigationLayout.middlePaneVisible
+        ? "Middle pane"
+        : "Middle pane collapsed"}
+    >
+      <div
+        class="workspace-pane-content"
+        hidden={!$workspaceStore.navigationLayout.middlePaneVisible}
+      >
+        {#if $mainViewStore === "tasks"}
+          <TaskOverview />
+        {:else}
+          <EditorPane />
+        {/if}
+      </div>
+      {#if !$workspaceStore.navigationLayout.middlePaneVisible}
+        <div class="workspace-pane-rail">
+          <PaneVisibilityButton pane="middle" expanded={false} />
+        </div>
+      {/if}
+    </section>
+    {#if $workspaceStore.navigationLayout.middlePaneVisible &&
+    $workspaceStore.navigationLayout.rightPaneVisible}
+      <button
+        type="button"
+        class="column-resizer"
+        aria-label="Resize right pane"
+        title="Drag to resize. Double-click to reset columns."
+        on:pointerdown={(event) => startResize("right", event)}
+        on:dblclick={resetColumnWidths}
+      ></button>
+    {:else}
+      <div class="column-resizer column-resizer-inactive" aria-hidden="true"></div>
+    {/if}
+    <section
+      class="workspace-pane-slot"
+      class:workspace-pane-slot-collapsed={!$workspaceStore.navigationLayout.rightPaneVisible}
+      aria-label={$workspaceStore.navigationLayout.rightPaneVisible
+        ? "Right pane"
+        : "Right pane collapsed"}
+    >
+      <div
+        class="workspace-pane-content"
+        hidden={!$workspaceStore.navigationLayout.rightPaneVisible}
+      >
+        <RightPane />
+      </div>
+      {#if !$workspaceStore.navigationLayout.rightPaneVisible}
+        <div class="workspace-pane-rail">
+          <PaneVisibilityButton pane="right" expanded={false} />
+        </div>
+      {/if}
+    </section>
   </main>
 {/if}
 

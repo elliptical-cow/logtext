@@ -2,6 +2,7 @@
   import { onDestroy } from "svelte";
   import ContextMenuShell from "./ContextMenuShell.svelte";
   import ErrorDialog from "./ErrorDialog.svelte";
+  import PaneVisibilityButton from "./PaneVisibilityButton.svelte";
   import { createMarkdownRenderer } from "../markdownRenderer";
   import { taskColorStyle } from "../taskColors";
   import {
@@ -448,9 +449,12 @@
       <h2>Tasks</h2>
       <small>{filteredTasks.length} of {$taskStore.tasks.length}</small>
     </div>
-    <button type="button" on:click={refreshTasks} disabled={$taskStore.loading}>
-      {$taskStore.loading ? "Refreshing" : "Refresh"}
-    </button>
+    <div class="task-overview-header-actions">
+      <button type="button" on:click={refreshTasks} disabled={$taskStore.loading}>
+        {$taskStore.loading ? "Refreshing" : "Refresh"}
+      </button>
+      <PaneVisibilityButton pane="middle" />
+    </div>
   </header>
 
   <div class="task-overview-toolbar">

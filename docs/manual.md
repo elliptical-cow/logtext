@@ -111,7 +111,15 @@ The window has three resizable panes:
 The middle and right panes may show different files. This allows editing one
 page while keeping another page or a backlink target visible.
 
-Use `View > Reset Column Layout` to restore the default pane sizes.
+Use the `View > Hide/Show Panes` submenu to collapse the left, middle, or right
+pane into a narrow rail and give the other panes more room. The shortcuts are
+`Cmd/Ctrl+Alt+L`, `Cmd/Ctrl+Alt+M`, and `Cmd/Ctrl+Alt+R`, respectively. The plus
+button in the rail or the corresponding submenu item restores a pane. Panes
+remain mounted, so their open page, editor/preview state, scroll position, and
+width are retained. Pane visibility is stored in the workspace `.config`.
+
+Use `View > Reset Column Layout` to show all three panes and restore their
+default sizes.
 
 ## Journals
 
@@ -575,6 +583,9 @@ Open `Help > Keyboard Shortcuts` for the list shipped with the running version.
 | Add or cycle task state | `Cmd/Ctrl+Enter` |
 | Toggle Task Overview | `Cmd/Ctrl+Shift+T` |
 | Toggle editor mode | `Cmd/Ctrl+Shift+L` |
+| Show/hide left pane | `Cmd/Ctrl+Alt+L` |
+| Show/hide middle pane | `Cmd/Ctrl+Alt+M` |
+| Show/hide right pane | `Cmd/Ctrl+Alt+R` |
 | Expand all blocks | `Cmd/Ctrl+Shift+E` |
 | Collapse below levels 1–4 | `Cmd/Ctrl+1` through `Cmd/Ctrl+4` |
 | Move block up/down | `Cmd/Ctrl+ArrowUp` / `Cmd/Ctrl+ArrowDown` |

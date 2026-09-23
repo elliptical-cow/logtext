@@ -197,6 +197,9 @@ export type WorkspaceState = {
 
 export type NavigationLayoutConfig = {
   quickAccessHeight: number;
+  leftPaneVisible: boolean;
+  middlePaneVisible: boolean;
+  rightPaneVisible: boolean;
 };
 
 export type CreatePageResult = {

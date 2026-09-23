@@ -94,6 +94,20 @@ export function updateEditorModeMenuLabel(isLivePreview: boolean): Promise<void>
   return invokeTauri<void>("update_editor_mode_menu_label", { isLivePreview });
 }
 
+export function updatePaneVisibilityMenu(
+  leftPaneVisible: boolean,
+  middlePaneVisible: boolean,
+  rightPaneVisible: boolean,
+  enabled: boolean,
+): Promise<void> {
+  return invokeTauri<void>("update_pane_visibility_menu", {
+    leftPaneVisible,
+    middlePaneVisible,
+    rightPaneVisible,
+    enabled,
+  });
+}
+
 export function updatePreferencesMenuEnabled(enabled: boolean): Promise<void> {
   return invokeTauri<void>("update_preferences_menu_enabled", { enabled });
 }

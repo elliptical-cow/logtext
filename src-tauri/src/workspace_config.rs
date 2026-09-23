@@ -72,6 +72,12 @@ pub struct WorkspacePreferences {
 pub struct NavigationLayoutConfig {
     #[serde(default = "default_quick_access_height")]
     pub quick_access_height: u32,
+    #[serde(default = "default_pane_visible")]
+    pub left_pane_visible: bool,
+    #[serde(default = "default_pane_visible")]
+    pub middle_pane_visible: bool,
+    #[serde(default = "default_pane_visible")]
+    pub right_pane_visible: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -108,6 +114,9 @@ impl Default for NavigationLayoutConfig {
     fn default() -> Self {
         Self {
             quick_access_height: default_quick_access_height(),
+            left_pane_visible: default_pane_visible(),
+            middle_pane_visible: default_pane_visible(),
+            right_pane_visible: default_pane_visible(),
         }
     }
 }
@@ -402,6 +411,9 @@ pub fn normalize_navigation_layout_config(
 ) -> NavigationLayoutConfig {
     NavigationLayoutConfig {
         quick_access_height: config.quick_access_height.clamp(80, 520),
+        left_pane_visible: config.left_pane_visible,
+        middle_pane_visible: config.middle_pane_visible,
+        right_pane_visible: config.right_pane_visible,
     }
 }
 
@@ -479,6 +491,10 @@ fn validate_workspace_folder_separation(
 
 fn default_quick_access_height() -> u32 {
     220
+}
+
+fn default_pane_visible() -> bool {
+    true
 }
 
 pub fn normalize_page_sort(value: String, fallback: &str) -> String {
@@ -1218,6 +1234,9 @@ mod tests {
             ]),
             navigation_layout: NavigationLayoutConfig {
                 quick_access_height: 320,
+                left_pane_visible: false,
+                middle_pane_visible: false,
+                right_pane_visible: true,
             },
             task_overview: TaskOverviewConfig {
                 status_filter: "DONE".to_string(),
@@ -1257,6 +1276,9 @@ mod tests {
         assert!(saved.contains("\"lastOpenedAt\""));
         assert!(saved.contains("\"navigationLayout\""));
         assert!(saved.contains("\"quickAccessHeight\": 320"));
+        assert!(saved.contains("\"leftPaneVisible\": false"));
+        assert!(saved.contains("\"middlePaneVisible\": false"));
+        assert!(saved.contains("\"rightPaneVisible\": true"));
         assert!(saved.contains("\"lastEditorPath\": \"projects/alpha.md\""));
         assert!(saved.contains("\"lastRightPanePath\": \"journal/2026-08-21.md\""));
         assert!(saved.contains("\"statusFilter\": \"DONE\""));
@@ -1278,6 +1300,9 @@ mod tests {
 
         assert_eq!(config.page_favorites, vec!["projects/alpha.md"]);
         assert_eq!(config.recent_pages.len(), 10);
+        assert!(config.navigation_layout.left_pane_visible);
+        assert!(config.navigation_layout.middle_pane_visible);
+        assert!(config.navigation_layout.right_pane_visible);
         assert_eq!(config.recent_pages[0], "a.md");
         assert_eq!(config.recent_pages[9], "j.md");
 

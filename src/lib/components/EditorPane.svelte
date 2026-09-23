@@ -2,6 +2,7 @@
   import CodeMirrorEditor from "./CodeMirrorEditor.svelte";
   import ErrorDialog from "./ErrorDialog.svelte";
   import LinkedReferences from "./LinkedReferences.svelte";
+  import PaneVisibilityButton from "./PaneVisibilityButton.svelte";
   import { getPageView, savePastedImage } from "../api";
   import { toErrorMessage } from "../errors";
   import { editorSessionStore } from "../stores/editorSession";
@@ -208,6 +209,7 @@
       >
         Open Right
       </button>
+      <PaneVisibilityButton pane="middle" />
     </div>
   </div>
   <ErrorDialog

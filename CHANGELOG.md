@@ -5,6 +5,13 @@ current source version is `0.8.0`.
 
 ## Unreleased
 
+### Added
+
+- Added workspace-persistent controls, a `View > Hide/Show Panes` submenu, and
+  keyboard shortcuts for independently collapsing all three panes into narrow
+  restore rails. Pane content remains mounted so its active page and local UI
+  state are retained.
+
 ## 0.8.0
 Changes since `v0.7.5`.
 

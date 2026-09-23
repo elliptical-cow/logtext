@@ -299,6 +299,72 @@ textarea {
   user-select: none;
 }
 
+.workspace-pane-slot {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-pane);
+}
+
+.workspace-pane-content {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-pane-content[hidden] {
+  display: none;
+}
+
+.workspace-pane-content > .file-tree,
+.workspace-pane-content > .editor-pane,
+.workspace-pane-content > .right-pane,
+.workspace-pane-content > .task-overview {
+  flex: 1 1 auto;
+}
+
+.workspace-pane-rail {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 48px;
+  border-right: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--border-subtle);
+  background: var(--surface-pane-subtle);
+}
+
+.workspace-pane-slot-collapsed {
+  background: var(--surface-app);
+}
+
+.workspace-pane-slot-left.workspace-pane-slot-collapsed .workspace-pane-rail {
+  right: auto;
+  width: 32px;
+}
+
+.workspace-pane-rail .pane-visibility-button {
+  width: 24px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.workspace-pane-rail .pane-visibility-button:hover,
+.workspace-pane-rail .pane-visibility-button:focus-visible {
+  border-color: var(--border-default);
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
 .file-tree,
 .editor-pane,
 .right-pane {
@@ -325,6 +391,13 @@ textarea {
 .app-shell.resizing .column-resizer {
   background: var(--accent-bg-subtle);
   outline: none;
+}
+
+.column-resizer-inactive,
+.column-resizer-inactive:hover,
+.app-shell.resizing .column-resizer-inactive {
+  background: var(--surface-app);
+  cursor: default;
 }
 
 .file-tree {
@@ -424,6 +497,37 @@ textarea {
   flex: 0 0 auto;
   align-items: center;
   gap: 8px;
+}
+
+.pane-header button.pane-visibility-button,
+.task-overview-header button.pane-visibility-button,
+.task-list-panel button.pane-visibility-button {
+  width: 26px;
+  height: 30px;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pane-header button.pane-visibility-button:hover,
+.task-overview-header button.pane-visibility-button:hover,
+.task-list-panel button.pane-visibility-button:hover {
+  border-color: var(--border-control);
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.pane-header button.pane-visibility-button:focus-visible,
+.task-overview-header button.pane-visibility-button:focus-visible,
+.task-list-panel button.pane-visibility-button:focus-visible {
+  border-color: var(--accent-border);
+  background: var(--accent-bg-subtle);
+  color: var(--accent-text-strong);
 }
 
 .pane-transfer-button,
@@ -1012,6 +1116,12 @@ textarea {
 .navigator-section-heading small {
   font-size: 11px;
   font-weight: 500;
+}
+
+.navigator-section-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .page-row {
@@ -1763,6 +1873,12 @@ textarea {
 .task-overview-header small {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.task-overview-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .task-overview-header button,

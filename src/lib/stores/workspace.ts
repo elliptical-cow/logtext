@@ -64,6 +64,9 @@ const DEFAULT_TASK_OVERVIEW_CONFIG: TaskOverviewConfig = {
 const DEFAULT_PAGE_SORT: PageSortMode = "name-desc";
 const DEFAULT_NAVIGATION_LAYOUT: NavigationLayoutConfig = {
   quickAccessHeight: 220,
+  leftPaneVisible: true,
+  middlePaneVisible: true,
+  rightPaneVisible: true,
 };
 const DEFAULT_BACKLINK_VIEW_CONFIG: BacklinkViewConfig = {
   openTasksOnly: false,
@@ -683,7 +686,11 @@ function createWorkspaceStore() {
       }
     },
     async saveNavigationLayoutConfig(navigationLayout: NavigationLayoutConfig) {
-      update((state) => ({ ...state, navigationLayout, error: null }));
+      let previousNavigationLayout = DEFAULT_NAVIGATION_LAYOUT;
+      update((state) => {
+        previousNavigationLayout = state.navigationLayout;
+        return { ...state, navigationLayout, error: null };
+      });
 
       try {
         const savedNavigationLayout =
@@ -697,6 +704,7 @@ function createWorkspaceStore() {
       } catch (error) {
         update((state) => ({
           ...state,
+          navigationLayout: previousNavigationLayout,
           ...configSaveError("navigation layout", error),
         }));
         return null;
