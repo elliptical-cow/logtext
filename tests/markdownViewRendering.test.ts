@@ -7,6 +7,7 @@ import {
   createMarkdownRenderer,
   markdownCodeLineNumbers,
 } from "../src/lib/markdownRenderer.js";
+import { markBlockAttributesForRendering } from "../src/lib/blockAttributes.js";
 import {
   installMermaidCssStyleSheetCompatibility,
   mermaidConfiguration,
@@ -110,6 +111,21 @@ test("uses the same reduced size for complete block attribute lines", () => {
     /\.markdown-view \.block-attribute-key\s*\{[^}]*font-size:/s.test(styles),
     false,
   );
+});
+
+test("keeps compact wiki-link attribute values outside rendering markers", () => {
+  const content = "- related:: #Project";
+  const markdown = createMarkdownRenderer({ breaks: true, logtextWikiLinks: true });
+  const attributes = markBlockAttributesForRendering(
+    content,
+    markdownCodeLineNumbers(markdown, content),
+  );
+  const rendered = markdown.render(attributes.markdown, {
+    pages: [{ path: "Project.md", key: "project", title: "Project" }],
+  });
+
+  assert.match(rendered, /<a href="logtext:Project\.md">#Project<\/a>/);
+  assert.doesNotMatch(rendered, /href="[^"]*LOGTEXT_BLOCK_ATTRIBUTE/);
 });
 
 test("keeps rendering after malformed LaTeX and ignores formulas in Markdown code", () => {

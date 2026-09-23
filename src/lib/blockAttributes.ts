@@ -63,8 +63,9 @@ export function markBlockAttributesForRendering(
         return line;
       }
 
-      const openingMarker = `LOGTEXT_BLOCK_ATTRIBUTE_${tokens.length}_OPEN`;
-      const closingMarker = `LOGTEXT_BLOCK_ATTRIBUTE_${tokens.length}_CLOSE`;
+      // Colons keep compact #wiki-links adjacent to attributes from consuming a marker.
+      const openingMarker = `LOGTEXT_BLOCK_ATTRIBUTE_${tokens.length}_OPEN:`;
+      const closingMarker = `:LOGTEXT_BLOCK_ATTRIBUTE_${tokens.length}_CLOSE`;
       tokens.push({ openingMarker, closingMarker, name: match.name });
       return [
         line.slice(0, match.nameFrom),
