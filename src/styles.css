@@ -1044,7 +1044,6 @@ textarea {
 
 .quick-item:focus-visible,
 .search-result:focus-visible,
-.task-overview-main:focus-visible,
 .right-pane:focus-visible,
 .markdown-view [role="button"]:focus-visible {
   outline: 2px solid var(--accent-border);
@@ -1997,6 +1996,12 @@ textarea {
   min-height: 34px;
   padding: 4px 0 4px 4px;
   border-radius: 6px;
+  cursor: pointer;
+}
+
+.task-overview-row:focus-within {
+  outline: 2px solid var(--accent-border);
+  outline-offset: -2px;
 }
 
 .task-overview-row.updating {
@@ -2011,7 +2016,6 @@ textarea {
 .task-overview-priority {
   border: 0;
   font-family: inherit;
-  cursor: context-menu;
   vertical-align: baseline;
 }
 
@@ -2041,7 +2045,6 @@ textarea {
   border: 0;
   background: transparent;
   color: var(--text-primary);
-  cursor: pointer;
   line-height: 1.55;
   text-align: left;
   white-space: normal;

@@ -13,6 +13,7 @@
     filterTasks as filterTaskItems,
     groupTasks as groupTaskItems,
     taskAttributeDisplayValue,
+    taskOverviewRowClickAction,
   } from "../taskOverview";
   import { linkOperations } from "../stores/linkOperations";
   import { mutationOperations } from "../stores/mutationOperations";
@@ -241,35 +242,27 @@
     return `${origin}. Source value: ${attribute.value || "(empty)"}`;
   }
 
-  function followRenderedLink(event: MouseEvent) {
+  function handleTaskRowClick(task: TaskItem, event: MouseEvent) {
     const link = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>("a");
-    const href = link?.getAttribute("href");
+    const action = taskOverviewRowClickAction(link ? link.getAttribute("href") : undefined);
 
-    if (href?.startsWith("logtext:")) {
-      event.preventDefault();
-      event.stopPropagation();
-      void linkOperations.open(decodeURIComponent(href.slice("logtext:".length)), "right");
-      return true;
-    }
-
-    if (href?.startsWith("logtext-missing:")) {
-      event.preventDefault();
-      event.stopPropagation();
-      localError = `Linked page does not exist: ${decodeURIComponent(
-        href.slice("logtext-missing:".length),
-      )}`;
-      return true;
-    }
-
-    return false;
-  }
-
-  function handleTaskMainClick(task: TaskItem, event: MouseEvent) {
-    if (followRenderedLink(event)) {
+    if (action.type === "open-task") {
+      openTask(task);
       return;
     }
 
-    openTask(task);
+    event.stopPropagation();
+    if (action.type === "follow-link") {
+      return;
+    }
+
+    event.preventDefault();
+    if (action.type === "open-page") {
+      void linkOperations.open(action.target, "right");
+      return;
+    }
+
+    localError = `Linked page does not exist: ${action.target}`;
   }
 
   function handleTaskMainKeydown(task: TaskItem, event: KeyboardEvent) {
@@ -572,9 +565,12 @@
             <small>{group.items.length}</small>
           </header>
           {#each group.items as task}
+            <!-- Pointer delegation covers the full card; task-overview-main remains its single keyboard stop. -->
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
             <article
               class:updating={updatingTaskKey === taskKey(task)}
               class="task-overview-row"
+              on:click={(event) => handleTaskRowClick(task, event)}
               on:contextmenu={(event) => openTaskContextMenu(task, event)}
             >
               {#if task.sourceHeadings.length > 0 || task.parentBlocks.length > 0}
@@ -596,16 +592,14 @@
                   aria-label={`${task.status}${task.priority ? ` priority ${task.priority}` : ""}: ${taskDisplayText(task)}. Enter opens in right pane, E opens in editor.`}
                   title="Enter: open in right pane. E: edit source. Shift+F10: task menu."
                   on:focus={() => (focusedTaskKey = taskKey(task))}
-                  on:click={(event) => handleTaskMainClick(task, event)}
                   on:keydown={(event) => handleTaskMainKeydown(task, event)}
                   on:contextmenu={(event) => openTaskContextMenu(task, event)}
                 >
                   <span
                     class={`task-overview-status task-keyword task-${task.status.toLowerCase()}`}
                     style={taskColorStyle(task.status, $workspaceStore.taskStateColors)}
-                    title="Change task"
+                    title="Right-click to change task"
                     role="presentation"
-                    on:click|stopPropagation={(event) => openTaskContextMenu(task, event)}
                     on:contextmenu={(event) => openTaskContextMenu(task, event)}
                   >
                     {task.status}
@@ -613,9 +607,8 @@
                   {#if task.priority}
                     <span
                       class="task-overview-priority task-priority"
-                      title={`Priority #${task.priority}`}
+                      title={`Priority #${task.priority}. Right-click to change task`}
                       role="presentation"
-                      on:click|stopPropagation={(event) => openTaskContextMenu(task, event)}
                       on:contextmenu={(event) => openTaskContextMenu(task, event)}
                     >
                       #{task.priority}
@@ -635,13 +628,11 @@
               {#if task.attributes.length > 0}
                 <div class="task-overview-attributes" aria-label="Task attributes">
                   {#each task.attributes as attribute}
-                    <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <span
                       class:inherited={attribute.inherited}
                       class="task-overview-attribute"
                       title={attributeTitle(attribute)}
                       role="presentation"
-                      on:click={followRenderedLink}
                     >
                       {#if attribute.inherited}
                         <span class="task-overview-attribute-inherited" aria-label="Inherited">↳</span>

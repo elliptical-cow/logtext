@@ -22,10 +22,37 @@ export type TaskGroup = {
   items: TaskItem[];
 };
 
+export type TaskOverviewRowClickAction =
+  | { type: "open-task" }
+  | { type: "open-page"; target: string }
+  | { type: "missing-page"; target: string }
+  | { type: "follow-link" };
+
 type TaskGroupKey = {
   id: string;
   label: string;
 };
+
+export function taskOverviewRowClickAction(
+  href: string | null | undefined,
+): TaskOverviewRowClickAction {
+  if (href === undefined) {
+    return { type: "open-task" };
+  }
+  if (href?.startsWith("logtext:")) {
+    return {
+      type: "open-page",
+      target: decodeURIComponent(href.slice("logtext:".length)),
+    };
+  }
+  if (href?.startsWith("logtext-missing:")) {
+    return {
+      type: "missing-page",
+      target: decodeURIComponent(href.slice("logtext-missing:".length)),
+    };
+  }
+  return { type: "follow-link" };
+}
 
 export function taskLinkIdentity(link: TaskLink) {
   return link.resolvedPath

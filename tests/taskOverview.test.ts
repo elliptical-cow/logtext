@@ -10,6 +10,7 @@ import {
   groupTasks,
   taskAttributeDisplayValue,
   taskLinkIdentity,
+  taskOverviewRowClickAction,
   type TaskOverviewFilters,
 } from "../src/lib/taskOverview.js";
 import type { TaskAttribute, TaskItem, TaskLink } from "../src/lib/types.js";
@@ -216,6 +217,42 @@ test("formats valid status timestamps locally and preserves invalid values", () 
 
   assert.match(taskAttributeDisplayValue(valid, "en-GB", "UTC"), /16 Sept 2026.*12:32/);
   assert.equal(taskAttributeDisplayValue(invalid, "en-GB", "UTC"), "not-a-date");
+});
+
+test("opens task rows while preserving nested link actions", () => {
+  assert.deepEqual(taskOverviewRowClickAction(undefined), { type: "open-task" });
+  assert.deepEqual(taskOverviewRowClickAction("logtext:Projects%2FAlpha.md"), {
+    type: "open-page",
+    target: "Projects/Alpha.md",
+  });
+  assert.deepEqual(taskOverviewRowClickAction("logtext-missing:Project%20Beta"), {
+    type: "missing-page",
+    target: "Project Beta",
+  });
+  assert.deepEqual(taskOverviewRowClickAction("https://example.com"), {
+    type: "follow-link",
+  });
+  assert.deepEqual(taskOverviewRowClickAction(null), { type: "follow-link" });
+});
+
+test("wires the complete task row without adding nested controls to the tab order", () => {
+  const component = readFileSync(
+    join(root, "src/lib/components/TaskOverview.svelte"),
+    "utf8",
+  );
+
+  assert.match(
+    component,
+    /class="task-overview-row"[\s\S]*?on:click=\{\(event\) => handleTaskRowClick\(task, event\)\}/,
+  );
+  assert.match(component, /function handleTaskRowClick\(task: TaskItem, event: MouseEvent\)/);
+  assert.equal(/on:click\|stopPropagation=.*openTaskContextMenu/.test(component), false);
+  assert.match(component, /title="Right-click to change task"/);
+  assert.match(component, /title=\{`Priority #\$\{task\.priority\}\. Right-click to change task`\}/);
+  assert.match(component, /function editTaskFromButton[\s\S]*?event\.stopPropagation\(\)/);
+  assert.match(component, /class="task-open-button"[\s\S]*?tabindex="-1"/);
+  assert.match(component, /class="task-overview-main"[\s\S]*?role="button"/);
+  assert.match(component, /replaceAll\("<a ", '<a tabindex="-1" '\)/);
 });
 
 test("wires linked-page and attribute state through the task overview config", () => {
