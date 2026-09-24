@@ -12,7 +12,7 @@ contribution rules, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 Release files are published under
 [GitHub Releases](https://github.com/elliptical-cow/logtext/releases/latest).
 The version in an asset name is written as `<version>` below; for example,
-version `0.8.0` appears as `v0.8.0`.
+version `0.8.5` appears as `v0.8.5`.
 
 ### Windows
 
