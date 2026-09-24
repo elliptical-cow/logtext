@@ -51,14 +51,14 @@ Create database -> define schema -> create document -> fill fields
 ## Main Features
 
 - local workspaces made of ordinary folders and Markdown files
-- `[[wiki links]]` and `#tags` to reference people, projects or any entity- daily journal pages stored as `YYYY-MM-DD.md`
-  - backlinks with parent and child block context
+- `[[wiki links]]` and `#tags` to reference people, projects, or any other entity
+- daily journal pages stored as `YYYY-MM-DD.md`
+- backlinks with parent and child block context
 - configurable task states, colors, and priorities
-  - filtered and grouped task overview
-- allow to include additional media data
-  - image paste, live preview, resizing, copying, and media cleanup
-  - KaTeX rendering in Markdown views and editor live preview
-  - Mermaid rendering in the preview pane
+- filtered and grouped task overview
+- images/screenshots and media cleanup
+- LaTeX rendering in Markdown views and editor live preview
+- Mermaid diagrams
 
 
 ## Installation
@@ -96,9 +96,12 @@ See the [manual](docs/manual.md#installation) for more detail.
 1. Start Logtext.
 2. Open a folder with `File > Open Workspace Folder...`.
 3. Logtext opens or creates today's page in `journal/`.
-4. Capture meeting notes or thoughts and connect them to pages with `[[page]]` or `#page`.
+4. Capture notes in blocks and connect people, projects, or topics with
+   `[[page]]` or `#page`.
 5. Add tasks with states such as `TODO`, `INPROGRESS`, `WAITING`, and `DONE`.
-6. Open pages and get recent updates on their topic by backlinks that contain important context
+6. Open a linked page to review its backlinks and surrounding context.
+7. Use Task Overview to filter, group, and revisit open work across the
+   workspace.
 
 A ready-to-open workspace is included in
 [`docs/example_workspace`](docs/example_workspace). Open the folder in Logtext

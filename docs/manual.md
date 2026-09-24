@@ -7,6 +7,38 @@ database is required for primary content.
 This manual describes the current application. For build instructions and
 contribution rules, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+## Logtext in Five Minutes
+
+1. Open an existing folder or a new empty folder as a workspace.
+2. Capture notes in today's journal. Use list blocks when an item may gain
+   details, links, or tasks later.
+3. Connect people, projects, and topics with `[[page]]` or `#page`. The target
+   page does not need to exist yet.
+4. Open a linked page in the right pane to keep writing in the editor while
+   reviewing its backlinks and surrounding context.
+5. Prefix actionable blocks with `TODO`, `INPROGRESS`, `WAITING`, or `DONE`,
+   then use Task Overview to filter and group work across the workspace.
+
+This is the core loop: capture first, connect while writing, and retrieve later
+through links, backlinks, search, and tasks.
+
+## Contents
+
+- Getting started: [Installation](#installation), [First Start](#first-start),
+  and [Workspace Files](#workspace-files)
+- Core workflow: [Three-Pane Layout](#three-pane-layout), [Journals](#journals),
+  [Wiki Links and Tags](#wiki-links-and-tags), [Backlinks](#backlinks), and
+  [Editing](#editing)
+- Tasks and content: [Tasks](#tasks), [Checkboxes](#checkboxes),
+  [Images and Media](#images-and-media), [LaTeX](#latex), and
+  [Mermaid](#mermaid)
+- Finding and navigating: [Keyboard-First Navigation](#keyboard-first-navigation),
+  [Navigation and File Operations](#navigation-and-file-operations),
+  [Search](#search), and [Keyboard Shortcuts](#keyboard-shortcuts)
+- Configuration and reference: [Workspace Preferences](#workspace-preferences),
+  [Markdown and Data Details](#reference-markdown-and-data-details),
+  [Data Safety](#data-safety), and [Current Limitations](#current-limitations)
+
 ## Installation
 
 Release files are published under
@@ -142,8 +174,8 @@ When a journal page is opened in the right pane, dated pages are presented as a
 continuous rendered feed. Scrolling past the current entry loads adjacent
 journal entries in the configured ascending or descending order.
 
-Set `journalRightPaneContinuousScrolling` to `false` to show only the selected
-journal page.
+Disable the continuous journal feed under `Preferences > Journal` to show only
+the selected journal page.
 
 The middle pane edits one Markdown file at a time. Mouse-wheel and Page Up/Page
 Down scrolling stay within that file. Use the journal controls or pane history
@@ -262,22 +294,8 @@ Press `Cmd/Ctrl+Alt+Right` to show the current editor line in the right pane.
 The editor keeps focus, so the right pane can provide rendered context while
 you continue writing.
 
-Inline live preview supports italic text (`*text*` or `_text_`), bold text
-(`**text**` or `__text__`), combined bold and italic text (`***text***`),
-strikethrough (`~~text~~`), and inline code (`` `code` ``). Inline code keeps
-Markdown-looking content literal and supports longer matching backtick markers
-when the code itself contains a backtick. Inline Markdown links such as
-`[Website](https://example.com)` show their linked label while their source line
-is inactive. Wiki-like text inside the label or target remains part of the
-standard Markdown link and does not become a Logtext page link.
-
-Backslash escapes follow normal Markdown rules and escape one immediately
-following punctuation character. For example, use
-`\*\*literal asterisks\*\*` to display `**literal asterisks**` without bold
-formatting. Fenced and four-space-indented code remains literal and does not
-render links, tasks, checkboxes, formatting, or formulas. Unordered list items
-may start with `-`, `*`, or `+`; live preview displays the two alternative
-markers like `-` without changing the stored Markdown.
+Exact live-preview syntax, escaping, and code-block behavior are collected in
+[Markdown Rendering Details](#markdown-rendering-details).
 
 ### Undo and Redo
 
@@ -319,45 +337,12 @@ Use `Cmd/Ctrl+Enter` in the editor to add or cycle a task state. A right click
 on a rendered task keyword opens a compact menu for Status, Priority, and
 showing the source line in the other pane.
 
-Changing a task to the final configured state may play a completion sound. Set
-`taskDoneSoundEnabled` to `false` to disable it.
+Changing a task to the final configured state may play a completion sound.
+Disable it under `Preferences > Tasks` when no sound is wanted.
 
-Every task-state change made through Logtext adds or updates a direct child
-attribute with a second-precision UTC timestamp:
-
-```md
-- DONE Prepare release notes
-  - status-changed-at:: 2026-09-16T12:32:18Z
-```
-
-The value records the latest state transition. When a completed task is
-reopened, the timestamp is therefore replaced rather than retained as a
-completion history. A task without a list marker is converted to a normal `-`
-list item on its first state change so the timestamp is a valid child block.
-
-### Block attributes
-
-Any list block can have direct child attributes. Attribute names begin with a
-letter and may contain letters, digits, dashes, and underscores:
-
-```md
-- Prepare project review
-  - owner:: Jens
-  - due-date:: 2026-09-20
-```
-
-Attributes remain ordinary Markdown list items. Live Preview and rendered
-views keep the bullet visible and display the complete attribute line at a
-slightly smaller size. The `attribute-name::` portion additionally uses a
-subtle monospace style. Attribute values still support the normal inline
-Markdown rendering rules.
-
-Tasks inherit effective attributes from every parent block. A definition on
-the task or a nearer parent overrides the same case-insensitive attribute name
-from a more distant parent. Multiple values on the winning level remain
-available. This applies to all attributes, including `status-changed-at`.
-Explicit wiki links in effective attributes also become linked-page context for
-the task.
+State changes also maintain `status-changed-at::` metadata. The exact source
+format, conversion rules, and attribute inheritance behavior are described in
+[Task Metadata and Block Attributes](#task-metadata-and-block-attributes).
 
 ### Priorities
 
@@ -389,8 +374,10 @@ UTC timestamp.
 Task Overview remembers its active filters and grouping in the current
 workspace's `.config`.
 
-Clicking a task opens its source page in the right pane. `Edit` opens the source
-in the middle pane and selects its line.
+Clicking the task card, including its status or priority marker, opens and
+highlights its source context in the right pane. Links and the `Edit` button
+retain their own actions. Right-click the status or priority marker to open the
+task menu. `Edit` opens the source in the middle pane and selects its line.
 
 ## Checkboxes
 
@@ -416,21 +403,8 @@ workspace-relative Markdown reference at the current selection:
 ![Pasted image](media/projects-roadmap--1788890400000--a1b2c3d4.png)
 ```
 
-The generated filename contains:
-
-- a normalized form of the source page path
-- a timestamp
-- a short content fingerprint
-
-Image targets are resolved relative to the workspace root, not the Markdown
-file. The reference therefore remains valid when copied to another page or when
-the source page moves.
-
-Unsupported image paths include:
-
-- a leading `/`
-- operating-system absolute paths
-- `..` path segments
+Image filenames and safe workspace-relative path rules are documented in
+[Workspace Image Paths](#workspace-image-paths).
 
 Images are rendered in editor live preview, the right pane, journal feeds,
 backlinks, and Task Overview.
@@ -501,6 +475,32 @@ Current limitations:
 
 - Mermaid source remains a fenced code block in the middle editor.
 - Invalid Mermaid syntax remains visible with a local error message.
+
+## Keyboard-First Navigation
+
+Logtext keeps a small set of global shortcuts for frequent navigation and uses
+the Command Palette for less common actions.
+
+- `Cmd/Ctrl+P` opens Quick Open. Type any part of a page name or full
+  workspace-relative path, use the arrow keys to choose a result, then press
+  `Enter` for the editor or `Shift+Enter` for the right pane.
+- `Cmd/Ctrl+Shift+P` opens the Command Palette. It searches file, journal,
+  task, pane, view, theme, settings, maintenance, and help actions. Commands
+  that require a workspace, editor, or selected navigation item are available
+  only in the matching context.
+- `F6` and `Shift+F6` move focus through the visible left, middle, and right
+  panes. Hidden panes are skipped, and each pane remembers its most recently
+  focused control.
+- `Cmd/Ctrl+Shift+F` moves directly to workspace search. `Escape` clears an
+  active search and returns focus to the file tree.
+- `Alt+Left` and `Alt+Right` navigate the history of the focused editor or
+  right pane.
+
+Trees, result lists, Task Overview, and the date picker use one `Tab` stop each.
+Move within them with arrow keys instead of tabbing through every row. Use
+`Shift+F10` or the Menu key for context actions. The complete shortcut reference
+appears under [Keyboard Shortcuts](#keyboard-shortcuts) and in
+`Help > Keyboard Shortcuts`.
 
 ## Navigation and File Operations
 
@@ -682,6 +682,78 @@ pane layout, recent pages, opening history, Task Overview filters, and the last
 open files. It remains readable JSON, but these values should normally be
 changed through the application. Unknown or invalid values may be normalized
 when the workspace loads.
+
+## Reference: Markdown and Data Details
+
+The following details describe exact source behavior. They are useful when
+writing portable Markdown, inspecting changes in version control, or building
+workflows around Logtext files, but are not required for normal use.
+
+### Markdown Rendering Details
+
+Inline live preview supports italic text (`*text*` or `_text_`), bold text
+(`**text**` or `__text__`), combined bold and italic text (`***text***`),
+strikethrough (`~~text~~`), and inline code (`` `code` ``). Inline code keeps
+Markdown-looking content literal and supports longer matching backtick markers
+when the code itself contains a backtick. Inline Markdown links such as
+`[Website](https://example.com)` show their linked label while their source line
+is inactive. Wiki-like text inside the label or target remains part of the
+standard Markdown link and does not become a Logtext page link.
+
+Backslash escapes follow normal Markdown rules and escape one immediately
+following punctuation character. For example, use
+`\*\*literal asterisks\*\*` to display `**literal asterisks**` without bold
+formatting. Fenced and four-space-indented code remains literal and does not
+render links, tasks, checkboxes, formatting, or formulas. Unordered list items
+may start with `-`, `*`, or `+`; live preview displays the two alternative
+markers like `-` without changing the stored Markdown.
+
+### Task Metadata and Block Attributes
+
+Every task-state change made through Logtext adds or updates a direct child
+attribute with a second-precision UTC timestamp:
+
+```md
+- DONE Prepare release notes
+  - status-changed-at:: 2026-09-16T12:32:18Z
+```
+
+The value records the latest state transition. When a completed task is
+reopened, the timestamp is replaced rather than retained as a completion
+history. A task without a list marker is converted to a normal `-` list item on
+its first state change so the timestamp is a valid child block.
+
+Any list block can have direct child attributes. Attribute names begin with a
+letter and may contain letters, digits, dashes, and underscores:
+
+```md
+- Prepare project review
+  - owner:: Jens
+  - due-date:: 2026-09-20
+```
+
+Attributes remain ordinary Markdown list items. Live Preview and rendered
+views keep the bullet visible and display the complete attribute line at a
+slightly smaller size. The `attribute-name::` portion additionally uses a
+subtle monospace style. Attribute values still support the normal inline
+Markdown rendering rules.
+
+Tasks inherit effective attributes from every parent block. A definition on
+the task or a nearer parent overrides the same case-insensitive attribute name
+from a more distant parent. Multiple values on the winning level remain
+available. This applies to all attributes, including `status-changed-at`.
+Explicit wiki links in effective attributes also become linked-page context for
+the task.
+
+### Workspace Image Paths
+
+Generated image filenames contain a normalized form of the source page path, a
+timestamp, and a short content fingerprint.
+
+Image targets are resolved relative to the workspace root, not the Markdown
+file. The reference therefore remains valid when copied to another page or when
+the source page moves. Unsupported image paths include a leading `/`,
+operating-system absolute paths, and `..` path segments.
 
 ## Data Safety
 
