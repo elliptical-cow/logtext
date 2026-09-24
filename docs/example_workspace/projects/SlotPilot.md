@@ -8,7 +8,11 @@ SlotPilot introduces a simple dock appointment workflow for Hamburg. The first v
   - [[people/Laura Stein]] is validating the smallest useful appointment flow with [[people/Nadine Vogt]].
   - Related operational problem: [[projects/DockFlow Hamburg]].
 
-- Open tasks
+- Hamburg pilot
+  - project:: [[projects/SlotPilot]]
+  - owner:: [[people/Laura Stein]]
+  - area:: Hamburg
   - TODO Prepare rollout decision brief for [[meetings/Ops Steering]].
-  - WAITING [#B] Confirm the minimum import steps with [[people/Nadine Vogt]].
+  - WAITING [#B] Confirm the minimum import steps.
+    - dependency:: [[people/Nadine Vogt]]
   - INPROGRESS Define the minimum appointment fields for gate 4.
