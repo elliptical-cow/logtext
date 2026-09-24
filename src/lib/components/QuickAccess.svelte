@@ -1,5 +1,6 @@
 <script lang="ts">
   import ContextMenuShell from "./ContextMenuShell.svelte";
+  import { nextRovingIndex } from "../keyboardNavigation";
 
   type FavoriteItem = {
     kind: "page" | "folder";
@@ -28,23 +29,29 @@
   export let folderGlyphStyle: (path: string) => string = () => "";
 
   let contextMenu: QuickContextMenuState | null = null;
+  let focusedQuickIndex = 0;
 
-  function openFavoriteContextMenu(favorite: FavoriteItem, event: MouseEvent) {
+  $: quickItemCount = favorites.length + recentPages.length;
+  $: if (focusedQuickIndex >= quickItemCount) focusedQuickIndex = Math.max(quickItemCount - 1, 0);
+
+  function openFavoriteContextMenu(favorite: FavoriteItem, event: MouseEvent | KeyboardEvent) {
     event.preventDefault();
+    const rect = event.currentTarget instanceof HTMLElement ? event.currentTarget.getBoundingClientRect() : null;
     contextMenu = {
-      x: event.clientX,
-      y: event.clientY,
+      x: event instanceof MouseEvent && event.clientX > 0 ? event.clientX : (rect?.left ?? 0) + 12,
+      y: event instanceof MouseEvent && event.clientY > 0 ? event.clientY : (rect?.top ?? 0) + 12,
       source: "favorite",
       favorite,
       path: favorite.path,
     };
   }
 
-  function openRecentContextMenu(path: string, event: MouseEvent) {
+  function openRecentContextMenu(path: string, event: MouseEvent | KeyboardEvent) {
     event.preventDefault();
+    const rect = event.currentTarget instanceof HTMLElement ? event.currentTarget.getBoundingClientRect() : null;
     contextMenu = {
-      x: event.clientX,
-      y: event.clientY,
+      x: event instanceof MouseEvent && event.clientX > 0 ? event.clientX : (rect?.left ?? 0) + 12,
+      y: event instanceof MouseEvent && event.clientY > 0 ? event.clientY : (rect?.top ?? 0) + 12,
       source: "recent",
       path,
     };
@@ -104,6 +111,41 @@
     contextMenu = null;
   }
 
+  function focusQuickItem(index: number) {
+    if (quickItemCount === 0) return;
+    focusedQuickIndex = (index + quickItemCount) % quickItemCount;
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-quick-index="${focusedQuickIndex}"]`)?.focus();
+    });
+  }
+
+  function handleQuickKeydown(
+    item: { source: "favorite"; favorite: FavoriteItem } | { source: "recent"; path: string },
+    index: number,
+    event: KeyboardEvent,
+  ) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      const next = nextRovingIndex(index, quickItemCount, event.key);
+      if (next !== null) focusQuickItem(next);
+      return;
+    }
+    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+      item.source === "favorite"
+        ? openFavoriteContextMenu(item.favorite, event)
+        : openRecentContextMenu(item.path, event);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const path = item.source === "favorite" ? item.favorite.path : item.path;
+      const isPage = item.source === "recent" || item.favorite.kind === "page";
+      if (event.shiftKey && isPage) openPageInRightPane(path);
+      else if (item.source === "favorite") openFavorite(item.favorite);
+      else openPageInEditor(path);
+    }
+  }
+
 </script>
 
 <svelte:window on:click={closeContextMenu} />
@@ -114,7 +156,7 @@
     {#if favorites.length === 0}
       <p>No favorites</p>
     {:else}
-      {#each favorites as favorite}
+      {#each favorites as favorite, index}
         <div
           class:missing-favorite={!favoriteExists(favorite)}
           class="quick-row"
@@ -126,6 +168,10 @@
             class="quick-item"
             class:folder-quick-item={favorite.kind === "folder"}
             title={favorite.path}
+            data-quick-index={index}
+            tabindex={index === focusedQuickIndex ? 0 : -1}
+            on:focus={() => (focusedQuickIndex = index)}
+            on:keydown={(event) => handleQuickKeydown({ source: "favorite", favorite }, index, event)}
             on:click={() => openFavorite(favorite)}
           >
             {#if favorite.kind === "folder"}
@@ -140,6 +186,7 @@
               title="Open in right pane"
               aria-label="Open in right pane"
               disabled={!favoriteExists(favorite)}
+              tabindex="-1"
               on:click={() => openPageInRightPane(favorite.path)}
             >
               R
@@ -155,13 +202,23 @@
     {#if recentPages.length === 0}
       <p>No recent pages</p>
     {:else}
-      {#each recentPages as path}
+      {#each recentPages as path, index}
+        {@const quickIndex = favorites.length + index}
         <div
           class="quick-row"
           role="listitem"
           on:contextmenu={(event) => openRecentContextMenu(path, event)}
         >
-          <button type="button" class="quick-item" title={path} on:click={() => openPageInEditor(path)}>
+          <button
+            type="button"
+            class="quick-item"
+            title={path}
+            data-quick-index={quickIndex}
+            tabindex={quickIndex === focusedQuickIndex ? 0 : -1}
+            on:focus={() => (focusedQuickIndex = quickIndex)}
+            on:keydown={(event) => handleQuickKeydown({ source: "recent", path }, quickIndex, event)}
+            on:click={() => openPageInEditor(path)}
+          >
             <span>{displayNameFromPath(path)}</span>
           </button>
           <button
@@ -169,6 +226,7 @@
             class="icon-button right-pane-action"
             title="Open in right pane"
             aria-label="Open in right pane"
+            tabindex="-1"
             on:click={() => openPageInRightPane(path)}
           >
             R

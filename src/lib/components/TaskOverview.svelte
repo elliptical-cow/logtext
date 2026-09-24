@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import ContextMenuShell from "./ContextMenuShell.svelte";
   import ErrorDialog from "./ErrorDialog.svelte";
   import PaneVisibilityButton from "./PaneVisibilityButton.svelte";
   import { createMarkdownRenderer } from "../markdownRenderer";
+  import { nextRovingIndex } from "../keyboardNavigation";
   import { taskColorStyle } from "../taskColors";
   import {
     availableTaskAttributeNames,
@@ -52,6 +53,8 @@
     y: number;
     task: TaskItem;
   } | null = null;
+  let focusedTaskKey: string | null = null;
+  let taskFilterInput: HTMLInputElement | null = null;
   const inlineMarkdown = createMarkdownRenderer({
     breaks: false,
     workspaceImages: true,
@@ -136,6 +139,10 @@
     groupAttributeName,
     linkedPageLabel,
   );
+  $: visibleTaskKeys = groupedTasks.flatMap((group) => group.items.map(taskKey));
+  $: if (!focusedTaskKey || !visibleTaskKeys.includes(focusedTaskKey)) {
+    focusedTaskKey = visibleTaskKeys[0] ?? null;
+  }
   $: taskOverviewConfigDraft = {
     statusFilter,
     priorityFilter,
@@ -213,7 +220,7 @@
       }),
       $workspaceStore.pages,
       $workspaceStore.folderColors,
-    );
+    ).replaceAll("<a ", '<a tabindex="-1" ');
   }
 
   function renderAttributeValue(task: TaskItem, attribute: TaskAttribute) {
@@ -224,7 +231,7 @@
       }),
       $workspaceStore.pages,
       $workspaceStore.folderColors,
-    );
+    ).replaceAll("<a ", '<a tabindex="-1" ');
   }
 
   function attributeTitle(attribute: TaskAttribute) {
@@ -266,22 +273,35 @@
   }
 
   function handleTaskMainKeydown(task: TaskItem, event: KeyboardEvent) {
-    if (event.key !== "Enter" && event.key !== " ") {
+    const currentIndex = visibleTaskKeys.indexOf(taskKey(task));
+    if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      const nextIndex = nextRovingIndex(currentIndex, visibleTaskKeys.length, event.key);
+      if (nextIndex !== null) focusTaskAt(nextIndex);
       return;
     }
-
-    event.preventDefault();
-    openTask(task);
+    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+      openTaskContextMenu(task, event);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      openTask(task);
+      return;
+    }
+    if (event.key.toLocaleLowerCase() === "e" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      event.preventDefault();
+      editTask(task);
+    }
   }
 
-  function handleTaskChipKeydown(task: TaskItem, event: KeyboardEvent) {
-    if (event.key !== "Enter" && event.key !== " ") {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    openTaskContextMenu(task, event);
+  function focusTaskAt(index: number) {
+    const key = visibleTaskKeys[index];
+    if (!key) return;
+    focusedTaskKey = key;
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-task-key="${CSS.escape(key)}"]`)?.focus();
+    });
   }
 
   async function changeTaskStatus(task: TaskItem, newStatus: string) {
@@ -439,6 +459,10 @@
   onDestroy(() => {
     flushTaskOverviewConfigSave();
   });
+
+  onMount(() => {
+    requestAnimationFrame(() => taskFilterInput?.focus({ preventScroll: true }));
+  });
 </script>
 
 <svelte:window on:click={closeTaskContextMenu} />
@@ -466,6 +490,8 @@
       <option value="ALL">All</option>
     </select>
     <input
+      bind:this={taskFilterInput}
+      data-focus-entry
       type="search"
       bind:value={textFilter}
       placeholder="Search tasks"
@@ -565,8 +591,11 @@
                 <div
                   class="task-overview-main"
                   role="button"
-                  tabindex="0"
-                  title="Open task page in the right pane"
+                  tabindex={focusedTaskKey === taskKey(task) ? 0 : -1}
+                  data-task-key={taskKey(task)}
+                  aria-label={`${task.status}${task.priority ? ` priority ${task.priority}` : ""}: ${taskDisplayText(task)}. Enter opens in right pane, E opens in editor.`}
+                  title="Enter: open in right pane. E: edit source. Shift+F10: task menu."
+                  on:focus={() => (focusedTaskKey = taskKey(task))}
                   on:click={(event) => handleTaskMainClick(task, event)}
                   on:keydown={(event) => handleTaskMainKeydown(task, event)}
                   on:contextmenu={(event) => openTaskContextMenu(task, event)}
@@ -575,10 +604,8 @@
                     class={`task-overview-status task-keyword task-${task.status.toLowerCase()}`}
                     style={taskColorStyle(task.status, $workspaceStore.taskStateColors)}
                     title="Change task"
-                    role="button"
-                    tabindex="0"
+                    role="presentation"
                     on:click|stopPropagation={(event) => openTaskContextMenu(task, event)}
-                    on:keydown={(event) => handleTaskChipKeydown(task, event)}
                     on:contextmenu={(event) => openTaskContextMenu(task, event)}
                   >
                     {task.status}
@@ -587,10 +614,8 @@
                     <span
                       class="task-overview-priority task-priority"
                       title={`Priority #${task.priority}`}
-                      role="button"
-                      tabindex="0"
+                      role="presentation"
                       on:click|stopPropagation={(event) => openTaskContextMenu(task, event)}
-                      on:keydown={(event) => handleTaskChipKeydown(task, event)}
                       on:contextmenu={(event) => openTaskContextMenu(task, event)}
                     >
                       #{task.priority}
@@ -602,6 +627,7 @@
               <button
                 type="button"
                 class="task-open-button"
+                tabindex="-1"
                 on:click={(event) => editTaskFromButton(task, event)}
               >
                 Edit

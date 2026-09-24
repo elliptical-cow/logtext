@@ -52,7 +52,7 @@ test("keeps editor task keyword menus limited to task and line actions", () => {
 });
 
 test("shows subtle Windows shortcut hints only for equivalent editor actions", () => {
-  for (const shortcut of ["Tab", "Shift+Tab", "Ctrl+↑", "Ctrl+↓", "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+A"]) {
+  for (const shortcut of ["Tab", "Shift+Tab", "Ctrl+↑", "Ctrl+↓", "Ctrl+Alt+→", "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+A"]) {
     const shortcutMarkup = `>${shortcut}<`;
     const shortcutPosition = editor.indexOf(shortcutMarkup);
     const buttonStart = editor.lastIndexOf("<button", shortcutPosition);
@@ -62,9 +62,10 @@ test("shows subtle Windows shortcut hints only for equivalent editor actions", (
     assert.match(editor.slice(buttonStart, buttonEnd), /class="context-menu-action"/);
   }
   assert.equal(/Cmd\/Ctrl/.test(editor), false);
+  assert.equal((editor.match(/>Ctrl\+Alt\+→</g) ?? []).length, 2);
   assert.match(
     editor,
-    /<button\s+type="button"\s+role="menuitem"\s+data-menu-key="r"\s+on:click=\{openSourceLineInRightPane\}/,
+    /<button\s+type="button"\s+class="context-menu-action"\s+role="menuitem"\s+data-menu-key="r"\s+on:click=\{openSourceLineInRightPane\}/,
   );
 });
 

@@ -390,7 +390,8 @@ textarea {
 .column-resizer:focus-visible,
 .app-shell.resizing .column-resizer {
   background: var(--accent-bg-subtle);
-  outline: none;
+  outline: 2px solid var(--accent-border);
+  outline-offset: -1px;
 }
 
 .column-resizer-inactive,
@@ -948,7 +949,8 @@ textarea {
 .quick-access-resizer:focus-visible,
 .file-tree.resizing-quick-access .quick-access-resizer {
   background: var(--accent-bg-subtle);
-  outline: none;
+  outline: 2px solid var(--accent-border);
+  outline-offset: -1px;
 }
 
 .file-tree.resizing-quick-access {
@@ -1038,6 +1040,15 @@ textarea {
 
 .quick-item:hover {
   background: var(--surface-hover);
+}
+
+.quick-item:focus-visible,
+.search-result:focus-visible,
+.task-overview-main:focus-visible,
+.right-pane:focus-visible,
+.markdown-view [role="button"]:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: -2px;
 }
 
 .quick-row .icon-button {

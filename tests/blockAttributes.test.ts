@@ -36,7 +36,7 @@ test("marks attribute keys for rendering without touching values or code", () =>
   assert.equal(result.tokens[0].name, "owner");
   assert.match(
     result.markdown,
-    /LOGTEXT_BLOCK_ATTRIBUTE_0_OPEN \*\*Jens\*\*LOGTEXT_BLOCK_ATTRIBUTE_0_CLOSE/,
+    /LOGTEXT_BLOCK_ATTRIBUTE_0_OPEN: \*\*Jens\*\*:LOGTEXT_BLOCK_ATTRIBUTE_0_CLOSE/,
   );
   assert.match(result.markdown, /- example:: literal/);
 });

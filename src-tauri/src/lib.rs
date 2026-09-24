@@ -30,6 +30,9 @@ const MENU_NEW_FILE: &str = "file.new_file";
 const MENU_CLOSE_WORKSPACE: &str = "file.close_workspace";
 const MENU_SAVE: &str = "file.save";
 const MENU_CLEAN_MEDIA: &str = "file.clean_media";
+const MENU_QUICK_OPEN: &str = "go.quick_open";
+const MENU_COMMAND_PALETTE: &str = "go.command_palette";
+const MENU_WORKSPACE_SEARCH: &str = "go.workspace_search";
 const MENU_UNDO: &str = "edit.undo";
 const MENU_REDO: &str = "edit.redo";
 const MENU_PREFERENCES: &str = "app.preferences";
@@ -198,6 +201,9 @@ pub fn run() {
                 MENU_CLOSE_WORKSPACE => Some("menu-close-workspace"),
                 MENU_SAVE => Some("menu-save"),
                 MENU_CLEAN_MEDIA => Some("menu-clean-media"),
+                MENU_QUICK_OPEN => Some("menu-quick-open"),
+                MENU_COMMAND_PALETTE => Some("menu-command-palette"),
+                MENU_WORKSPACE_SEARCH => Some("menu-workspace-search"),
                 MENU_UNDO => Some("menu-undo"),
                 MENU_REDO => Some("menu-redo"),
                 MENU_PREFERENCES => Some("menu-preferences"),
@@ -280,9 +286,30 @@ fn build_app_menu(handle: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     ensure_file_menu(handle, &menu)?;
     ensure_edit_menu(handle, &menu)?;
     ensure_preferences_menu(handle, &menu)?;
+    ensure_go_menu(handle, &menu)?;
     ensure_view_menu(handle, &menu)?;
     ensure_help_menu(handle, &menu)?;
     Ok(menu)
+}
+
+fn ensure_go_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri::Result<()> {
+    let quick_open = MenuItemBuilder::with_id(MENU_QUICK_OPEN, "Quick Open Page...")
+        .accelerator("CmdOrCtrl+P")
+        .build(handle)?;
+    let command_palette = MenuItemBuilder::with_id(MENU_COMMAND_PALETTE, "Command Palette...")
+        .accelerator("CmdOrCtrl+Shift+P")
+        .build(handle)?;
+    let workspace_search = MenuItemBuilder::with_id(MENU_WORKSPACE_SEARCH, "Search Workspace")
+        .accelerator("CmdOrCtrl+Shift+F")
+        .build(handle)?;
+    let go_menu = SubmenuBuilder::new(handle, "Go")
+        .item(&quick_open)
+        .item(&command_palette)
+        .separator()
+        .item(&workspace_search)
+        .build()?;
+    insert_submenu_before_label(menu, &go_menu, "View")?;
+    Ok(())
 }
 
 fn ensure_preferences_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri::Result<()> {

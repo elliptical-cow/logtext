@@ -779,6 +779,15 @@
     onOpenSourceLineInRightPane(line);
   }
 
+  function openCurrentLineInRightPane() {
+    if (!view || disabled || !documentPath) {
+      return;
+    }
+
+    const line = view.state.doc.lineAt(view.state.selection.main.head).number;
+    onOpenSourceLineInRightPane(line);
+  }
+
   function contextSelectionText() {
     if (!view || !editorContextMenu?.selection) {
       return "";
@@ -1229,6 +1238,10 @@
     window.addEventListener("logtext-editor-undo", handleEditorUndoEvent);
     window.addEventListener("logtext-editor-redo", handleEditorRedoEvent);
     window.addEventListener("logtext-editor-isolate-history", isolateEditorHistory);
+    window.addEventListener(
+      "logtext-open-editor-line-in-right-pane",
+      openCurrentLineInRightPane,
+    );
     window.addEventListener("logtext-collapse-all-blocks-below-level", handleCollapseBelowLevelEvent);
     window.addEventListener("logtext-expand-all-blocks", handleExpandAllBlocksEvent);
     lastDocumentPath = documentPath;
@@ -1308,6 +1321,10 @@
     window.removeEventListener("logtext-editor-undo", handleEditorUndoEvent);
     window.removeEventListener("logtext-editor-redo", handleEditorRedoEvent);
     window.removeEventListener("logtext-editor-isolate-history", isolateEditorHistory);
+    window.removeEventListener(
+      "logtext-open-editor-line-in-right-pane",
+      openCurrentLineInRightPane,
+    );
     window.removeEventListener(
       "logtext-collapse-all-blocks-below-level",
       handleCollapseBelowLevelEvent,
@@ -1548,11 +1565,13 @@
       </button>
       <button
         type="button"
+        class="context-menu-action"
         role="menuitem"
         data-menu-key="s"
         on:click={openSourceLineInRightPane}
       >
-        <span class="menu-mnemonic">S</span>how line in right pane
+        <span><span class="menu-mnemonic">S</span>how line in right pane</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+Alt+→</span>
       </button>
     {/if}
 
@@ -1695,11 +1714,13 @@
     {#if editorContextMenu.kind !== "link"}
       <button
         type="button"
+        class="context-menu-action"
         role="menuitem"
         data-menu-key="r"
         on:click={openSourceLineInRightPane}
       >
-        Show line in <span class="menu-mnemonic">r</span>ight pane
+        <span>Show line in <span class="menu-mnemonic">r</span>ight pane</span>
+        <span class="context-menu-shortcut" aria-hidden="true">Ctrl+Alt+→</span>
       </button>
     {/if}
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { keepContextMenuInViewport } from "../contextMenuPosition";
   import {
     focusFirstMenuItem,
@@ -13,6 +13,7 @@
   export let onClose: () => void;
 
   let menuElement: HTMLElement | null = null;
+  let returnFocus: HTMLElement | null = null;
 
   function handleWindowKeydown(event: KeyboardEvent) {
     if (handleContextMenuNavigation(event, menuElement, onClose)) {
@@ -23,8 +24,15 @@
   }
 
   onMount(() => {
+    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const frame = window.requestAnimationFrame(() => focusFirstMenuItem(menuElement));
     return () => window.cancelAnimationFrame(frame);
+  });
+
+  onDestroy(() => {
+    if (returnFocus?.isConnected) {
+      returnFocus.focus({ preventScroll: true });
+    }
   });
 </script>
 

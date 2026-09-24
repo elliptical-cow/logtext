@@ -1,9 +1,17 @@
+import { commandDefinitions } from "./appCommands.js";
+
 export type KeyboardShortcut = {
   keys: string;
   description: string;
 };
 
 export const keyboardShortcuts: KeyboardShortcut[] = [
+  ...commandDefinitions
+    .filter((command) => command.keyBinding)
+    .map((command) => ({
+      keys: command.keyBinding?.label ?? "",
+      description: command.title,
+    })),
   { keys: "Enter", description: "Create a new block or list item" },
   { keys: "Shift+Enter", description: "Insert a visible line break within the current block" },
   { keys: "Tab", description: "Indent current or selected block" },

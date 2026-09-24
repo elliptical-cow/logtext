@@ -2,6 +2,7 @@
   import { getVersion } from "@tauri-apps/api/app";
   import { onDestroy, onMount } from "svelte";
   import { get } from "svelte/store";
+  import CommandPalette from "./lib/components/CommandPalette.svelte";
   import EditorPane from "./lib/components/EditorPane.svelte";
   import ErrorDialog from "./lib/components/ErrorDialog.svelte";
   import FileTree from "./lib/components/FileTree.svelte";
@@ -11,8 +12,19 @@
   import RightPane from "./lib/components/RightPane.svelte";
   import TaskOverview from "./lib/components/TaskOverview.svelte";
   import { listUnusedMedia, moveUnusedMediaToTrash, setWindowTitle } from "./lib/api";
+  import {
+    commandDefinitions,
+    commandForKeyboardEvent,
+    type CommandId,
+  } from "./lib/appCommands";
   import { setupCoreEvents } from "./lib/coreEvents";
   import { trapDialogFocus } from "./lib/dialogFocus";
+  import {
+    activeFocusRegion,
+    cycleFocusRegion,
+    focusRegion,
+    focusWorkspaceRegion,
+  } from "./lib/focusRegions";
   import { journalPath } from "./lib/journals";
   import { keyboardShortcuts } from "./lib/keyboardShortcuts";
   import {
@@ -23,9 +35,12 @@
   } from "./lib/paneLayout";
   import { appErrorStore, runUserAction } from "./lib/stores/appErrors";
   import { editorSessionStore } from "./lib/stores/editorSession";
+  import { editorModeStore } from "./lib/stores/editorMode";
+  import { linkOperations } from "./lib/stores/linkOperations";
   import { mainViewStore } from "./lib/stores/mainView";
   import { rightPaneStore } from "./lib/stores/rightPane";
   import { taskStore } from "./lib/stores/tasks";
+  import { themeStore } from "./lib/stores/theme";
   import { workspaceStore } from "./lib/stores/workspace";
   import { zoomStore } from "./lib/stores/zoom";
   import type { MediaCleanupCandidate, WorkspacePreferences } from "./lib/types";
@@ -62,6 +77,8 @@
   let lastWindowTitle = "";
   let sessionSaveTimer: ReturnType<typeof setTimeout> | null = null;
   let isStarting = true;
+  let paletteMode: "commands" | "pages" | null = null;
+  let navigationCommandAvailable = false;
 
   onMount(() => {
     void initializeApp();
@@ -74,7 +91,10 @@
     window.addEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.addEventListener("logtext-clean-media", handleCleanMediaRequest);
     window.addEventListener("logtext-show-preferences", openPreferencesDialog);
+    window.addEventListener("logtext-execute-command", handleExecuteCommandEvent);
+    window.addEventListener("logtext-navigation-context", handleNavigationContext);
     window.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("keydown", handleKeyboardCommand, { capture: true });
   });
 
   async function initializeApp() {
@@ -159,6 +179,150 @@
 
   function closeKeyboardShortcutsDialog() {
     showKeyboardShortcuts = false;
+  }
+
+  function openPalette(mode: "commands" | "pages") {
+    paletteMode = mode;
+  }
+
+  function closePalette() {
+    paletteMode = null;
+  }
+
+  function handleKeyboardCommand(event: KeyboardEvent) {
+    const command = commandForKeyboardEvent(event);
+    if (!command) {
+      return;
+    }
+    const modal = event.target instanceof HTMLElement
+      ? event.target.closest("[aria-modal='true']")
+      : null;
+    if (modal && command.id !== "app.quickOpen" && command.id !== "app.commandPalette") {
+      return;
+    }
+    if (command.requiresWorkspace && !$workspaceStore.root) {
+      return;
+    }
+    if (
+      command.keyBinding?.scope === "editor"
+      && !(event.target instanceof HTMLElement && event.target.closest(".cm-editor"))
+    ) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    executeCommand(command.id);
+  }
+
+  function executeCommand(id: CommandId) {
+    if (id !== "app.quickOpen" && id !== "app.commandPalette") {
+      closePalette();
+    }
+
+    switch (id) {
+      case "app.quickOpen":
+        openPalette("pages");
+        return;
+      case "app.commandPalette":
+        openPalette("commands");
+        return;
+      case "workspace.search":
+        focusWorkspaceRegion("left");
+        window.dispatchEvent(new CustomEvent("logtext-focus-workspace-search"));
+        return;
+      case "workspace.newPage":
+        window.dispatchEvent(new CustomEvent("logtext-new-page", { detail: { folderPath: "" } }));
+        return;
+      case "workspace.newFolder":
+      case "navigation.rename":
+      case "navigation.move":
+      case "navigation.delete":
+        window.dispatchEvent(new CustomEvent("logtext-file-command", { detail: { id } }));
+        return;
+      case "workspace.today":
+        window.dispatchEvent(new CustomEvent("logtext-open-journal", { detail: { day: "today" } }));
+        return;
+      case "editor.openLineInRightPane":
+        window.dispatchEvent(new CustomEvent("logtext-open-editor-line-in-right-pane"));
+        return;
+      case "view.focusNextPane":
+        cycleFocusRegion(1);
+        return;
+      case "view.focusPreviousPane":
+        cycleFocusRegion(-1);
+        return;
+      case "view.historyBack":
+        navigateFocusedPane("back");
+        return;
+      case "view.historyForward":
+        navigateFocusedPane("forward");
+        return;
+      case "view.toggleTasks":
+        if ($mainViewStore === "tasks") {
+          mainViewStore.set("editor");
+        } else {
+          mainViewStore.set("tasks");
+          void taskStore.refresh();
+        }
+        requestAnimationFrame(() => focusWorkspaceRegion("middle"));
+        return;
+      case "view.toggleEditorMode":
+        editorModeStore.toggle();
+        return;
+      case "view.toggleLeftPane":
+        window.dispatchEvent(new CustomEvent("logtext-toggle-left-pane"));
+        return;
+      case "view.toggleMiddlePane":
+        window.dispatchEvent(new CustomEvent("logtext-toggle-middle-pane"));
+        return;
+      case "view.toggleRightPane":
+        window.dispatchEvent(new CustomEvent("logtext-toggle-right-pane"));
+        return;
+      case "view.toggleTheme":
+        void workspaceStore.saveThemeMode(themeStore.toggle());
+        return;
+      case "view.resetLayout":
+        resetLayout();
+        return;
+      case "workspace.preferences":
+        openPreferencesDialog();
+        return;
+      case "workspace.cleanMedia":
+        handleCleanMediaRequest();
+        return;
+      case "help.shortcuts":
+        openKeyboardShortcutsDialog();
+        return;
+      case "help.about":
+        openAboutDialog();
+    }
+  }
+
+  function handleExecuteCommandEvent(event: Event) {
+    const id = event instanceof CustomEvent ? event.detail?.id : null;
+    if (commandDefinitions.some((command) => command.id === id)) {
+      executeCommand(id as CommandId);
+    }
+  }
+
+  function handleNavigationContext(event: Event) {
+    navigationCommandAvailable = event instanceof CustomEvent && Boolean(event.detail?.path);
+  }
+
+  function navigateFocusedPane(direction: "back" | "forward") {
+    const region = activeFocusRegion();
+    if (region === "right") {
+      void (direction === "back" ? rightPaneStore.goBack() : rightPaneStore.goForward());
+    } else if (region === "middle" && $mainViewStore === "editor") {
+      void (direction === "back" ? editorSessionStore.goBack() : editorSessionStore.goForward());
+    }
+  }
+
+  function openPalettePage(path: string, target: "editor" | "right") {
+    closePalette();
+    void linkOperations.open(path, target).then(() => {
+      requestAnimationFrame(() => focusWorkspaceRegion(target === "editor" ? "middle" : "right"));
+    });
   }
 
   function handleCleanMediaRequest() {
@@ -422,6 +586,26 @@
     persistLayout();
   }
 
+  function resizeWithKeyboard(target: "left" | "right", event: KeyboardEvent) {
+    if (event.key === "Home") {
+      event.preventDefault();
+      if (target === "left") leftWidth = defaultLeftWidth;
+      else rightWidth = defaultRightWidth;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      const step = event.shiftKey ? 48 : 16;
+      if (target === "left") {
+        leftWidth += event.key === "ArrowLeft" ? -step : step;
+      } else {
+        rightWidth += event.key === "ArrowLeft" ? step : -step;
+      }
+    } else {
+      return;
+    }
+    clampLayout(window.innerWidth);
+    persistLayout();
+  }
+
   async function restoreWorkspaceSession() {
     clearWorkspaceSessionSaveTimer();
     restoringWorkspaceSession = true;
@@ -523,7 +707,10 @@
     window.removeEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.removeEventListener("logtext-clean-media", handleCleanMediaRequest);
     window.removeEventListener("logtext-show-preferences", openPreferencesDialog);
+    window.removeEventListener("logtext-execute-command", handleExecuteCommandEvent);
+    window.removeEventListener("logtext-navigation-context", handleNavigationContext);
     window.removeEventListener("wheel", handleWheel);
+    window.removeEventListener("keydown", handleKeyboardCommand, { capture: true });
   });
 </script>
 
@@ -548,6 +735,8 @@
       <div
         class="workspace-pane-content"
         hidden={!$workspaceStore.navigationLayout.leftPaneVisible}
+        tabindex="-1"
+        use:focusRegion={"left"}
       >
         <FileTree />
       </div>
@@ -560,14 +749,21 @@
     {#if $workspaceStore.navigationLayout.leftPaneVisible &&
     ($workspaceStore.navigationLayout.middlePaneVisible ||
       $workspaceStore.navigationLayout.rightPaneVisible)}
-      <button
-        type="button"
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
+      <div
         class="column-resizer"
+        role="separator"
+        tabindex="0"
+        aria-orientation="vertical"
         aria-label="Resize file tree"
+        aria-valuemin={minLeftWidth}
+        aria-valuemax={Math.max(minLeftWidth, window.innerWidth - minEditorWidth - minRightWidth - resizerWidth * 2)}
+        aria-valuenow={Math.round(leftWidth)}
         title="Drag to resize. Double-click to reset columns."
         on:pointerdown={(event) => startResize("left", event)}
+        on:keydown={(event) => resizeWithKeyboard("left", event)}
         on:dblclick={resetColumnWidths}
-      ></button>
+      ></div>
     {:else}
       <div class="column-resizer column-resizer-inactive" aria-hidden="true"></div>
     {/if}
@@ -581,6 +777,8 @@
       <div
         class="workspace-pane-content"
         hidden={!$workspaceStore.navigationLayout.middlePaneVisible}
+        tabindex="-1"
+        use:focusRegion={"middle"}
       >
         {#if $mainViewStore === "tasks"}
           <TaskOverview />
@@ -596,14 +794,21 @@
     </section>
     {#if $workspaceStore.navigationLayout.middlePaneVisible &&
     $workspaceStore.navigationLayout.rightPaneVisible}
-      <button
-        type="button"
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
+      <div
         class="column-resizer"
+        role="separator"
+        tabindex="0"
+        aria-orientation="vertical"
         aria-label="Resize right pane"
+        aria-valuemin={minRightWidth}
+        aria-valuemax={Math.max(minRightWidth, window.innerWidth - minEditorWidth - minLeftWidth - resizerWidth * 2)}
+        aria-valuenow={Math.round(rightWidth)}
         title="Drag to resize. Double-click to reset columns."
         on:pointerdown={(event) => startResize("right", event)}
+        on:keydown={(event) => resizeWithKeyboard("right", event)}
         on:dblclick={resetColumnWidths}
-      ></button>
+      ></div>
     {:else}
       <div class="column-resizer column-resizer-inactive" aria-hidden="true"></div>
     {/if}
@@ -617,6 +822,8 @@
       <div
         class="workspace-pane-content"
         hidden={!$workspaceStore.navigationLayout.rightPaneVisible}
+        tabindex="-1"
+        use:focusRegion={"right"}
       >
         <RightPane />
       </div>
@@ -627,6 +834,20 @@
       {/if}
     </section>
   </main>
+{/if}
+
+{#if paletteMode}
+  <CommandPalette
+    mode={paletteMode}
+    commands={commandDefinitions.filter((command) =>
+      (!command.requiresWorkspace || Boolean($workspaceStore.root))
+      && (!command.requiresNavigation || navigationCommandAvailable)
+      && (!command.requiresEditor || ($mainViewStore === "editor" && Boolean($editorSessionStore.path))))}
+    pages={$workspaceStore.pages}
+    onClose={closePalette}
+    onCommand={executeCommand}
+    onPage={openPalettePage}
+  />
 {/if}
 
 {#if showMediaCleanup}

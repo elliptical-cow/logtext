@@ -1,5 +1,6 @@
 <script lang="ts">
   import ErrorDialog from "./ErrorDialog.svelte";
+  import { trapDialogFocus } from "../dialogFocus";
   import JournalFeed from "./JournalFeed.svelte";
   import MarkdownView from "./MarkdownView.svelte";
   import LinkedReferences from "./LinkedReferences.svelte";
@@ -126,7 +127,7 @@
   }
 </script>
 
-<aside class="right-pane" aria-label="Right pane">
+<aside class="right-pane" aria-label="Right pane" tabindex="-1" data-focus-entry>
   <div class="pane-header">
     <div class="pane-title-group">
       <div class="pane-nav-actions" aria-label="Right pane navigation">
@@ -174,18 +175,21 @@
   />
 
   {#if missingLinkPath}
-    <div class="missing-link-action">
-      <span>Create missing page <strong>{missingLinkPath}</strong>?</span>
-      <div>
-        <button type="button" on:click={() => createMissingPage("right")}>
-          Create + open right
-        </button>
-        <button type="button" on:click={() => createMissingPage("editor")}>
-          Create + open editor
-        </button>
-        <button type="button" on:click={() => (missingLinkPath = null)}>
-          Cancel
-        </button>
+    <div class="dialog-backdrop" role="presentation">
+      <div
+        class="rename-dialog missing-link-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="right-missing-link-title"
+        tabindex="-1"
+        use:trapDialogFocus={{ onClose: () => (missingLinkPath = null) }}
+      >
+        <header><h2 id="right-missing-link-title">Create missing page?</h2><p>{missingLinkPath}</p></header>
+        <div class="dialog-actions">
+          <button type="button" on:click={() => (missingLinkPath = null)}>Cancel</button>
+          <button type="button" on:click={() => createMissingPage("right")}>Create + open right</button>
+          <button type="button" class="primary-action" on:click={() => createMissingPage("editor")}>Create + open editor</button>
+        </div>
       </div>
     </div>
   {/if}

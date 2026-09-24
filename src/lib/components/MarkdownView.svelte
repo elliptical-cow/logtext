@@ -309,7 +309,7 @@
     for (const token of tokens) {
       renderedHtml = renderedHtml.replaceAll(
         token.marker,
-        `<strong class="task-keyword task-${safeTaskClass(token.status)}" style="${taskColorStyle(token.status, taskStateColors)}" data-task-line="${token.line}" data-task-local-line="${token.localLine}" data-task-status="${token.status}">${token.status}</strong>`,
+        `<strong class="task-keyword task-${safeTaskClass(token.status)}" style="${taskColorStyle(token.status, taskStateColors)}" data-task-line="${token.line}" data-task-local-line="${token.localLine}" data-task-status="${token.status}" role="button" tabindex="0" aria-label="${token.status} task. Open task menu">${token.status}</strong>`,
       );
     }
 
@@ -322,7 +322,7 @@
     for (const token of tokens) {
       renderedHtml = renderedHtml.replaceAll(
         token.marker,
-        `<span class="task-priority" data-task-line="${token.line}" data-task-local-line="${token.localLine}" data-task-status="${token.status}">#${token.priority}</span>`,
+        `<span class="task-priority" data-task-line="${token.line}" data-task-local-line="${token.localLine}" data-task-status="${token.status}" role="button" tabindex="0" aria-label="Task priority ${token.priority}. Open task menu">#${token.priority}</span>`,
       );
     }
 
@@ -558,6 +558,40 @@
     }
   }
 
+  function handleRenderedKeydown(event: KeyboardEvent) {
+    if (!enableTaskContextMenu) {
+      return;
+    }
+    if (
+      event.key !== "ContextMenu"
+      && !(event.key === "F10" && event.shiftKey)
+      && event.key !== "Enter"
+      && event.key !== " "
+    ) {
+      return;
+    }
+    const marker = (event.target as HTMLElement | null)?.closest<HTMLElement>(
+      ".task-keyword, .task-priority",
+    );
+    const line = Number(marker?.dataset.taskLine);
+    const status = marker?.dataset.taskStatus;
+    if (!marker || !Number.isInteger(line) || line <= 0 || !status) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = marker.getBoundingClientRect();
+    linkContextMenu = null;
+    sourceLineContextMenu = null;
+    taskContextMenu = {
+      x: rect.left + 10,
+      y: rect.bottom,
+      line,
+      localLine: Number(marker.dataset.taskLocalLine) || line,
+      status,
+    };
+  }
+
   function setTaskStatus(nextStatus: string) {
     if (!taskContextMenu) {
       return;
@@ -675,7 +709,7 @@
   role="presentation"
   on:click={handleClick}
   on:contextmenu={handleContextMenu}
-  on:keydown={() => {}}
+  on:keydown={handleRenderedKeydown}
 >
   {@html rendered}
 </div>

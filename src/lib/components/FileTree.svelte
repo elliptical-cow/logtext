@@ -2,6 +2,7 @@
   import { onDestroy, onMount, tick } from "svelte";
   import { confirm as confirmDialog, open } from "@tauri-apps/plugin-dialog";
   import { journalPathForDateInput, journalPathForDay, type JournalDay } from "../journals";
+  import { firstChildTreeIndex, nextRovingIndex, parentTreeIndex } from "../keyboardNavigation";
   import { saveExpandedFolders, searchPages } from "../api";
   import { toErrorMessage } from "../errors";
   import { trapDialogFocus } from "../dialogFocus";
@@ -38,6 +39,8 @@
   let popupError: string | null = null;
   let popupErrorDetail: string | null = null;
   let searchQuery = "";
+  let searchInput: HTMLInputElement | null = null;
+  let focusedSearchResultIndex = 0;
   let contextMenu: ContextMenuState | null = null;
   let searchResultContextMenu: SearchResultContextMenuState | null = null;
   let folderPageDialog: FolderPageDialogState | null = null;
@@ -56,10 +59,12 @@
   let moveInput: HTMLInputElement | null = null;
   let moveError: string | null = null;
   let moveSubmitting = false;
+  let moveSuggestionIndex = 0;
   let batchMoveDialog: BatchMoveDialogState | null = null;
   let batchMoveInput: HTMLInputElement | null = null;
   let batchMoveError: string | null = null;
   let batchMoveSubmitting = false;
+  let batchMoveSuggestionIndex = 0;
   let draggedPagePath: string | null = null;
   let dragOverFolderPath: string | null = null;
   let focusedTreePath: string | null = null;
@@ -285,10 +290,19 @@
     focusedTreePath = navigationRows[0]?.node.path ?? null;
   }
 
+  $: if (!focusedTreePath && navigationRows.length > 0) {
+    focusedTreePath = $editorSessionStore.path && navigationRows.some((row) => row.node.path === $editorSessionStore.path)
+      ? $editorSessionStore.path
+      : navigationRows[0].node.path;
+  }
+
   $: pruneSelection();
 
   onMount(() => {
     window.addEventListener("logtext-new-page", handleNewPageEvent);
+    window.addEventListener("logtext-focus-workspace-search", focusWorkspaceSearch);
+    window.addEventListener("logtext-open-journal", handleOpenJournalEvent);
+    window.addEventListener("logtext-file-command", handleFileCommandEvent);
   });
 
   onDestroy(() => {
@@ -296,6 +310,9 @@
       clearTimeout(navigationLayoutSaveTimer);
     }
     window.removeEventListener("logtext-new-page", handleNewPageEvent);
+    window.removeEventListener("logtext-focus-workspace-search", focusWorkspaceSearch);
+    window.removeEventListener("logtext-open-journal", handleOpenJournalEvent);
+    window.removeEventListener("logtext-file-command", handleFileCommandEvent);
     window.removeEventListener("pointermove", resizeQuickAccess);
   });
 
@@ -328,6 +345,42 @@
     const detail = event instanceof CustomEvent ? event.detail : null;
     const folderPath = typeof detail?.folderPath === "string" ? detail.folderPath : "";
     void startCreatePageInFolder(folderPath);
+  }
+
+  function focusWorkspaceSearch() {
+    searchInput?.focus({ preventScroll: true });
+    searchInput?.select();
+  }
+
+  function handleOpenJournalEvent(event: Event) {
+    const day = event instanceof CustomEvent ? event.detail?.day : null;
+    if (day === "yesterday" || day === "today" || day === "tomorrow") {
+      openJournal(day);
+    }
+  }
+
+  function handleFileCommandEvent(event: Event) {
+    const id = event instanceof CustomEvent ? event.detail?.id : null;
+    const node = focusedTreePath ? findNavigationNode(tree, focusedTreePath) : null;
+    if (id === "workspace.newFolder") {
+      const parentPath = node?.kind === "folder"
+        ? node.path
+        : node?.path.split("/").slice(0, -1).join("/") ?? "";
+      void startCreateFolder(parentPath);
+      return;
+    }
+    if (!node) return;
+    if (id === "navigation.rename") {
+      node.kind === "folder" ? startRenameFolder(node.path) : startRenamePage(node.path);
+    } else if (id === "navigation.move") {
+      node.kind === "folder" ? void startMoveFolder(node.path) : void startMovePage(node.path);
+    } else if (id === "navigation.delete") {
+      if (!selectedPaths.has(node.path)) {
+        selectedPaths = new Set([node.path]);
+        selectionAnchorPath = node.path;
+      }
+      void deleteSelection();
+    }
   }
 
   async function confirmWarning(message: string) {
@@ -503,6 +556,7 @@
   }
 
   function handleNodeClick(node: NavigationNode, event: MouseEvent) {
+    focusTreeNodeAfterUpdate(node.path);
     if (event.shiftKey) {
       event.preventDefault();
       selectRangeTo(node.path);
@@ -1336,6 +1390,26 @@
     });
   }
 
+  function handleMoveSuggestionKeydown(event: KeyboardEvent, batch = false) {
+    const suggestions = batch ? batchMoveFolderSuggestions : moveFolderSuggestions;
+    if (suggestions.length === 0) return;
+    let index = batch ? batchMoveSuggestionIndex : moveSuggestionIndex;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      index = (index + (event.key === "ArrowDown" ? 1 : -1) + suggestions.length) % suggestions.length;
+      if (batch) batchMoveSuggestionIndex = index;
+      else moveSuggestionIndex = index;
+      return;
+    }
+    if (event.key === "Enter" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      event.preventDefault();
+      const suggestion = suggestions[index];
+      if (suggestion) {
+        batch ? selectBatchMoveFolderSuggestion(suggestion.path) : selectMoveFolderSuggestion(suggestion.path);
+      }
+    }
+  }
+
   function startRenamePage(path: string) {
     if (
       $editorSessionStore.path === path &&
@@ -1769,6 +1843,7 @@
 
   function focusTreeNode(path: string) {
     focusedTreePath = path;
+    window.dispatchEvent(new CustomEvent("logtext-navigation-context", { detail: { path } }));
   }
 
   function focusTreeNodeAfterUpdate(path: string) {
@@ -1780,57 +1855,185 @@
 
   function handleTreeKeydown(node: NavigationNode, event: KeyboardEvent) {
     const currentIndex = navigationRows.findIndex((row) => row.node.path === node.path);
+    const currentRow = navigationRows[currentIndex];
+
+    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+      openContextMenu(node, event);
+      return;
+    }
+
+    if (event.key === "F2") {
+      event.preventDefault();
+      node.kind === "folder" ? startRenameFolder(node.path) : startRenamePage(node.path);
+      return;
+    }
+
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      if (!selectedPaths.has(node.path)) {
+        selectedPaths = new Set([node.path]);
+        selectionAnchorPath = node.path;
+      }
+      void deleteSelection();
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "a") {
+      event.preventDefault();
+      selectedPaths = new Set(navigationRows.map((row) => row.node.path));
+      selectionAnchorPath = node.path;
+      return;
+    }
+
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      const target = event.key === "Home" ? navigationRows[0] : navigationRows.at(-1);
+      if (target) focusTreeNodeAfterUpdate(target.node.path);
+      return;
+    }
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      focusTreeNodeAfterUpdate(
-        navigationRows[Math.min(currentIndex + 1, navigationRows.length - 1)]?.node.path ??
-          node.path,
-      );
+      const targetPath = navigationRows[Math.min(currentIndex + 1, navigationRows.length - 1)]?.node.path ?? node.path;
+      if (event.shiftKey) selectRangeTo(targetPath);
+      focusTreeNodeAfterUpdate(targetPath);
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      focusTreeNodeAfterUpdate(
-        navigationRows[Math.max(currentIndex - 1, 0)]?.node.path ?? node.path,
-      );
+      const targetPath = navigationRows[Math.max(currentIndex - 1, 0)]?.node.path ?? node.path;
+      if (event.shiftKey) selectRangeTo(targetPath);
+      focusTreeNodeAfterUpdate(targetPath);
       return;
     }
 
     if (event.key === "ArrowRight" && node.kind === "folder") {
       event.preventDefault();
-      openFolder(node.path);
+      if (!expandedFolders.has(node.path)) {
+        openFolder(node.path);
+      } else {
+        const childIndex = firstChildTreeIndex(navigationRows.map((row) => row.depth), currentIndex);
+        if (childIndex !== null) focusTreeNodeAfterUpdate(navigationRows[childIndex].node.path);
+      }
       return;
     }
 
     if (event.key === "ArrowLeft" && node.kind === "folder") {
       event.preventDefault();
-      closeFolder(node.path);
+      if (expandedFolders.has(node.path)) {
+        closeFolder(node.path);
+      } else {
+        focusParentTreeRow(currentIndex, currentRow?.depth ?? 0);
+      }
       return;
     }
 
-    if (event.key === "Enter" || event.key === " ") {
+    if (event.key === "ArrowLeft" && node.kind === "page") {
+      event.preventDefault();
+      focusParentTreeRow(currentIndex, currentRow?.depth ?? 0);
+      return;
+    }
+
+    if (event.key === "Enter") {
       event.preventDefault();
       if (node.kind === "folder") {
         toggleFolder(node.path);
+      } else if (event.shiftKey) {
+        openPageInRightPane(node.path);
       } else {
         openPageInEditor(node.path);
+      }
+      return;
+    }
+
+    if (event.key === " ") {
+      event.preventDefault();
+      if (event.metaKey || event.ctrlKey) {
+        toggleNodeSelection(node.path);
+      } else {
+        selectedPaths = new Set([node.path]);
+        selectionAnchorPath = node.path;
       }
     }
   }
 
-  function openContextMenu(node: NavigationNode, event: MouseEvent) {
+  function focusParentTreeRow(currentIndex: number, depth: number) {
+    if (depth <= 0) return;
+    const parentIndex = parentTreeIndex(navigationRows.map((row) => row.depth), currentIndex);
+    if (parentIndex !== null) focusTreeNodeAfterUpdate(navigationRows[parentIndex].node.path);
+  }
+
+  function openContextMenu(node: NavigationNode, event: MouseEvent | KeyboardEvent) {
     event.preventDefault();
     if (!selectedPaths.has(node.path)) {
       selectedPaths = new Set([node.path]);
       selectionAnchorPath = node.path;
     }
+    const rect = event.currentTarget instanceof HTMLElement
+      ? event.currentTarget.getBoundingClientRect()
+      : null;
     contextMenu = {
-      x: event.clientX,
-      y: event.clientY,
+      x: event instanceof MouseEvent && event.clientX > 0 ? event.clientX : (rect?.left ?? 0) + 16,
+      y: event instanceof MouseEvent && event.clientY > 0 ? event.clientY : (rect?.top ?? 0) + 16,
       node,
     };
+  }
+
+  function focusSearchResult(index: number) {
+    if (searchResults.length === 0) return;
+    focusedSearchResultIndex = Math.min(Math.max(index, 0), searchResults.length - 1);
+    requestAnimationFrame(() => {
+      fileTreeElement?.querySelector<HTMLElement>(`[data-search-result-index="${focusedSearchResultIndex}"]`)?.focus();
+    });
+  }
+
+  function handleSearchInputKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape" && searchQuery) {
+      event.preventDefault();
+      searchQuery = "";
+      requestAnimationFrame(() => {
+        const path = focusedTreePath ?? navigationRows[0]?.node.path;
+        if (path) focusTreeNodeAfterUpdate(path);
+      });
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      focusSearchResult(0);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const first = searchResults[0];
+      if (first) event.shiftKey ? openSearchResultInRightPane(first) : openSearchResult(first);
+    }
+  }
+
+  function handleSearchResultKeydown(result: SearchResult, index: number, event: KeyboardEvent) {
+    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+      openSearchResultKeyboardContextMenu(result, event);
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      searchQuery = "";
+      requestAnimationFrame(() => {
+        const path = focusedTreePath ?? navigationRows[0]?.node.path;
+        if (path) focusTreeNodeAfterUpdate(path);
+      });
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      const next = nextRovingIndex(index, searchResults.length, event.key);
+      if (next !== null) focusSearchResult(next);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.shiftKey ? openSearchResultInRightPane(result) : openSearchResult(result);
+    }
   }
 
   function closeContextMenu() {
@@ -2088,6 +2291,22 @@
     persistNavigationLayout();
   }
 
+  function resizeQuickAccessWithKeyboard(event: KeyboardEvent) {
+    if (event.key === "Home") {
+      event.preventDefault();
+      quickAccessHeight = 220;
+    } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      const step = event.shiftKey ? 48 : 16;
+      quickAccessHeight = normalizeQuickAccessHeight(
+        quickAccessHeight + (event.key === "ArrowDown" ? step : -step),
+      );
+    } else {
+      return;
+    }
+    persistNavigationLayout();
+  }
+
   function normalizeQuickAccessHeight(value: number, maxHeight = 520) {
     return Math.round(Math.min(Math.max(value, 80), maxHeight));
   }
@@ -2154,26 +2373,30 @@
       />
     </div>
 
-    <button
-      type="button"
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
+    <div
       class="quick-access-resizer"
+      role="separator"
+      tabindex="0"
+      aria-orientation="horizontal"
       aria-label="Resize favorites and recent area"
+      aria-valuemin="80"
+      aria-valuemax="520"
+      aria-valuenow={Math.round(quickAccessHeight)}
       title="Resize favorites and recent area"
       on:pointerdown={startQuickAccessResize}
-    ></button>
+      on:keydown={resizeQuickAccessWithKeyboard}
+    ></div>
 
     <div class="navigator-search">
       <input
+        bind:this={searchInput}
+        data-focus-entry
         type="search"
         bind:value={searchQuery}
         placeholder="Filter pages"
         aria-label="Filter pages"
-        on:keydown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            openBestSearchMatch();
-          }
-        }}
+        on:keydown={handleSearchInputKeydown}
       />
     </div>
 
@@ -2214,15 +2437,17 @@
         {#if !searchLoading && searchResults.length === 0}
           <p>No ranked results</p>
         {:else}
-          {#each searchResults as result}
+          {#each searchResults as result, index}
             <div class="search-result-row">
               <button
                 type="button"
                 class="search-result"
                 title={`${result.path}:${result.line}`}
+                data-search-result-index={index}
+                tabindex={index === focusedSearchResultIndex ? 0 : -1}
                 on:click={() => openSearchResult(result)}
                 on:contextmenu={(event) => openSearchResultContextMenu(result, event)}
-                on:keydown={(event) => openSearchResultKeyboardContextMenu(result, event)}
+                on:keydown={(event) => handleSearchResultKeydown(result, index, event)}
               >
                 <span>{pageNameFromPath(result.path)}</span>
                 <small>{result.path}:{result.line}</small>
@@ -2233,6 +2458,7 @@
                 class="icon-button right-pane-action search-result-right-action"
                 title={`Open ${result.path}:${result.line} in right pane`}
                 aria-label={`Open ${result.path}:${result.line} in right pane`}
+                tabindex="-1"
                 on:click={() => openSearchResultInRightPane(result)}
               >
                 R
@@ -2485,14 +2711,23 @@
                 autocomplete="off"
                 spellcheck="false"
                 placeholder="Leave empty for workspace root"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={moveFolderSuggestions.length > 0}
+                aria-controls="move-folder-suggestions"
+                aria-activedescendant={moveFolderSuggestions.length > 0 ? `move-folder-option-${moveSuggestionIndex}` : undefined}
+                on:input={() => (moveSuggestionIndex = 0)}
+                on:keydown={(event) => handleMoveSuggestionKeydown(event)}
               />
               {#if moveFolderSuggestions.length > 0}
-                <div class="move-folder-suggestions" role="listbox" aria-label="Existing folders">
-                  {#each moveFolderSuggestions as folder}
+                <div id="move-folder-suggestions" class="move-folder-suggestions" role="listbox" aria-label="Existing folders">
+                  {#each moveFolderSuggestions as folder, index}
                     <button
+                      id={`move-folder-option-${index}`}
                       type="button"
                       role="option"
-                      aria-selected={folder.path === moveDialog.targetFolder}
+                      aria-selected={index === moveSuggestionIndex}
+                      tabindex="-1"
                       title={folder.label}
                       on:mousedown={(event) => event.preventDefault()}
                       on:click={() => selectMoveFolderSuggestion(folder.path)}
@@ -2559,14 +2794,23 @@
                 autocomplete="off"
                 spellcheck="false"
                 placeholder="Leave empty for workspace root"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={batchMoveFolderSuggestions.length > 0}
+                aria-controls="batch-move-folder-suggestions"
+                aria-activedescendant={batchMoveFolderSuggestions.length > 0 ? `batch-move-folder-option-${batchMoveSuggestionIndex}` : undefined}
+                on:input={() => (batchMoveSuggestionIndex = 0)}
+                on:keydown={(event) => handleMoveSuggestionKeydown(event, true)}
               />
               {#if batchMoveFolderSuggestions.length > 0}
-                <div class="move-folder-suggestions" role="listbox" aria-label="Existing folders">
-                  {#each batchMoveFolderSuggestions as folder}
+                <div id="batch-move-folder-suggestions" class="move-folder-suggestions" role="listbox" aria-label="Existing folders">
+                  {#each batchMoveFolderSuggestions as folder, index}
                     <button
+                      id={`batch-move-folder-option-${index}`}
                       type="button"
                       role="option"
-                      aria-selected={folder.path === batchMoveDialog.targetFolder}
+                      aria-selected={index === batchMoveSuggestionIndex}
+                      tabindex="-1"
                       title={folder.label}
                       on:mousedown={(event) => event.preventDefault()}
                       on:click={() => selectBatchMoveFolderSuggestion(folder.path)}

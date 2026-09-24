@@ -258,6 +258,10 @@ Use `View > Plain markdown edit` or `Cmd/Ctrl+Shift+L` to switch between live
 preview and plain Markdown. In live preview, Markdown markers are reduced on
 inactive lines and restored when editing requires their source.
 
+Press `Cmd/Ctrl+Alt+Right` to show the current editor line in the right pane.
+The editor keeps focus, so the right pane can provide rendered context while
+you continue writing.
+
 Inline live preview supports italic text (`*text*` or `_text_`), bold text
 (`**text**` or `__text__`), combined bold and italic text (`***text***`),
 strikethrough (`~~text~~`), and inline code (`` `code` ``). Inline code keeps
@@ -570,8 +574,20 @@ hint such as `Ctrl+C` or `Shift+Tab`.
 
 Open `Help > Keyboard Shortcuts` for the list shipped with the running version.
 
+Logtext uses one sequential tab stop for long trees and lists. After tabbing to
+the file tree, Quick Access, search results, Task Overview, or the date picker,
+use the arrow keys to move inside that control. This avoids stepping through
+every row and every secondary icon with `Tab`. A visible focus ring always shows
+the current target.
+
 | Action | Shortcut |
 | --- | --- |
+| Focus next/previous visible pane | `F6` / `Shift+F6` |
+| Quick Open page | `Cmd/Ctrl+P` |
+| Command Palette | `Cmd/Ctrl+Shift+P` |
+| Focus workspace search | `Cmd/Ctrl+Shift+F` |
+| Back/forward in focused content pane | `Alt+Left` / `Alt+Right` |
+| Show current editor line in right pane | `Cmd/Ctrl+Alt+Right` |
 | New file | `Cmd/Ctrl+N` |
 | Open workspace | `Cmd/Ctrl+O` |
 | Close workspace | `Cmd/Ctrl+Shift+W` |
@@ -594,6 +610,21 @@ Open `Help > Keyboard Shortcuts` for the list shipped with the running version.
 | Zoom in/out/reset | `Cmd/Ctrl+=` / `Cmd/Ctrl+-` / `Cmd/Ctrl+0` |
 
 `Cmd/Ctrl + mouse wheel` also changes UI zoom.
+
+In the file tree, `Up`/`Down` and `Home`/`End` move focus. `Right` expands a
+folder or enters its first child; `Left` collapses it or moves to its parent.
+`Enter` opens a page in the editor and `Shift+Enter` opens it in the right pane.
+Use `Space` for selection, `Cmd/Ctrl+Space` to toggle selection, and
+`Shift+Up`/`Shift+Down` to extend it. `F2`, `Delete`, and `Shift+F10` provide
+rename, confirmed deletion, and the context menu.
+
+In search results and Quick Access, `Enter` opens in the editor and
+`Shift+Enter` opens in the right pane. In Task Overview, `Enter` opens the task
+in the right pane, `E` opens it in the editor, and `Shift+F10` opens its status
+and priority menu. The date picker uses arrow keys for days, `Home`/`End` for a
+week, `PageUp`/`PageDown` for months, and `Enter` to choose a date. Focused pane
+separators can be resized with arrow keys; hold `Shift` for a larger step and
+press `Home` to restore the default size.
 
 ## Workspace Preferences
 

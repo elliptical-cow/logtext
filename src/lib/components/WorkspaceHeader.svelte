@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tick } from "svelte";
+  import { calendarDateForKey } from "../keyboardNavigation";
   import type { Diagnostic } from "../types";
   import type { JournalDay } from "../journals";
   import TaskListPanel from "./TaskListPanel.svelte";
@@ -17,6 +19,8 @@
 
   let datePickerOpen = false;
   let pickerMonth = startOfMonth(new Date());
+  let focusedDateInput = formatDateInput(new Date());
+  let pickerButton: HTMLButtonElement | null = null;
 
   $: pickerDays = calendarDays(pickerMonth);
   $: pickerMonthLabel = pickerMonth.toLocaleDateString(undefined, {
@@ -27,6 +31,12 @@
   function toggleDatePicker(event: MouseEvent) {
     event.stopPropagation();
     datePickerOpen = !datePickerOpen;
+    if (datePickerOpen) {
+      const today = new Date();
+      pickerMonth = startOfMonth(today);
+      focusedDateInput = formatDateInput(today);
+      void focusPickerDate();
+    }
   }
 
   function movePickerMonth(delta: number) {
@@ -36,6 +46,40 @@
   async function pickJournalDate(dateInput: string) {
     await openJournalDate(dateInput);
     datePickerOpen = false;
+    await tick();
+    pickerButton?.focus({ preventScroll: true });
+  }
+
+  async function focusPickerDate() {
+    await tick();
+    document.querySelector<HTMLButtonElement>(`[data-journal-date="${focusedDateInput}"]`)?.focus({ preventScroll: true });
+  }
+
+  function closeDatePicker() {
+    if (!datePickerOpen) return;
+    datePickerOpen = false;
+    void tick().then(() => pickerButton?.focus({ preventScroll: true }));
+  }
+
+  function handleCalendarKeydown(event: KeyboardEvent) {
+    const current = new Date(`${focusedDateInput}T12:00:00`);
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeDatePicker();
+      return;
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      void pickJournalDate(focusedDateInput);
+      return;
+    }
+
+    const next = calendarDateForKey(current, event.key);
+    if (!next) return;
+
+    event.preventDefault();
+    focusedDateInput = formatDateInput(next);
+    pickerMonth = startOfMonth(next);
+    void focusPickerDate();
   }
 
   function startOfMonth(date: Date) {
@@ -113,13 +157,22 @@
       <button type="button" title="Today" on:click={() => openJournal("today")}>Today</button>
       <button type="button" title="Tomorrow" on:click={() => openJournal("tomorrow")}>+1d</button>
       <div class="journal-date-picker">
-        <button type="button" title="Pick journal date" on:click={toggleDatePicker}>Pick</button>
+        <button
+          bind:this={pickerButton}
+          type="button"
+          title="Pick journal date"
+          aria-haspopup="dialog"
+          aria-expanded={datePickerOpen}
+          aria-controls="journal-date-popover"
+          on:click={toggleDatePicker}
+        >Pick</button>
         {#if datePickerOpen}
-          <div class="journal-date-popover" role="dialog" aria-label="Pick journal date">
+          <div id="journal-date-popover" class="journal-date-popover" role="dialog" aria-label="Pick journal date" tabindex="-1">
             <div class="journal-date-popover-header">
               <button
                 type="button"
                 title="Previous month"
+                tabindex="-1"
                 on:click|stopPropagation={() => movePickerMonth(-1)}
               >
                 &lt;
@@ -128,6 +181,7 @@
               <button
                 type="button"
                 title="Next month"
+                tabindex="-1"
                 on:click|stopPropagation={() => movePickerMonth(1)}
               >
                 &gt;
@@ -142,13 +196,21 @@
               <span>Sa</span>
               <span>Su</span>
             </div>
-            <div class="journal-date-grid">
+            <div class="journal-date-grid" role="grid" aria-label={pickerMonthLabel}>
               {#each pickerDays as day}
                 <button
                   type="button"
+                  role="gridcell"
                   class:outside-month={!day.currentMonth}
                   class:today={day.today}
                   title={day.dateInput}
+                  aria-label={day.date.toLocaleDateString(undefined, { dateStyle: "full" })}
+                  aria-current={day.today ? "date" : undefined}
+                  aria-selected={day.dateInput === focusedDateInput}
+                  data-journal-date={day.dateInput}
+                  tabindex={day.dateInput === focusedDateInput ? 0 : -1}
+                  on:focus={() => (focusedDateInput = day.dateInput)}
+                  on:keydown={handleCalendarKeydown}
                   on:click|stopPropagation={() => pickJournalDate(day.dateInput)}
                 >
                   {day.day}

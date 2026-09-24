@@ -23,7 +23,7 @@
   export let handleFolderDrop: (path: string, event: DragEvent) => void;
   export let focusTreeNode: (path: string) => void;
   export let handleTreeKeydown: (node: NavigationNode, event: KeyboardEvent) => void;
-  export let openContextMenu: (node: NavigationNode, event: MouseEvent) => void;
+  export let openContextMenu: (node: NavigationNode, event: MouseEvent | KeyboardEvent) => void;
 
   const rootNode: NavigationNode = {
     kind: "folder",
@@ -54,6 +54,7 @@
     <span class="folder-glyph"></span>
     <span>Workspace root</span>
   </div>
+  <div role="tree" aria-label="Pages and folders">
   {#each rows as row}
     {@const node = row.node}
     <div
@@ -67,6 +68,9 @@
       class="page-row"
       role="treeitem"
       aria-selected={selectedPaths.has(node.path)}
+      aria-expanded={node.kind === "folder" ? expandedFolders.has(node.path) : undefined}
+      aria-level={row.depth + 1}
+      aria-current={node.kind === "page" && isActivePage(node.path) ? "page" : undefined}
       data-tree-path={node.path}
       tabindex={focusedTreePath === node.path ? 0 : -1}
       on:focus={() => focusTreeNode(node.path)}
@@ -77,6 +81,7 @@
         <button
           type="button"
           class="tree-item folder-item"
+          tabindex="-1"
           title={node.path}
           style:padding-left={rowPadding(row.depth)}
           on:click={(event) => handleNodeClick(node, event)}
@@ -92,6 +97,7 @@
         <button
           type="button"
           class="tree-item page-item"
+          tabindex="-1"
           title={node.path}
           style:padding-left={rowPadding(row.depth)}
           draggable="true"
@@ -108,6 +114,7 @@
             class="icon-button row-action"
             title={isFavorite("page", node.path) ? "Remove favorite" : "Add page favorite"}
             aria-label={isFavorite("page", node.path) ? "Remove favorite" : "Add page favorite"}
+            tabindex="-1"
             on:click={() => toggleFavorite("page", node.path)}
           >
             ★
@@ -117,6 +124,7 @@
             class="icon-button row-action right-pane-action"
             title="Open in right pane"
             aria-label="Open in right pane"
+            tabindex="-1"
             on:click={() => openPageInRightPane(node.path)}
           >
             R
@@ -125,4 +133,5 @@
       {/if}
     </div>
   {/each}
+  </div>
 </nav>

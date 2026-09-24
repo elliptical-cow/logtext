@@ -1,6 +1,7 @@
 <script lang="ts">
   import CodeMirrorEditor from "./CodeMirrorEditor.svelte";
   import ErrorDialog from "./ErrorDialog.svelte";
+  import { trapDialogFocus } from "../dialogFocus";
   import LinkedReferences from "./LinkedReferences.svelte";
   import PaneVisibilityButton from "./PaneVisibilityButton.svelte";
   import { getPageView, savePastedImage } from "../api";
@@ -246,18 +247,21 @@
       onPasteImageError={(error) => (pageViewError = toErrorMessage(error))}
     />
     {#if missingLinkPath}
-      <div class="missing-link-action editor-missing-link-action">
-        <span>Create missing page <strong>{missingLinkPath}</strong>?</span>
-        <div>
-          <button type="button" on:click={() => createMissingPage("right")}>
-            Create + open right
-          </button>
-          <button type="button" on:click={() => createMissingPage("editor")}>
-            Create + open editor
-          </button>
-          <button type="button" on:click={() => (missingLinkPath = null)}>
-            Cancel
-          </button>
+      <div class="dialog-backdrop" role="presentation">
+        <div
+          class="rename-dialog missing-link-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="editor-missing-link-title"
+          tabindex="-1"
+          use:trapDialogFocus={{ onClose: () => (missingLinkPath = null) }}
+        >
+          <header><h2 id="editor-missing-link-title">Create missing page?</h2><p>{missingLinkPath}</p></header>
+          <div class="dialog-actions">
+            <button type="button" on:click={() => (missingLinkPath = null)}>Cancel</button>
+            <button type="button" on:click={() => createMissingPage("right")}>Create + open right</button>
+            <button type="button" class="primary-action" on:click={() => createMissingPage("editor")}>Create + open editor</button>
+          </div>
         </div>
       </div>
     {/if}

@@ -71,6 +71,16 @@ export async function setupCoreEvents() {
     userAction("Could not open the workspace folder dialog", openWorkspaceFromDialog),
   );
 
+  for (const [eventName, commandId] of [
+    ["menu-quick-open", "app.quickOpen"],
+    ["menu-command-palette", "app.commandPalette"],
+    ["menu-workspace-search", "workspace.search"],
+  ] as const) {
+    await onCoreEvent(eventName, async () => {
+      window.dispatchEvent(new CustomEvent("logtext-execute-command", { detail: { id: commandId } }));
+    });
+  }
+
   await onCoreEvent(
     "menu-new-file",
     userAction("Could not create a new file", async () => {
