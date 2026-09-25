@@ -139,13 +139,17 @@ pub(crate) fn title_from_markdown_or_path(markdown: &str, path: &str) -> String 
 }
 
 pub(crate) fn markdown_with_default_h1(markdown: &str, path: &str) -> Option<String> {
+    markdown_with_h1(markdown, &title_from_path(path))
+}
+
+pub(crate) fn markdown_with_h1(markdown: &str, title: &str) -> Option<String> {
     if first_h1(markdown).is_some() {
         return None;
     }
 
     Some(format!(
-        "{}{}",
-        default_h1_for_path(path),
+        "# {}\n\n{}",
+        title.trim(),
         markdown.trim_start_matches(['\r', '\n'])
     ))
 }

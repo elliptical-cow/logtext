@@ -5,6 +5,7 @@ pub mod config_commands;
 pub mod content_snapshot;
 pub mod dto;
 pub mod index;
+pub mod logseq_import;
 pub mod media;
 pub mod media_cleanup;
 pub mod navigation_order;

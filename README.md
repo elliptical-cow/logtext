@@ -125,6 +125,23 @@ Inline formula: $E = mc^2$
 Wiki links, task states, and configuration are described in the
 [manual](docs/manual.md).
 
+## Import A Logseq Markdown Graph
+
+Logtext includes an initial command-line importer for classic, file-based
+Logseq Markdown graphs. Release downloads provide standalone binaries for Linux
+x86_64, Windows x86_64, and universal macOS. The importer always creates a new
+Logtext workspace and never modifies the source graph. Run a dry run from the
+source tree before writing the destination:
+
+```bash
+cargo run --manifest-path src-tauri/Cargo.toml --bin logtext-import-logseq -- \
+  --dry-run /path/to/logseq-graph /path/to/new-logtext-workspace
+```
+
+Remove `--dry-run` to create the workspace. See the
+[Logseq import guide](docs/logseq-import.md) for supported conversions, safety
+behavior, and known limitations.
+
 ## Build From Source
 
 Requirements:
@@ -156,6 +173,7 @@ release workflow.
 ## Documentation
 
 - [User manual](docs/manual.md)
+- [Logseq import guide](docs/logseq-import.md)
 - [Example workspace](docs/example_workspace)
 - [Change log](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)

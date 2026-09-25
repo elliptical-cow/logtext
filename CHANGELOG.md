@@ -7,6 +7,14 @@ current source version is `0.8.5`.
 
 ### Added
 
+- Added an initial cross-platform Rust command-line importer for classic Logseq
+  Markdown graphs. It creates a separate Logtext workspace, converts conventional
+  page and journal paths, rewrites known wiki-link and asset targets, copies
+  assets, adds missing H1 headings, preserves detected task states, and writes a
+  JSON migration report. Dry runs and collision checks happen without modifying
+  the source graph.
+- Added standalone Logseq importer artifacts to Windows, macOS, and Linux CI and
+  release builds, including a universal Apple Silicon/Intel macOS binary.
 - Added workspace-persistent controls, a `View > Hide/Show Panes` submenu, and
   keyboard shortcuts for independently collapsing all three panes into narrow
   restore rails. Pane content remains mounted so its active page and local UI

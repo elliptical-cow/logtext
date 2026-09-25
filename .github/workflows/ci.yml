@@ -119,12 +119,16 @@ jobs:
       - name: Build Tauri application
         run: npm run tauri build -- ${{ matrix.bundle_args }}
 
+      - name: Build Logseq importer
+        run: cargo build --manifest-path src-tauri/Cargo.toml --release --locked --bin logtext-import-logseq
+
       - name: Stage Windows artifacts
         if: matrix.kind == 'windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force ci-artifacts | Out-Null
           Copy-Item "src-tauri/target/release/Logtext.exe" "ci-artifacts/Logtext_windows_${{ runner.arch }}.exe"
+          Copy-Item "src-tauri/target/release/logtext-import-logseq.exe" "ci-artifacts/logtext-import-logseq_windows_${{ runner.arch }}.exe"
           Copy-Item "src-tauri/target/release/bundle/nsis/*.exe" ci-artifacts/
 
       - name: Stage macOS artifact
@@ -134,6 +138,8 @@ jobs:
           app_path=$(find src-tauri/target -type d -name "Logtext.app" | head -1)
           test -n "$app_path"
           ditto -c -k --keepParent "$app_path" "ci-artifacts/Logtext_macos_${{ runner.arch }}.app.zip"
+          cp src-tauri/target/release/logtext-import-logseq \
+            "ci-artifacts/logtext-import-logseq_macos_${{ runner.arch }}"
 
       - name: Stage Linux artifacts
         if: matrix.kind == 'linux'
@@ -148,6 +154,8 @@ jobs:
           install -m 0644 LICENSE "$thin_dir/LICENSE"
           tar -czf "ci-artifacts/Logtext-v${version}-linux-x86_64-thin.tar.gz" \
             -C "$thin_dir" Logtext README.txt LICENSE
+          cp src-tauri/target/release/logtext-import-logseq \
+            "ci-artifacts/logtext-import-logseq_linux_${{ runner.arch }}"
 
       - name: Upload temporary build artifact
         uses: actions/upload-artifact@v4

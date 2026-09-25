@@ -72,10 +72,32 @@ test("uses explicit OS and architecture names for release assets", () => {
     "Logtext-v${version}-linux-x86_64.AppImage",
     "Logtext-v${version}-linux-x86_64.deb",
     "Logtext-v${version}-linux-x86_64-thin.tar.gz",
+    "logtext-import-logseq-v${version}-windows-x86_64.exe",
+    "logtext-import-logseq-v${version}-macos-universal",
+    "logtext-import-logseq-v${version}-linux-x86_64",
   ]) {
     assert.equal(releaseWorkflow.includes(assetName), true);
   }
   assert.equal(releaseWorkflow.includes("Logtext-${version}-"), false);
+});
+
+test("builds and stages the Logseq importer in CI and releases", () => {
+  const ciWorkflow = readFileSync(join(root, ".github/workflows/ci.yml"), "utf8");
+  const releaseWorkflow = readFileSync(
+    join(root, ".github/workflows/release.yml"),
+    "utf8",
+  );
+
+  for (const workflow of [ciWorkflow, releaseWorkflow]) {
+    assert.match(
+      workflow,
+      /cargo build --manifest-path src-tauri\/Cargo\.toml --release --locked --bin logtext-import-logseq/,
+    );
+  }
+
+  assert.match(releaseWorkflow, /--target aarch64-apple-darwin/);
+  assert.match(releaseWorkflow, /--target x86_64-apple-darwin/);
+  assert.match(releaseWorkflow, /lipo -create/);
 });
 
 test("packages the native Linux binary consistently in CI and releases", () => {
