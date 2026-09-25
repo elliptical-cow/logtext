@@ -286,6 +286,20 @@ Common block actions:
 - `Cmd/Ctrl+1` through `Cmd/Ctrl+4`: collapse blocks below that level
 - `Cmd/Ctrl+Shift+E`: expand all blocks
 
+### Slash Commands
+
+Type `/` at the start of a line or list block to open editor commands. Continue
+typing to filter the list, use `Up`/`Down` to select a command, and press
+`Enter` to run it. `Escape` closes the command list.
+
+- `/today` replaces the command with today's local date in `YYYY-MM-DD` format.
+- `/date` opens the shared keyboard date picker and inserts the selected date
+  in the same format. `Escape` closes the picker without replacing the command.
+
+Slash commands are recognized only at the start of block content, including
+after a list or checkbox marker. Slashes in prose, paths, and URLs do not open
+the command list.
+
 Use `View > Plain markdown edit` or `Cmd/Ctrl+Shift+L` to switch between live
 preview and plain Markdown. In live preview, Markdown markers are reduced on
 inactive lines and restored when editing requires their source.

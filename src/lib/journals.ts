@@ -1,4 +1,5 @@
 import type { PageSortMode, PageSummary } from "./types.js";
+import { formatLocalDate } from "./calendarDates.js";
 
 export type JournalDay = "yesterday" | "today" | "tomorrow";
 export type JournalSortDirection = "asc" | "desc";
@@ -8,7 +9,7 @@ export type JournalFeedWindow = { start: number; end: number };
 export const DEFAULT_JOURNAL_FOLDER = "journal";
 
 export function journalPath(date = new Date(), root = DEFAULT_JOURNAL_FOLDER) {
-  return `${normalizeJournalFolder(root)}/${formatDate(date)}.md`;
+  return `${normalizeJournalFolder(root)}/${formatLocalDate(date)}.md`;
 }
 
 export function journalPathForDay(
@@ -121,12 +122,4 @@ export function expandJournalFeedWindow(
 export function normalizeJournalFolder(root: string) {
   const normalized = root.trim().replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
   return normalized || DEFAULT_JOURNAL_FOLDER;
-}
-
-function formatDate(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
 }

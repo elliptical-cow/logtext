@@ -1,6 +1,9 @@
 <script lang="ts">
   import {
     autocompletion,
+    closeCompletion,
+    pickedCompletion,
+    type Completion,
     type CompletionContext,
     type CompletionResult,
   } from "@codemirror/autocomplete";
@@ -30,7 +33,9 @@
   } from "@codemirror/commands";
   import { onDestroy, onMount, tick } from "svelte";
   import ContextMenuShell from "./ContextMenuShell.svelte";
+  import DatePickerPopover from "./DatePickerPopover.svelte";
   import ImageContextMenu from "./ImageContextMenu.svelte";
+  import { formatLocalDate } from "../calendarDates";
   import {
     applyInlineMarkdownFormat,
     canApplyInlineMarkdownFormat,
@@ -91,6 +96,11 @@
     type ImageContextMenuTarget,
   } from "../imageClipboard";
   import { runUserAction } from "../stores/appErrors";
+  import {
+    matchSlashCommand,
+    slashCommandsForQuery,
+    type SlashCommandId,
+  } from "../slashCommands";
 
   export let value = "";
   export let documentPath: string | null = null;
@@ -134,10 +144,20 @@
     link: ContextMenuLink | null;
   };
 
+  type SlashDatePicker = {
+    editorView: EditorView;
+    commandFrom: number;
+    commandTo: number;
+    commandText: string;
+    left: number;
+    top: number;
+  };
+
   let host: HTMLDivElement;
   let view: EditorView | null = null;
   let editorContextMenu: EditorContextMenu | null = null;
   let imageContextMenu: ImageContextMenuTarget | null = null;
+  let slashDatePicker: SlashDatePicker | null = null;
   let applyingExternalValue = false;
   let applyingHistoryCommand = false;
   let lastDocumentPath: string | null = null;
@@ -1099,6 +1119,111 @@
     };
   }
 
+  function slashCommandCompletionSource(context: CompletionContext): CompletionResult | null {
+    const line = context.state.doc.lineAt(context.pos);
+    const textBeforeCursor = line.text.slice(0, context.pos - line.from);
+    const match = matchSlashCommand(textBeforeCursor, context.pos);
+    if (!match) return null;
+
+    const commands = slashCommandsForQuery(match.query);
+    if (commands.length === 0) return null;
+
+    return {
+      from: match.queryFrom,
+      options: commands.map((command) => ({
+        label: command.label,
+        detail: command.detail,
+        type: "keyword",
+        apply: (
+          editorView: EditorView,
+          completion: Completion,
+          from: number,
+          to: number,
+        ) => applySlashCommand(command.id, editorView, completion, from - 1, to),
+      })),
+      filter: false,
+      validFor: /^[a-z]*$/i,
+    };
+  }
+
+  function applySlashCommand(
+    command: SlashCommandId,
+    editorView: EditorView,
+    completion: Completion,
+    commandFrom: number,
+    commandTo: number,
+  ) {
+    if (command === "today") {
+      const dateInput = formatLocalDate(new Date());
+      editorView.dispatch({
+        changes: { from: commandFrom, to: commandTo, insert: dateInput },
+        selection: { anchor: commandFrom + dateInput.length },
+        annotations: pickedCompletion.of(completion),
+        scrollIntoView: true,
+      });
+      return;
+    }
+
+    const coordinates = editorView.coordsAtPos(commandFrom);
+    const pickerWidth = 232;
+    const pickerHeight = 252;
+    const pickerGap = 6;
+    const left = Math.min(
+      Math.max(8, coordinates?.left ?? 8),
+      Math.max(8, window.innerWidth - pickerWidth),
+    );
+    const below = (coordinates?.bottom ?? 8) + pickerGap;
+    const top =
+      below + pickerHeight <= window.innerHeight
+        ? below
+        : Math.max(8, (coordinates?.top ?? pickerHeight) - pickerHeight - pickerGap);
+
+    editorView.dispatch({ annotations: pickedCompletion.of(completion) });
+    closeCompletion(editorView);
+    slashDatePicker = {
+      editorView,
+      commandFrom,
+      commandTo,
+      commandText: editorView.state.sliceDoc(commandFrom, commandTo),
+      left,
+      top,
+    };
+  }
+
+  function insertSlashCommandDate(dateInput: string) {
+    const pending = slashDatePicker;
+    slashDatePicker = null;
+    if (
+      !pending ||
+      view !== pending.editorView ||
+      pending.editorView.state.sliceDoc(pending.commandFrom, pending.commandTo) !==
+        pending.commandText
+    ) {
+      view?.focus();
+      return;
+    }
+
+    pending.editorView.dispatch({
+      changes: {
+        from: pending.commandFrom,
+        to: pending.commandTo,
+        insert: dateInput,
+      },
+      selection: { anchor: pending.commandFrom + dateInput.length },
+      scrollIntoView: true,
+    });
+    pending.editorView.focus();
+  }
+
+  function closeSlashDatePicker(restoreFocus: boolean) {
+    if (!slashDatePicker) return;
+    const editorView = slashDatePicker.editorView;
+    slashDatePicker = null;
+    if (restoreFocus) {
+      void tick().then(() => editorView.focus());
+    }
+  }
+
   function handleEditorPaste(event: ClipboardEvent) {
     if (!view || disabled || !documentPath) {
       return false;
@@ -1190,7 +1315,9 @@
       highlightLineField,
       searchDecorationsField,
       pendingImagePastesField,
-      completions.of(autocompletion({ override: [wikiLinkCompletionSource] })),
+      completions.of(
+        autocompletion({ override: [slashCommandCompletionSource, wikiLinkCompletionSource] }),
+      ),
       previewMode.of(
         mode === "live-preview"
           ? livePreviewExtension(
@@ -1208,6 +1335,9 @@
       EditorView.domEventHandlers({ paste: handleEditorPaste }),
       editable.of(EditorView.editable.of(!disabled)),
       EditorView.updateListener.of((update) => {
+        if (update.docChanged && slashDatePicker?.editorView === update.view) {
+          slashDatePicker = null;
+        }
         if (!update.docChanged || applyingExternalValue) {
           return;
         }
@@ -1253,6 +1383,7 @@
   });
 
   $: if (view && documentPath !== lastDocumentPath) {
+    slashDatePicker = null;
     onEditorHistoryDiscard(lastDocumentPath);
     lastDocumentPath = documentPath;
     applyingExternalValue = true;
@@ -1291,7 +1422,9 @@
 
   $: if (view) {
     view.dispatch({
-      effects: completions.reconfigure(autocompletion({ override: [wikiLinkCompletionSource] })),
+      effects: completions.reconfigure(
+        autocompletion({ override: [slashCommandCompletionSource, wikiLinkCompletionSource] }),
+      ),
     });
   }
 
@@ -1449,6 +1582,20 @@
     on:contextmenu={openEditorContextMenu}
   ></div>
 </div>
+
+{#if slashDatePicker}
+  <div
+    class="editor-slash-date-picker"
+    style={`left: ${slashDatePicker.left}px; top: ${slashDatePicker.top}px;`}
+  >
+    <DatePickerPopover
+      id="editor-slash-date-picker"
+      label="Insert date"
+      onSelect={insertSlashCommandDate}
+      onClose={closeSlashDatePicker}
+    />
+  </div>
+{/if}
 
 {#if imageContextMenu}
   <ImageContextMenu

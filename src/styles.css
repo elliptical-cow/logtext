@@ -755,11 +755,7 @@ textarea {
   width: 100%;
 }
 
-.journal-date-popover {
-  position: absolute;
-  top: 30px;
-  right: 0;
-  z-index: 40;
+.date-picker-popover {
   width: 214px;
   padding: 8px;
   border: 1px solid var(--border-default);
@@ -768,7 +764,33 @@ textarea {
   box-shadow: var(--shadow-elevated);
 }
 
-.journal-date-popover-header {
+.date-picker-popover button {
+  min-width: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 5px;
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+.date-picker-popover button:hover,
+.date-picker-popover button:focus-visible {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.journal-date-picker .date-picker-popover {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  z-index: 40;
+}
+
+.editor-slash-date-picker {
+  position: fixed;
+  z-index: 60;
+}
+
+.date-picker-popover-header {
   display: grid;
   grid-template-columns: 26px 1fr 26px;
   align-items: center;
@@ -776,33 +798,33 @@ textarea {
   margin-bottom: 6px;
 }
 
-.journal-date-popover-header span {
+.date-picker-popover-header span {
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 650;
   text-align: center;
 }
 
-.journal-date-popover-header button {
+.date-picker-popover-header button {
   height: 24px;
   padding: 0;
 }
 
-.journal-date-weekdays,
-.journal-date-grid {
+.date-picker-weekdays,
+.date-picker-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
 }
 
-.journal-date-weekdays {
+.date-picker-weekdays {
   margin-bottom: 3px;
   color: var(--text-muted);
   font-size: 10px;
   text-align: center;
 }
 
-.journal-date-grid button {
+.date-picker-grid button {
   height: 24px;
   padding: 0;
   border-color: transparent;
@@ -810,11 +832,11 @@ textarea {
   font-size: 11px;
 }
 
-.journal-date-grid button.outside-month {
+.date-picker-grid button.outside-month {
   color: #a3abb3;
 }
 
-.journal-date-grid button.today {
+.date-picker-grid button.today {
   border-color: #5b8def;
   color: var(--accent-text);
   font-weight: 700;
@@ -3109,7 +3131,7 @@ textarea {
 :root[data-theme="dark"] .editor-menu-flyout-panel,
 :root[data-theme="dark"] .context-menu,
 :root[data-theme="dark"] .context-menu-flyout-panel,
-:root[data-theme="dark"] .journal-date-popover,
+:root[data-theme="dark"] .date-picker-popover,
 :root[data-theme="dark"] .move-folder-suggestions,
 :root[data-theme="dark"] .rename-dialog,
 :root[data-theme="dark"] .about-dialog,
@@ -3125,7 +3147,7 @@ textarea {
 :root[data-theme="dark"] .editor-menu-flyout-panel,
 :root[data-theme="dark"] .context-menu,
 :root[data-theme="dark"] .context-menu-flyout-panel,
-:root[data-theme="dark"] .journal-date-popover,
+:root[data-theme="dark"] .date-picker-popover,
 :root[data-theme="dark"] .move-folder-suggestions,
 :root[data-theme="dark"] .rename-dialog,
 :root[data-theme="dark"] .about-dialog {
@@ -3172,7 +3194,7 @@ textarea {
 :root[data-theme="dark"] .tree-caret,
 :root[data-theme="dark"] .context-menu-label,
 :root[data-theme="dark"] .context-menu button:disabled,
-:root[data-theme="dark"] .journal-date-weekdays,
+:root[data-theme="dark"] .date-picker-weekdays,
 :root[data-theme="dark"] .rename-dialog p,
 :root[data-theme="dark"] .rename-hint,
 :root[data-theme="dark"] .about-dialog p,
@@ -3217,7 +3239,7 @@ textarea {
 :root[data-theme="dark"] .backlink-group-header,
 :root[data-theme="dark"] .editor-link-menu button,
 :root[data-theme="dark"] .context-menu button,
-:root[data-theme="dark"] .journal-date-popover-header span,
+:root[data-theme="dark"] .date-picker-popover-header span,
 :root[data-theme="dark"] .search-result,
 :root[data-theme="dark"] .search-result em,
 :root[data-theme="dark"] .task-overview-link,

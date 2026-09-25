@@ -14,6 +14,7 @@ const navigationTree = source("src/lib/components/NavigationTree.svelte");
 const quickAccess = source("src/lib/components/QuickAccess.svelte");
 const tasks = source("src/lib/components/TaskOverview.svelte");
 const workspaceHeader = source("src/lib/components/WorkspaceHeader.svelte");
+const datePicker = source("src/lib/components/DatePickerPopover.svelte");
 const codeMirrorEditor = source("src/lib/components/CodeMirrorEditor.svelte");
 
 test("wires global commands, pane focus regions, and keyboard resizers", () => {
@@ -53,10 +54,11 @@ test("uses compact roving stops in quick access, search, and tasks", () => {
 });
 
 test("renders the journal picker as a one-stop keyboard grid", () => {
-  assert.match(workspaceHeader, /role="grid"/);
-  assert.match(workspaceHeader, /role="gridcell"/);
-  assert.match(workspaceHeader, /tabindex=\{day\.dateInput === focusedDateInput \? 0 : -1\}/);
-  assert.match(workspaceHeader, /calendarDateForKey\(current, event\.key\)/);
+  assert.match(workspaceHeader, /<DatePickerPopover/);
+  assert.match(datePicker, /role="grid"/);
+  assert.match(datePicker, /role="gridcell"/);
+  assert.match(datePicker, /tabindex=\{day\.dateInput === focusedDateInput \? 0 : -1\}/);
+  assert.match(datePicker, /calendarDateForKey\(current, event\.key\)/);
 });
 
 test("routes the current editor line to the right pane through the shared command", () => {

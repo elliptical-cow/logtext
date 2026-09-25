@@ -1,8 +1,8 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { calendarDateForKey } from "../keyboardNavigation";
   import type { Diagnostic } from "../types";
   import type { JournalDay } from "../journals";
+  import DatePickerPopover from "./DatePickerPopover.svelte";
   import TaskListPanel from "./TaskListPanel.svelte";
 
   export let root: string | null = null;
@@ -18,29 +18,11 @@
   export let toggleTaskOverview: () => void;
 
   let datePickerOpen = false;
-  let pickerMonth = startOfMonth(new Date());
-  let focusedDateInput = formatDateInput(new Date());
   let pickerButton: HTMLButtonElement | null = null;
-
-  $: pickerDays = calendarDays(pickerMonth);
-  $: pickerMonthLabel = pickerMonth.toLocaleDateString(undefined, {
-    month: "short",
-    year: "numeric",
-  });
 
   function toggleDatePicker(event: MouseEvent) {
     event.stopPropagation();
     datePickerOpen = !datePickerOpen;
-    if (datePickerOpen) {
-      const today = new Date();
-      pickerMonth = startOfMonth(today);
-      focusedDateInput = formatDateInput(today);
-      void focusPickerDate();
-    }
-  }
-
-  function movePickerMonth(delta: number) {
-    pickerMonth = new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + delta, 1);
   }
 
   async function pickJournalDate(dateInput: string) {
@@ -50,70 +32,14 @@
     pickerButton?.focus({ preventScroll: true });
   }
 
-  async function focusPickerDate() {
-    await tick();
-    document.querySelector<HTMLButtonElement>(`[data-journal-date="${focusedDateInput}"]`)?.focus({ preventScroll: true });
-  }
-
-  function closeDatePicker() {
+  function closeDatePicker(restoreFocus = true) {
     if (!datePickerOpen) return;
     datePickerOpen = false;
-    void tick().then(() => pickerButton?.focus({ preventScroll: true }));
-  }
-
-  function handleCalendarKeydown(event: KeyboardEvent) {
-    const current = new Date(`${focusedDateInput}T12:00:00`);
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeDatePicker();
-      return;
-    } else if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      void pickJournalDate(focusedDateInput);
-      return;
+    if (restoreFocus) {
+      void tick().then(() => pickerButton?.focus({ preventScroll: true }));
     }
-
-    const next = calendarDateForKey(current, event.key);
-    if (!next) return;
-
-    event.preventDefault();
-    focusedDateInput = formatDateInput(next);
-    pickerMonth = startOfMonth(next);
-    void focusPickerDate();
-  }
-
-  function startOfMonth(date: Date) {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
-  }
-
-  function calendarDays(month: Date) {
-    const firstDay = startOfMonth(month);
-    const leadingDays = (firstDay.getDay() + 6) % 7;
-    const firstVisibleDay = new Date(firstDay);
-    firstVisibleDay.setDate(firstDay.getDate() - leadingDays);
-
-    return Array.from({ length: 42 }, (_value, index) => {
-      const date = new Date(firstVisibleDay);
-      date.setDate(firstVisibleDay.getDate() + index);
-      return {
-        date,
-        dateInput: formatDateInput(date),
-        day: date.getDate(),
-        currentMonth: date.getMonth() === month.getMonth(),
-        today: formatDateInput(date) === formatDateInput(new Date()),
-      };
-    });
-  }
-
-  function formatDateInput(date: Date) {
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, "0");
-    const day = `${date.getDate()}`.padStart(2, "0");
-    return `${year}-${month}-${day}`;
   }
 </script>
-
-<svelte:window on:click={() => (datePickerOpen = false)} />
 
 <div class="workspace-header">
   {#if !root}
@@ -164,60 +90,16 @@
           aria-haspopup="dialog"
           aria-expanded={datePickerOpen}
           aria-controls="journal-date-popover"
+          on:pointerdown|stopPropagation
           on:click={toggleDatePicker}
         >Pick</button>
         {#if datePickerOpen}
-          <div id="journal-date-popover" class="journal-date-popover" role="dialog" aria-label="Pick journal date" tabindex="-1">
-            <div class="journal-date-popover-header">
-              <button
-                type="button"
-                title="Previous month"
-                tabindex="-1"
-                on:click|stopPropagation={() => movePickerMonth(-1)}
-              >
-                &lt;
-              </button>
-              <span>{pickerMonthLabel}</span>
-              <button
-                type="button"
-                title="Next month"
-                tabindex="-1"
-                on:click|stopPropagation={() => movePickerMonth(1)}
-              >
-                &gt;
-              </button>
-            </div>
-            <div class="journal-date-weekdays" aria-hidden="true">
-              <span>Mo</span>
-              <span>Tu</span>
-              <span>We</span>
-              <span>Th</span>
-              <span>Fr</span>
-              <span>Sa</span>
-              <span>Su</span>
-            </div>
-            <div class="journal-date-grid" role="grid" aria-label={pickerMonthLabel}>
-              {#each pickerDays as day}
-                <button
-                  type="button"
-                  role="gridcell"
-                  class:outside-month={!day.currentMonth}
-                  class:today={day.today}
-                  title={day.dateInput}
-                  aria-label={day.date.toLocaleDateString(undefined, { dateStyle: "full" })}
-                  aria-current={day.today ? "date" : undefined}
-                  aria-selected={day.dateInput === focusedDateInput}
-                  data-journal-date={day.dateInput}
-                  tabindex={day.dateInput === focusedDateInput ? 0 : -1}
-                  on:focus={() => (focusedDateInput = day.dateInput)}
-                  on:keydown={handleCalendarKeydown}
-                  on:click|stopPropagation={() => pickJournalDate(day.dateInput)}
-                >
-                  {day.day}
-                </button>
-              {/each}
-            </div>
-          </div>
+          <DatePickerPopover
+            id="journal-date-popover"
+            label="Pick journal date"
+            onSelect={pickJournalDate}
+            onClose={closeDatePicker}
+          />
         {/if}
       </div>
     </div>
