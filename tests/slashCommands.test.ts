@@ -68,6 +68,8 @@ test("wires slash completions to the shared keyboard date picker", () => {
   );
 
   assert.match(editor, /override: \[slashCommandCompletionSource, wikiLinkCompletionSource\]/);
+  assert.match(editor, /displayLabel: `\/\$\{command\.label\}`/);
+  assert.match(editor, /completion\.type === "slash-command" \? "cm-slash-command" : ""/);
   assert.match(editor, /formatLocalDate\(new Date\(\)\)/);
   assert.match(editor, /label="Insert date"/);
   assert.match(picker, /role="grid"/);

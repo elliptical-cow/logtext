@@ -1132,8 +1132,9 @@
       from: match.queryFrom,
       options: commands.map((command) => ({
         label: command.label,
+        displayLabel: `/${command.label}`,
         detail: command.detail,
-        type: "keyword",
+        type: "slash-command",
         apply: (
           editorView: EditorView,
           completion: Completion,
@@ -1144,6 +1145,14 @@
       filter: false,
       validFor: /^[a-z]*$/i,
     };
+  }
+
+  function editorAutocompletion() {
+    return autocompletion({
+      override: [slashCommandCompletionSource, wikiLinkCompletionSource],
+      optionClass: (completion) =>
+        completion.type === "slash-command" ? "cm-slash-command" : "",
+    });
   }
 
   function applySlashCommand(
@@ -1315,9 +1324,7 @@
       highlightLineField,
       searchDecorationsField,
       pendingImagePastesField,
-      completions.of(
-        autocompletion({ override: [slashCommandCompletionSource, wikiLinkCompletionSource] }),
-      ),
+      completions.of(editorAutocompletion()),
       previewMode.of(
         mode === "live-preview"
           ? livePreviewExtension(
@@ -1422,9 +1429,7 @@
 
   $: if (view) {
     view.dispatch({
-      effects: completions.reconfigure(
-        autocompletion({ override: [slashCommandCompletionSource, wikiLinkCompletionSource] }),
-      ),
+      effects: completions.reconfigure(editorAutocompletion()),
     });
   }
 
