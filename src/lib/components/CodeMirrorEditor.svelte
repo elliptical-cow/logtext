@@ -20,6 +20,7 @@
   import {
     readImage,
     readText,
+    writeHtml,
     writeText,
   } from "@tauri-apps/plugin-clipboard-manager";
   import {
@@ -83,6 +84,7 @@
   } from "../editorContextMenu";
   import { minimalTextChange } from "../textChanges";
   import { isSupportedClipboardImageType, pastedImageMarkdown } from "../pastedImages";
+  import { richTextClipboardPayload } from "../richTextClipboard";
   import {
     matchWikiLinkCompletion,
     wikiLinkCompletionApply,
@@ -174,6 +176,7 @@
   let searchInput: HTMLInputElement;
   let replaceInput: HTMLInputElement;
   let lastHistoryAvailability = "";
+  let lastSelectionAvailability: boolean | null = null;
   let nextImagePasteId = 1;
   const editable = new Compartment();
   const completions = new Compartment();
@@ -324,6 +327,19 @@
       new CustomEvent("logtext-editor-history-availability", {
         detail: availability,
       }),
+    );
+  }
+
+  function emitEditorSelectionAvailability(
+    selected = Boolean(view && !disabled && !view.state.selection.main.empty),
+  ) {
+    if (selected === lastSelectionAvailability) {
+      return;
+    }
+
+    lastSelectionAvailability = selected;
+    window.dispatchEvent(
+      new CustomEvent("logtext-editor-selection-availability", { detail: { selected } }),
     );
   }
 
@@ -845,6 +861,21 @@
     });
   }
 
+  function copySelectionAsFormattedText() {
+    if (!view || disabled || view.state.selection.main.empty) {
+      return;
+    }
+
+    const editorView = view;
+    const selection = editorView.state.selection.main;
+    const markdown = editorView.state.sliceDoc(selection.from, selection.to);
+    const payload = richTextClipboardPayload(markdown, pages);
+    void runUserAction("Copy formatted text", async () => {
+      await writeHtml(payload.html, payload.text);
+      editorView.focus();
+    });
+  }
+
   function pasteFromClipboard() {
     if (!view || disabled) {
       return;
@@ -1342,6 +1373,9 @@
       EditorView.domEventHandlers({ paste: handleEditorPaste }),
       editable.of(EditorView.editable.of(!disabled)),
       EditorView.updateListener.of((update) => {
+        if (update.selectionSet || update.docChanged) {
+          emitEditorSelectionAvailability();
+        }
         if (update.docChanged && slashDatePicker?.editorView === update.view) {
           slashDatePicker = null;
         }
@@ -1375,6 +1409,7 @@
     window.addEventListener("logtext-editor-undo", handleEditorUndoEvent);
     window.addEventListener("logtext-editor-redo", handleEditorRedoEvent);
     window.addEventListener("logtext-editor-isolate-history", isolateEditorHistory);
+    window.addEventListener("logtext-editor-copy-formatted", copySelectionAsFormattedText);
     window.addEventListener(
       "logtext-open-editor-line-in-right-pane",
       openCurrentLineInRightPane,
@@ -1387,6 +1422,7 @@
       state: createEditorState(value),
     });
     emitEditorHistoryAvailability();
+    emitEditorSelectionAvailability();
   });
 
   $: if (view && documentPath !== lastDocumentPath) {
@@ -1425,6 +1461,7 @@
     view.dispatch({
       effects: editable.reconfigure(EditorView.editable.of(!disabled)),
     });
+    emitEditorSelectionAvailability();
   }
 
   $: if (view) {
@@ -1459,6 +1496,7 @@
     window.removeEventListener("logtext-editor-undo", handleEditorUndoEvent);
     window.removeEventListener("logtext-editor-redo", handleEditorRedoEvent);
     window.removeEventListener("logtext-editor-isolate-history", isolateEditorHistory);
+    window.removeEventListener("logtext-editor-copy-formatted", copySelectionAsFormattedText);
     window.removeEventListener(
       "logtext-open-editor-line-in-right-pane",
       openCurrentLineInRightPane,
@@ -1468,6 +1506,7 @@
       handleCollapseBelowLevelEvent,
     );
     window.removeEventListener("logtext-expand-all-blocks", handleExpandAllBlocksEvent);
+    emitEditorSelectionAvailability(false);
     if (highlightTimer) {
       clearTimeout(highlightTimer);
     }

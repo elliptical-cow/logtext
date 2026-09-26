@@ -308,6 +308,30 @@ Press `Cmd/Ctrl+Alt+Right` to show the current editor line in the right pane.
 The editor keeps focus, so the right pane can provide rendered context while
 you continue writing.
 
+### Copy as Formatted Text
+
+Select Markdown in the editor and choose `Edit > Copy as Formatted Text` to
+place both rendered HTML and the original Markdown on the operating-system
+clipboard. Rich-text applications such as Microsoft Outlook use the HTML;
+plain-text and Markdown applications can use the unchanged text fallback.
+Normal `Cmd/Ctrl+C` in the Markdown editor continues to copy the source only.
+
+The editor command covers headings, emphasis, lists, quotes, links, tables, and
+code. Logtext page links are copied as readable labels rather than
+application-only links. Local images become their alt-text labels, and LaTeX
+source remains readable text because clipboard recipients cannot access
+workspace media or Logtext's rendering styles reliably.
+
+Copying a selection normally from a rendered preview also places portable HTML
+and a plain-text fallback on the clipboard. Preview lists retain their markers
+and indentation without depending on Logtext's display styles. Rendered images,
+formulas, and diagrams are copied as represented by the webview and may not be
+portable to every target application.
+
+The command uses Tauri's desktop clipboard support on macOS, Windows, and
+Linux. It is enabled only while the editor has a non-empty selection and is
+also available from the Command Palette in that state.
+
 Exact live-preview syntax, escaping, and code-block behavior are collected in
 [Markdown Rendering Details](#markdown-rendering-details).
 

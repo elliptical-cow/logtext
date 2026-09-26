@@ -2,6 +2,9 @@
 
 ## Implemented
 
+- [x] Add portable formatted-text copying for editor selections and rendered
+  previews, including semantic lists, plain-text clipboard fallbacks, and
+  deduplicated native menu-state updates.
 - [x] Add an initial safe Logseq Markdown graph importer with dry-run reporting,
   portable page and journal paths, wiki-link and asset rewriting, task-state
   preservation, collision detection, and fixture-based tests.

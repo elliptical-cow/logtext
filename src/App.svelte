@@ -79,6 +79,7 @@
   let isStarting = true;
   let paletteMode: "commands" | "pages" | null = null;
   let navigationCommandAvailable = false;
+  let editorSelectionAvailable = false;
 
   onMount(() => {
     void initializeApp();
@@ -93,6 +94,10 @@
     window.addEventListener("logtext-show-preferences", openPreferencesDialog);
     window.addEventListener("logtext-execute-command", handleExecuteCommandEvent);
     window.addEventListener("logtext-navigation-context", handleNavigationContext);
+    window.addEventListener(
+      "logtext-editor-selection-availability",
+      handleEditorSelectionAvailability,
+    );
     window.addEventListener("wheel", handleWheel, { passive: false });
     window.addEventListener("keydown", handleKeyboardCommand, { capture: true });
   });
@@ -242,6 +247,9 @@
       case "workspace.today":
         window.dispatchEvent(new CustomEvent("logtext-open-journal", { detail: { day: "today" } }));
         return;
+      case "editor.copyFormatted":
+        window.dispatchEvent(new CustomEvent("logtext-editor-copy-formatted"));
+        return;
       case "editor.openLineInRightPane":
         window.dispatchEvent(new CustomEvent("logtext-open-editor-line-in-right-pane"));
         return;
@@ -307,6 +315,10 @@
 
   function handleNavigationContext(event: Event) {
     navigationCommandAvailable = event instanceof CustomEvent && Boolean(event.detail?.path);
+  }
+
+  function handleEditorSelectionAvailability(event: Event) {
+    editorSelectionAvailable = event instanceof CustomEvent && Boolean(event.detail?.selected);
   }
 
   function navigateFocusedPane(direction: "back" | "forward") {
@@ -709,6 +721,10 @@
     window.removeEventListener("logtext-show-preferences", openPreferencesDialog);
     window.removeEventListener("logtext-execute-command", handleExecuteCommandEvent);
     window.removeEventListener("logtext-navigation-context", handleNavigationContext);
+    window.removeEventListener(
+      "logtext-editor-selection-availability",
+      handleEditorSelectionAvailability,
+    );
     window.removeEventListener("wheel", handleWheel);
     window.removeEventListener("keydown", handleKeyboardCommand, { capture: true });
   });
@@ -842,6 +858,7 @@
     commands={commandDefinitions.filter((command) =>
       (!command.requiresWorkspace || Boolean($workspaceStore.root))
       && (!command.requiresNavigation || navigationCommandAvailable)
+      && (!command.requiresEditorSelection || editorSelectionAvailable)
       && (!command.requiresEditor || ($mainViewStore === "editor" && Boolean($editorSessionStore.path))))}
     pages={$workspaceStore.pages}
     onClose={closePalette}

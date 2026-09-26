@@ -20,6 +20,7 @@ export type CommandId =
   | "navigation.rename"
   | "navigation.move"
   | "navigation.delete"
+  | "editor.copyFormatted"
   | "editor.openLineInRightPane"
   | "view.focusNextPane"
   | "view.focusPreviousPane"
@@ -40,11 +41,12 @@ export type CommandId =
 export type CommandDefinition = {
   id: CommandId;
   title: string;
-  category: "File" | "Go" | "View" | "Workspace" | "Help";
+  category: "File" | "Edit" | "Go" | "View" | "Workspace" | "Help";
   keyBinding?: KeyBinding;
   requiresWorkspace?: boolean;
   requiresNavigation?: boolean;
   requiresEditor?: boolean;
+  requiresEditorSelection?: boolean;
 };
 
 export const commandDefinitions: CommandDefinition[] = [
@@ -73,6 +75,14 @@ export const commandDefinitions: CommandDefinition[] = [
   { id: "navigation.move", title: "Move Selected Page or Folder", category: "File", requiresWorkspace: true, requiresNavigation: true },
   { id: "navigation.delete", title: "Delete Selected Page or Folder...", category: "File", requiresWorkspace: true, requiresNavigation: true },
   { id: "workspace.today", title: "Open Today's Journal", category: "Go", requiresWorkspace: true },
+  {
+    id: "editor.copyFormatted",
+    title: "Copy as Formatted Text",
+    category: "Edit",
+    requiresWorkspace: true,
+    requiresEditor: true,
+    requiresEditorSelection: true,
+  },
   {
     id: "editor.openLineInRightPane",
     title: "Show Current Line in Right Pane",

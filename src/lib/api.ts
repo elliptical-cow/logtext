@@ -82,6 +82,10 @@ export function updateEditMenuLabels(
   });
 }
 
+export function updateFormattedCopyMenuEnabled(enabled: boolean): Promise<void> {
+  return invokeTauri<void>("update_formatted_copy_menu_enabled", { enabled });
+}
+
 export function updateThemeMenuLabel(isDark: boolean): Promise<void> {
   return invokeTauri<void>("update_theme_menu_label", { isDark });
 }

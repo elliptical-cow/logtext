@@ -40,6 +40,7 @@
     markBlockAttributesForRendering,
     type BlockAttributeToken,
   } from "../blockAttributes";
+  import { richTextClipboardPayloadFromHtml } from "../richTextClipboard";
 
   export let content = "";
   export let sourcePath = "";
@@ -301,6 +302,39 @@
 
   function renderMarkdownWithSourceLines(markdownContent: string) {
     return markdownWithSourceLines.render(markdownContent, { sourceLineNumbers, sourcePath, pages });
+  }
+
+  function handleCopy(event: ClipboardEvent) {
+    if (!markdownElement || !event.clipboardData) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!markdownElement.contains(range.commonAncestorContainer)) {
+      return;
+    }
+
+    const container = document.createElement("div");
+    let copiedContent: Node = range.cloneContents();
+    let ancestor = range.commonAncestorContainer instanceof Element
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+    while (ancestor && ancestor !== markdownElement) {
+      const wrapper = ancestor.cloneNode(false);
+      wrapper.appendChild(copiedContent);
+      copiedContent = wrapper;
+      ancestor = ancestor.parentElement;
+    }
+    container.append(copiedContent);
+    const payload = richTextClipboardPayloadFromHtml(container.innerHTML, selection.toString());
+    event.clipboardData.setData("text/html", payload.html);
+    event.clipboardData.setData("text/plain", payload.text);
+    event.preventDefault();
   }
 
   function renderTaskKeywordMarkers(html: string, tokens: TaskKeywordToken[]) {
@@ -701,7 +735,11 @@
   };
 </script>
 
-<svelte:window on:click={closeContextMenu} on:keydown={handleWindowKeydown} />
+<svelte:window
+  on:click={closeContextMenu}
+  on:copy={handleCopy}
+  on:keydown={handleWindowKeydown}
+/>
 
 <div
   bind:this={markdownElement}

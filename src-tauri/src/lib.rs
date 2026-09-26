@@ -36,6 +36,7 @@ const MENU_COMMAND_PALETTE: &str = "go.command_palette";
 const MENU_WORKSPACE_SEARCH: &str = "go.workspace_search";
 const MENU_UNDO: &str = "edit.undo";
 const MENU_REDO: &str = "edit.redo";
+const MENU_COPY_FORMATTED: &str = "edit.copy_formatted";
 const MENU_PREFERENCES: &str = "app.preferences";
 const MENU_TOGGLE_DARK_MODE: &str = "view.toggle_dark_mode";
 const MENU_TOGGLE_TASK_OVERVIEW: &str = "view.toggle_task_overview";
@@ -109,6 +110,14 @@ fn update_edit_menu_labels(
     set_menu_item_enabled(&menu, MENU_UNDO, undo_enabled)?;
     set_menu_item_enabled(&menu, MENU_REDO, redo_enabled)?;
     Ok(())
+}
+
+#[tauri::command]
+fn update_formatted_copy_menu_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let menu = app
+        .menu()
+        .ok_or_else(|| "Application menu is not available".to_string())?;
+    set_menu_item_enabled(&menu, MENU_COPY_FORMATTED, enabled)
 }
 
 #[tauri::command]
@@ -207,6 +216,7 @@ pub fn run() {
                 MENU_WORKSPACE_SEARCH => Some("menu-workspace-search"),
                 MENU_UNDO => Some("menu-undo"),
                 MENU_REDO => Some("menu-redo"),
+                MENU_COPY_FORMATTED => Some("menu-copy-formatted"),
                 MENU_PREFERENCES => Some("menu-preferences"),
                 MENU_TOGGLE_DARK_MODE => Some("menu-toggle-dark-mode"),
                 MENU_TOGGLE_TASK_OVERVIEW => Some("menu-toggle-task-overview"),
@@ -236,6 +246,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ping,
             update_edit_menu_labels,
+            update_formatted_copy_menu_enabled,
             update_theme_menu_label,
             update_task_overview_menu_label,
             update_editor_mode_menu_label,
@@ -394,6 +405,9 @@ fn ensure_edit_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
     let redo = MenuItemBuilder::with_id(MENU_REDO, "Redo")
         .accelerator("CmdOrCtrl+Shift+Z")
         .build(handle)?;
+    let copy_formatted = MenuItemBuilder::with_id(MENU_COPY_FORMATTED, "Copy as Formatted Text")
+        .enabled(false)
+        .build(handle)?;
 
     if let Some(edit_menu) = find_submenu(menu, "Edit")? {
         while !edit_menu.items()?.is_empty() {
@@ -405,7 +419,16 @@ fn ensure_edit_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
         let paste = PredefinedMenuItem::paste(handle, None)?;
         let select_all = PredefinedMenuItem::select_all(handle, None)?;
         edit_menu.insert_items(
-            &[&undo, &redo, &separator, &cut, &copy, &paste, &select_all],
+            &[
+                &undo,
+                &redo,
+                &separator,
+                &cut,
+                &copy,
+                &copy_formatted,
+                &paste,
+                &select_all,
+            ],
             0,
         )?;
         return Ok(());
@@ -417,6 +440,7 @@ fn ensure_edit_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
         .separator()
         .cut()
         .copy()
+        .item(&copy_formatted)
         .paste()
         .select_all()
         .build()?;

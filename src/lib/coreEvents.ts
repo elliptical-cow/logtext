@@ -2,6 +2,7 @@ import {
   closeWorkspace,
   onCoreEvent,
   updateEditorModeMenuLabel,
+  updateFormattedCopyMenuEnabled,
   updatePaneVisibilityMenu,
   updatePreferencesMenuEnabled,
   updateEditMenuLabels,
@@ -75,6 +76,7 @@ export async function setupCoreEvents() {
     ["menu-quick-open", "app.quickOpen"],
     ["menu-command-palette", "app.commandPalette"],
     ["menu-workspace-search", "workspace.search"],
+    ["menu-copy-formatted", "editor.copyFormatted"],
   ] as const) {
     await onCoreEvent(eventName, async () => {
       window.dispatchEvent(new CustomEvent("logtext-execute-command", { detail: { id: commandId } }));
@@ -177,6 +179,10 @@ export async function setupCoreEvents() {
   setupPaneVisibilityMenu();
   setupPreferencesMenuState();
   window.addEventListener("logtext-editor-history-availability", handleEditorHistoryAvailability);
+  window.addEventListener(
+    "logtext-editor-selection-availability",
+    handleEditorSelectionAvailability,
+  );
 
   await onCoreEvent(
     "menu-undo",
@@ -364,6 +370,11 @@ function handleEditorHistoryAvailability(event: Event) {
     Boolean(state.nextUndoLabel) || editorUndoAvailable,
     Boolean(state.nextRedoLabel) || editorRedoAvailable,
   ).catch(() => {});
+}
+
+function handleEditorSelectionAvailability(event: Event) {
+  const enabled = event instanceof CustomEvent && Boolean(event.detail?.selected);
+  void updateFormattedCopyMenuEnabled(enabled).catch(() => {});
 }
 
 function handleGlobalUndoKeydown(event: KeyboardEvent) {

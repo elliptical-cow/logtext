@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = process.cwd();
 
-test("grants only the clipboard operations used by editor menus", () => {
+test("grants only the clipboard operations used by editor and media menus", () => {
   const capability = JSON.parse(
     readFileSync(join(root, "src-tauri/capabilities/default.json"), "utf8"),
   ) as { permissions: string[] };
@@ -14,7 +14,7 @@ test("grants only the clipboard operations used by editor menus", () => {
   assert.equal(capability.permissions.includes("clipboard-manager:allow-read-image"), true);
   assert.equal(capability.permissions.includes("clipboard-manager:allow-read-text"), true);
   assert.equal(capability.permissions.includes("clipboard-manager:allow-write-text"), true);
-  assert.equal(capability.permissions.some((permission) => permission.includes("write-html")), false);
+  assert.equal(capability.permissions.includes("clipboard-manager:allow-write-html"), true);
   assert.equal(capability.permissions.some((permission) => permission.includes("clear")), false);
 });
 

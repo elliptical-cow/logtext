@@ -19,6 +19,7 @@ type MarkdownRendererOptions = {
   workspaceImages?: boolean;
   mermaidCodeBlocks?: boolean;
   logtextWikiLinks?: boolean;
+  latex?: boolean;
 };
 
 export function createMarkdownRenderer({
@@ -26,16 +27,21 @@ export function createMarkdownRenderer({
   workspaceImages = false,
   mermaidCodeBlocks = false,
   logtextWikiLinks = false,
+  latex = true,
 }: MarkdownRendererOptions) {
   const markdown = new MarkdownIt({
     breaks,
     html: false,
     linkify: true,
-  }).use(katex, {
-    delimiters: "dollars",
-    throwOnError: false,
-    trust: false,
   });
+
+  if (latex) {
+    markdown.use(katex, {
+      delimiters: "dollars",
+      throwOnError: false,
+      trust: false,
+    });
+  }
 
   if (logtextWikiLinks) {
     const wikiLinksByInlineState = new WeakMap<object, Map<number, WikiLinkMatch>>();
