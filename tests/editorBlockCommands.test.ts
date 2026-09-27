@@ -265,6 +265,23 @@ test("finds document-wide collapsible blocks below a clicked level", () => {
   ]);
 });
 
+test("finds collapsible blocks at level nine", () => {
+  const lines = Array.from(
+    { length: 10 },
+    (_, index) => `${"  ".repeat(index)}- Level ${index + 1}`,
+  );
+
+  assert.deepEqual(collapsibleBlockRangesBelowLevel(lines, 9), [
+    {
+      startLine: 9,
+      endLine: 10,
+      indent: 16,
+      isList: true,
+      level: 9,
+    },
+  ]);
+});
+
 test("finds sibling ranges for moving blocks", () => {
   const lines = [
     "- First",

@@ -2,6 +2,8 @@
 
 ## Implemented
 
+- [x] Extend editor block collapsing, shortcuts, and the View menu from level 4
+  through level 9.
 - [x] Add portable formatted-text copying for editor selections and rendered
   previews, including semantic lists, plain-text clipboard fallbacks, and
   deduplicated native menu-state updates.

@@ -225,7 +225,7 @@ export async function setupCoreEvents() {
     window.dispatchEvent(new CustomEvent("logtext-reset-layout"));
   });
 
-  for (const level of [1, 2, 3, 4]) {
+  for (let level = 1; level <= 9; level += 1) {
     await onCoreEvent(`menu-collapse-blocks-below-level-${level}`, async () => {
       mainViewStore.set("editor");
       window.setTimeout(() => {

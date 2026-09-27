@@ -48,6 +48,11 @@ const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_1: &str = "view.collapse_blocks_below_lev
 const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_2: &str = "view.collapse_blocks_below_level_2";
 const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_3: &str = "view.collapse_blocks_below_level_3";
 const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_4: &str = "view.collapse_blocks_below_level_4";
+const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_5: &str = "view.collapse_blocks_below_level_5";
+const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_6: &str = "view.collapse_blocks_below_level_6";
+const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_7: &str = "view.collapse_blocks_below_level_7";
+const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_8: &str = "view.collapse_blocks_below_level_8";
+const MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_9: &str = "view.collapse_blocks_below_level_9";
 const MENU_EXPAND_ALL_BLOCKS: &str = "view.expand_all_blocks";
 const MENU_ZOOM_IN: &str = "view.zoom_in";
 const MENU_ZOOM_OUT: &str = "view.zoom_out";
@@ -228,6 +233,11 @@ pub fn run() {
                 MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_2 => Some("menu-collapse-blocks-below-level-2"),
                 MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_3 => Some("menu-collapse-blocks-below-level-3"),
                 MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_4 => Some("menu-collapse-blocks-below-level-4"),
+                MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_5 => Some("menu-collapse-blocks-below-level-5"),
+                MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_6 => Some("menu-collapse-blocks-below-level-6"),
+                MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_7 => Some("menu-collapse-blocks-below-level-7"),
+                MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_8 => Some("menu-collapse-blocks-below-level-8"),
+                MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_9 => Some("menu-collapse-blocks-below-level-9"),
                 MENU_EXPAND_ALL_BLOCKS => Some("menu-expand-all-blocks"),
                 MENU_ZOOM_IN => Some("menu-zoom-in"),
                 MENU_ZOOM_OUT => Some("menu-zoom-out"),
@@ -504,11 +514,36 @@ fn ensure_view_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
         MenuItemBuilder::with_id(MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_4, "Level 4")
             .accelerator("CmdOrCtrl+4")
             .build(handle)?;
+    let collapse_below_level_5 =
+        MenuItemBuilder::with_id(MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_5, "Level 5")
+            .accelerator("CmdOrCtrl+5")
+            .build(handle)?;
+    let collapse_below_level_6 =
+        MenuItemBuilder::with_id(MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_6, "Level 6")
+            .accelerator("CmdOrCtrl+6")
+            .build(handle)?;
+    let collapse_below_level_7 =
+        MenuItemBuilder::with_id(MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_7, "Level 7")
+            .accelerator("CmdOrCtrl+7")
+            .build(handle)?;
+    let collapse_below_level_8 =
+        MenuItemBuilder::with_id(MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_8, "Level 8")
+            .accelerator("CmdOrCtrl+8")
+            .build(handle)?;
+    let collapse_below_level_9 =
+        MenuItemBuilder::with_id(MENU_COLLAPSE_BLOCKS_BELOW_LEVEL_9, "Level 9")
+            .accelerator("CmdOrCtrl+9")
+            .build(handle)?;
     let collapse_blocks_submenu = SubmenuBuilder::new(handle, "Collapse All Blocks Below Level")
         .item(&collapse_below_level_1)
         .item(&collapse_below_level_2)
         .item(&collapse_below_level_3)
         .item(&collapse_below_level_4)
+        .item(&collapse_below_level_5)
+        .item(&collapse_below_level_6)
+        .item(&collapse_below_level_7)
+        .item(&collapse_below_level_8)
+        .item(&collapse_below_level_9)
         .build()?;
     let expand_all_blocks = MenuItemBuilder::with_id(MENU_EXPAND_ALL_BLOCKS, "Expand All Blocks")
         .accelerator("CmdOrCtrl+Shift+E")

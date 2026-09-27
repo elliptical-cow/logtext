@@ -283,7 +283,7 @@ Common block actions:
 - `Shift+Tab`: outdent the current or selected block
 - `Cmd/Ctrl+ArrowUp`: move a block and its children up
 - `Cmd/Ctrl+ArrowDown`: move a block and its children down
-- `Cmd/Ctrl+1` through `Cmd/Ctrl+4`: collapse blocks below that level
+- `Cmd/Ctrl+1` through `Cmd/Ctrl+9`: collapse blocks below that level
 - `Cmd/Ctrl+Shift+E`: expand all blocks
 
 ### Slash Commands
@@ -641,7 +641,7 @@ the current target.
 | Show/hide middle pane | `Cmd/Ctrl+Alt+M` |
 | Show/hide right pane | `Cmd/Ctrl+Alt+R` |
 | Expand all blocks | `Cmd/Ctrl+Shift+E` |
-| Collapse below levels 1–4 | `Cmd/Ctrl+1` through `Cmd/Ctrl+4` |
+| Collapse below levels 1–9 | `Cmd/Ctrl+1` through `Cmd/Ctrl+9` |
 | Move block up/down | `Cmd/Ctrl+ArrowUp` / `Cmd/Ctrl+ArrowDown` |
 | Indent/outdent | `Tab` / `Shift+Tab` |
 | Open editor context menu | `Shift+F10` or `Menu` |

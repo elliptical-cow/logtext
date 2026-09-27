@@ -5,6 +5,11 @@ current source version is `0.8.5`.
 
 ## Unreleased
 
+### Changed
+
+- Extended editor block-collapse shortcuts and the View menu from levels 1–4
+  to levels 1–9.
+
 ### Added
 
 - Added an initial cross-platform Rust command-line importer for classic Logseq
