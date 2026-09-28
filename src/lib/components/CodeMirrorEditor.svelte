@@ -83,6 +83,10 @@
     type EditorContextMenuKind,
   } from "../editorContextMenu";
   import { minimalTextChange } from "../textChanges";
+  import {
+    containsOnlyClipboardImageLabels,
+    htmlClipboardToMarkdown,
+  } from "../htmlClipboard";
   import { isSupportedClipboardImageType, pastedImageMarkdown } from "../pastedImages";
   import { richTextClipboardPayload } from "../richTextClipboard";
   import {
@@ -908,18 +912,24 @@
       }
 
       const text = await readText();
-      if (view !== editorView || disabled || text.length === 0) {
-        editorView.focus();
-        return;
-      }
-      const selection = editorView.state.selection.main;
-      editorView.dispatch({
-        changes: { from: selection.from, to: selection.to, insert: text },
-        selection: { anchor: selection.from + text.length },
-        scrollIntoView: true,
-      });
-      editorView.focus();
+      insertPastedText(editorView, text);
     });
+  }
+
+  function insertPastedText(editorView: EditorView, text: string) {
+    if (view !== editorView || disabled || text.length === 0) {
+      editorView.focus();
+      return false;
+    }
+
+    const selection = editorView.state.selection.main;
+    editorView.dispatch({
+      changes: { from: selection.from, to: selection.to, insert: text },
+      selection: { anchor: selection.from + text.length },
+      scrollIntoView: true,
+    });
+    editorView.focus();
+    return true;
   }
 
   function selectAllEditorText() {
@@ -1269,16 +1279,36 @@
       return false;
     }
 
-    const imageFile = Array.from(event.clipboardData?.items ?? [])
+    const editorView = view;
+    const clipboardData = event.clipboardData;
+    const html = clipboardData?.getData("text/html") ?? "";
+    let markdown = "";
+    if (html.trim()) {
+      markdown = htmlClipboardToMarkdown(
+        html,
+        clipboardData?.getData("text/plain") ?? "",
+      );
+      if (markdown && !containsOnlyClipboardImageLabels(markdown)) {
+        event.preventDefault();
+        insertPastedText(editorView, markdown);
+        return true;
+      }
+    }
+
+    const imageFile = Array.from(clipboardData?.items ?? [])
       .filter((item) => item.kind === "file" && isSupportedClipboardImageType(item.type))
       .map((item) => item.getAsFile())
       .find((file): file is File => file !== null);
     if (!imageFile) {
+      if (markdown) {
+        event.preventDefault();
+        insertPastedText(editorView, markdown);
+        return true;
+      }
       return false;
     }
 
     event.preventDefault();
-    const editorView = view;
     const pastedIntoPath = documentPath;
     const pasteId = beginImagePaste(editorView);
     void persistPastedImage(editorView, pastedIntoPath, pasteId, imageFile);

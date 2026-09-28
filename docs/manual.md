@@ -332,6 +332,22 @@ The command uses Tauri's desktop clipboard support on macOS, Windows, and
 Linux. It is enabled only while the editor has a non-empty selection and is
 also available from the Command Palette in that state.
 
+### Paste Formatted Text
+
+Use the normal `Cmd/Ctrl+V` shortcut or `Edit > Paste` to insert formatted text
+from mail applications such as Microsoft Outlook. Logtext converts available
+HTML into Markdown and keeps headings, paragraphs, emphasis, strikethrough,
+links, quotes, lists, line breaks, and code where the clipboard data provides
+that structure. Outlook-specific list paragraphs and inline styles are
+normalized as part of the conversion.
+
+HTML takes precedence when the clipboard also exposes embedded images, so a
+complete email is not reduced to a single image. Embedded email images are
+inserted as readable alt-text labels because `cid:` and application-local image
+addresses are not portable outside the mail client. Copying a standalone image
+still uses Logtext's normal media paste workflow. If no useful HTML is present,
+the editor falls back to plain text.
+
 Exact live-preview syntax, escaping, and code-block behavior are collected in
 [Markdown Rendering Details](#markdown-rendering-details).
 

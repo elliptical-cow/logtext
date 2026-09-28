@@ -79,6 +79,7 @@ Frontend runtime dependencies:
 - CodeMirror 6 (`state`, `view`, `commands`, `lang-markdown`, `autocomplete`)
   as the editing surface
 - `markdown-it` 14 for rendered Markdown in read-only views
+- `turndown` 7 for converting rich HTML clipboard content to Markdown
 - `@tauri-apps/api` and `@tauri-apps/plugin-dialog` for the command bridge and
   native dialogs
 
