@@ -53,6 +53,58 @@ test("normalizes Outlook list paragraphs and nesting", () => {
   assert.equal(markdown, "- **First**\n    - Nested\n1. Ordered");
 });
 
+test("preserves semantic list nesting across multiple levels", () => {
+  const markdown = htmlClipboardToMarkdown([
+    "<ul><li>First<ul><li>Second<ul><li>Third</li></ul></li></ul></li></ul>",
+    "<ol><li>One<ol><li>Two</li></ol></li></ol>",
+  ].join(""));
+
+  assert.equal(markdown, [
+    "- First",
+    "    - Second",
+    "        - Third",
+    "1. One",
+    "    1. Two",
+  ].join("\n"));
+});
+
+test("turns visually indented sibling lists into Markdown hierarchy", () => {
+  const unordered = htmlClipboardToMarkdown([
+    '<ul style="margin-left: 40px"><li>First</li></ul>',
+    '<ul style="margin-left: 80px"><li>Second</li></ul>',
+    '<ul style="margin-left: 120px"><li>Third</li></ul>',
+  ].join(""));
+  const ordered = htmlClipboardToMarkdown([
+    '<ol style="margin-left: 36pt"><li>First</li></ol>',
+    '<ol style="margin-left: 72pt"><li>Second</li></ol>',
+    '<ol style="margin-left: 108pt"><li>Third</li></ol>',
+  ].join(""));
+
+  assert.equal(unordered, "- First\n    - Second\n        - Third");
+  assert.equal(ordered, "1. First\n    1. Second\n        1. Third");
+});
+
+test("preserves hierarchy from indented list wrappers and list paragraphs", () => {
+  const markdown = htmlClipboardToMarkdown([
+    '<div><ul><li>First</li></ul></div>',
+    '<div style="margin: 0 0 0 40px"><ul><li>Second</li></ul></div>',
+    '<p style="margin-left: 40px">•&nbsp;Third</p>',
+    '<p style="margin-left: 80px">•&nbsp;Fourth</p>',
+  ].join(""));
+
+  assert.equal(markdown, "- First\n    - Second\n    - Third\n        - Fourth");
+});
+
+test("infers Outlook hierarchy from paragraph indentation when level metadata is absent", () => {
+  const markdown = htmlClipboardToMarkdown([
+    '<p class="MsoListParagraph" style="margin-left:36pt">•&nbsp;First</p>',
+    '<p class="MsoListParagraph" style="margin-left:72pt">•&nbsp;Second</p>',
+    '<p class="MsoListParagraph" style="margin-left:108pt">•&nbsp;Third</p>',
+  ].join(""));
+
+  assert.equal(markdown, "- First\n    - Second\n        - Third");
+});
+
 test("keeps code readable, removes unsafe metadata, and replaces embedded images", () => {
   const markdown = htmlClipboardToMarkdown([
     "<style>.hidden { display: none; }</style>",

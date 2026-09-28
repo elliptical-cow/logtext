@@ -339,7 +339,9 @@ from mail applications such as Microsoft Outlook. Logtext converts available
 HTML into Markdown and keeps headings, paragraphs, emphasis, strikethrough,
 links, quotes, lists, line breaks, and code where the clipboard data provides
 that structure. Outlook-specific list paragraphs and inline styles are
-normalized as part of the conversion.
+normalized as part of the conversion. Multi-level list hierarchy is retained
+even when a mail client represents nesting through visual indentation rather
+than nested HTML list elements.
 
 HTML takes precedence when the clipboard also exposes embedded images, so a
 complete email is not reduced to a single image. Embedded email images are

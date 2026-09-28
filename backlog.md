@@ -5,6 +5,8 @@
 - [x] Convert formatted HTML pasted from mail applications into portable
   Markdown, including Outlook-style lists and inline formatting, while keeping
   plain-text and standalone-image fallbacks.
+- [x] Preserve multi-level list hierarchy when formatted clipboard HTML uses
+  visual indentation instead of nested list elements.
 - [x] Extend editor block collapsing, shortcuts, and the View menu from level 4
   through level 9.
 - [x] Add portable formatted-text copying for editor selections and rendered
