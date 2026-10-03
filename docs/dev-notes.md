@@ -937,6 +937,18 @@ The intended dependency direction is:
 Rendering code should not perform filesystem work. Backend parsing should not
 depend on frontend rendering behavior.
 
+## Commenting Conventions
+
+Comments should explain behavior that cannot be inferred safely from the code:
+ownership boundaries, invariants, recovery strategies, portability constraints,
+and reasons for deliberately non-obvious implementation choices. Module-level
+comments should summarize the responsibility and contract of complex modules.
+
+Avoid comments that merely translate a function or expression into prose. Keep
+comments close to the behavior they constrain, update them with the code, and
+prefer an automated test when a behavior can be expressed as an executable
+contract.
+
 ## Design Constraints
 
 Technical changes should preserve these constraints:

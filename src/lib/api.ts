@@ -1,3 +1,11 @@
+/**
+ * Typed frontend boundary for Tauri commands and native events.
+ *
+ * UI code should use these helpers instead of importing `invoke` directly. This
+ * keeps command names, payload casing, and the browser-only test fallback in one
+ * place; it does not grant the WebView direct filesystem access.
+ */
+
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";

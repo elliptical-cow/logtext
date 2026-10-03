@@ -1,3 +1,9 @@
+//! Parses Markdown into the indentation-based block tree used by backlinks and
+//! tasks.
+//!
+//! Fenced code and block math remain protected literal content. Attribute and
+//! task recognition must not reinterpret examples inside those regions.
+
 use crate::parser::wiki_links::{markdown_fence_marker, parse_wiki_links, WikiLink};
 
 #[derive(Debug, Clone, PartialEq, Eq)]

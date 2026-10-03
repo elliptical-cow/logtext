@@ -1,3 +1,9 @@
+//! Construction and replacement of all derived workspace indexes.
+//!
+//! A full build reads each Markdown file once into a detached snapshot. Only a
+//! complete snapshot is applied to live workspace state, preventing failed
+//! reindexing from exposing a mixture of old and new derived data.
+
 use crate::app_state::WorkspaceState;
 use crate::content_snapshot::ContentSnapshot;
 use crate::index::backlink_index::BacklinkIndex;

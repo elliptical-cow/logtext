@@ -1,3 +1,9 @@
+//! Process-wide state for the currently open workspace and its watcher.
+//!
+//! Page metadata, backlinks, and the content snapshot are derived views of the
+//! Markdown files. Mutations in this module update all three together so no
+//! query can observe a partially refreshed in-memory index.
+
 use std::path::PathBuf;
 use std::sync::Mutex;
 

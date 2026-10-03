@@ -1,3 +1,10 @@
+/**
+ * Post-processing for interactive controls in rendered Markdown.
+ *
+ * Source-line attributes are preserved whenever Markdown-it supplies them;
+ * positional fallback exists for older/loose-list output but is less precise.
+ */
+
 import { checkboxLines } from "./checkboxes.js";
 
 export function renderCheckboxItems(html: string, markdown = "", sourceLineNumbers: number[] = []) {

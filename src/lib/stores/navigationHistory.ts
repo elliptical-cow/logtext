@@ -1,3 +1,10 @@
+/**
+ * Pure back/forward stack transitions shared by the editor and right pane.
+ *
+ * Owners call `commit` only after navigation succeeds; this helper never assumes
+ * that a requested page actually opened.
+ */
+
 export type NavigationAvailability = {
   canGoBack: boolean;
   canGoForward: boolean;

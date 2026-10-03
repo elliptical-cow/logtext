@@ -1,4 +1,6 @@
 <script lang="ts">
+  // The application shell coordinates panes, native commands, and dialogs;
+  // document and filesystem behavior remains in stores and backend commands.
   import { getVersion } from "@tauri-apps/api/app";
   import { onDestroy, onMount } from "svelte";
   import { get } from "svelte/store";

@@ -1,3 +1,10 @@
+/**
+ * Configures Markdown-it for read-only Logtext views.
+ *
+ * Wiki links are emitted by an inline rule instead of source preprocessing so
+ * code, images, LaTeX, and standard links retain Markdown-it's parsing context.
+ */
+
 import { katex } from "@mdit/plugin-katex";
 import MarkdownIt from "markdown-it";
 import {

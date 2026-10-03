@@ -1,3 +1,11 @@
+/**
+ * Application-level undo/redo for mutations performed outside direct typing.
+ *
+ * CodeMirror remains authoritative for editor history. This stack interleaves
+ * editor markers with rendered task/checkbox operations so mixed undo sequences
+ * preserve the order in which the user performed them.
+ */
+
 import { get, writable } from "svelte/store";
 import {
   getPageView,
@@ -300,6 +308,8 @@ async function applyOperation(
     );
   }
 
+  // Rendered-view mutations belong to the global history. Isolating CodeMirror
+  // on both sides keeps its local undo command from crossing this operation.
   dependencies.isolateEditorHistory();
   try {
     if (operation.kind === "checkbox") {
@@ -349,6 +359,7 @@ function requestEditorHistoryChange(direction: "undo" | "redo") {
     );
 
     queueMicrotask(() => {
+      // Resolve deterministically when no mounted editor owns the event.
       if (!responded) {
         resolve(false);
       }

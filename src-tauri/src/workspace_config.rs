@@ -1,3 +1,9 @@
+//! Workspace-local configuration loading, normalization, and persistence.
+//!
+//! Deserialized values are never used verbatim: paths, task states, sort modes,
+//! and UI state are normalized so malformed `.config` content cannot weaken
+//! filesystem rules or leak inconsistent state into the frontend.
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;

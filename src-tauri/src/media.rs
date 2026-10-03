@@ -1,3 +1,9 @@
+//! Validated workspace image writes and reads.
+//!
+//! Both clipboard ingestion and the custom media protocol treat paths and file
+//! signatures as trust boundaries. A MIME label or extension alone is never
+//! sufficient to admit or serve bytes.
+
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};

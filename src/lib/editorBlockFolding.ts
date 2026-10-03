@@ -1,3 +1,11 @@
+/**
+ * CodeMirror block folding backed by document-versioned metadata.
+ *
+ * Fold ranges are effects/state rather than edits: collapsing never changes the
+ * Markdown source. Gutter, context-menu, and level commands share one metadata
+ * snapshot so viewport-only updates do not rescan the document.
+ */
+
 import { ChangeDesc, EditorState, StateEffect, StateField } from "@codemirror/state";
 import {
   Decoration,

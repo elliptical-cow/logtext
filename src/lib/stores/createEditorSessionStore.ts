@@ -1,3 +1,11 @@
+/**
+ * Shared session state machine for file-backed editor-style panes.
+ *
+ * Request tokens prevent late opens from replacing a newer page. Save completion
+ * checks the active path and preserves edits made in flight. History transitions
+ * are committed only after the target loads successfully.
+ */
+
 import { writable } from "svelte/store";
 import {
   setCheckboxLine as setCheckboxLineInContent,
@@ -131,6 +139,8 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
 
     clearSaveTimer();
     pendingSave = false;
+    // Opening cannot be cancelled at the Tauri boundary. The sequence token
+    // prevents a slower, older request from replacing the latest selection.
     const requestId = ++openSequence;
     const previousPath = currentState.path;
     update((state) => ({ ...state, loading: true, error: null }));
@@ -231,6 +241,9 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
             return value;
           }
 
+          // Typing remains enabled during the disk round trip. Preserve those
+          // newer edits and queue another save instead of replacing them with
+          // the just-persisted snapshot.
           const changedSinceSave = value.content !== savedContent;
           needsFollowUpSave = changedSinceSave || pendingSave;
 

@@ -1,3 +1,9 @@
+//! App-managed page and folder mutations.
+//!
+//! Operations validate workspace-relative paths, update affected wiki links,
+//! and synchronize derived state. Recovery paths rebuild the indexes when a
+//! multi-file operation cannot finish cleanly.
+
 use std::fs;
 use std::path::PathBuf;
 
@@ -548,6 +554,8 @@ fn rewrite_links_to_targets(
     workspace: &mut WorkspaceState,
     target_rewrites: &[(String, String)],
 ) -> AppResult<usize> {
+    // Build the complete plan before the first write. A read/parse failure then
+    // cannot leave an otherwise avoidable half-rewritten workspace.
     let rewrite_plan = collect_link_rewrite_plan(workspace, target_rewrites)?;
     let updated_link_count = rewrite_plan
         .iter()
@@ -572,6 +580,8 @@ fn rewrite_links_to_targets_with_recovery(
     target_rewrites: &[(String, String)],
 ) -> AppResult<usize> {
     rewrite_links_to_targets(workspace, target_rewrites).map_err(|error| {
+        // Writes cannot be made transactional across independent Markdown
+        // files, so restore derived state from disk after a partial failure.
         let original_detail = error.detail.unwrap_or(error.message);
         match reindex_workspace(workspace) {
             Ok(()) => AppError::io(

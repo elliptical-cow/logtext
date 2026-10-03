@@ -1,3 +1,8 @@
+//! Backend reproduction of the file tree's page ordering.
+//!
+//! Backlinks use this order so their source pages follow the same folder,
+//! manual-order, recent, and modified-time rules visible in navigation.
+
 use std::cmp::Ordering;
 use std::collections::HashMap;
 

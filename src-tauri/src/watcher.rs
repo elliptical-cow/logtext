@@ -1,3 +1,9 @@
+//! Debounced filesystem watcher for externally changed Markdown.
+//!
+//! Ordinary file events update affected pages incrementally. Ambiguous events,
+//! directory renames, watcher errors, or incremental failures deliberately fall
+//! back to a complete rebuild before the frontend is notified.
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path, PathBuf};
 use std::sync::mpsc;
@@ -145,6 +151,9 @@ pub fn start_workspace_watcher(
             let mut batch = WorkspaceChangeBatch::default();
             batch.add_result(&watched_root, result);
 
+            // Editors commonly emit several low-level events for one save.
+            // A short quiet period turns them into one index update and one UI
+            // notification.
             while let Ok(result) = receiver.recv_timeout(Duration::from_millis(400)) {
                 batch.add_result(&watched_root, result);
             }
@@ -165,6 +174,8 @@ pub fn start_workspace_watcher(
                     } else if let Err(incremental_error) =
                         reindex_workspace_paths(workspace, batch.changed_paths())
                     {
+                        // Correctness wins over speed when an event cannot be
+                        // reconciled with the current derived index.
                         reindex_workspace(workspace).map_err(|reindex_error| {
                             format!(
                                 "Incremental index update failed: {incremental_error}. Full reindex failed: {reindex_error}"

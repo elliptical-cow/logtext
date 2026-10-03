@@ -1,3 +1,11 @@
+/**
+ * Lazy, serialized Mermaid rendering for the right pane.
+ *
+ * Mermaid configuration is process-global, so concurrent renders would race.
+ * Generation tokens reject stale results after navigation, and the temporary
+ * stylesheet shim is restored immediately after each older-WebKit render.
+ */
+
 import type { ThemeMode } from "./types.js";
 
 export const MERMAID_DIAGRAM_SELECTOR = "[data-mermaid-diagram]";

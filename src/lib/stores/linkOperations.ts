@@ -1,3 +1,11 @@
+/**
+ * Shared wiki-link routing and missing-page creation sequence.
+ *
+ * Callers choose the destination pane explicitly. Page creation completes before
+ * source refresh and navigation so every consumer opens the canonical path
+ * returned by the backend.
+ */
+
 import type { PageSummary } from "../types.js";
 import { editorSessionStore } from "./editorSession.js";
 import { mainViewStore } from "./mainView.js";

@@ -1,3 +1,9 @@
+//! Tauri commands for workspace lifecycle, pages, search, and tasks.
+//!
+//! These functions are the transport layer: validate command inputs, acquire
+//! application state, and delegate filesystem or domain work to focused
+//! modules. New file-operation logic should normally live outside this module.
+
 use std::fs;
 use std::path::PathBuf;
 

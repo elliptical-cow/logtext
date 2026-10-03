@@ -1,3 +1,5 @@
+//! Builds rendered-pane payloads from disk content and derived indexes.
+
 use std::fs;
 
 use crate::app_state::WorkspaceState;

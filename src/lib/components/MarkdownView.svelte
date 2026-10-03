@@ -1,4 +1,6 @@
 <script lang="ts">
+  // Rendered controls carry source-line metadata back to shared mutation
+  // operations, keeping preview interactions equivalent to editing Markdown.
   import { onDestroy, onMount, tick } from "svelte";
   import { writeText } from "@tauri-apps/plugin-clipboard-manager";
   import ContextMenuShell from "./ContextMenuShell.svelte";

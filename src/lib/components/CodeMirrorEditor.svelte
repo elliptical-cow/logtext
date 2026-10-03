@@ -1,4 +1,6 @@
 <script lang="ts">
+  // This component is the bridge between CodeMirror transactions and Logtext's
+  // Markdown-first state. Decorations may hide syntax, but never replace source.
   import {
     autocompletion,
     closeCompletion,

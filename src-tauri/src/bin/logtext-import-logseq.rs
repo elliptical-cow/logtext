@@ -1,3 +1,5 @@
+//! Minimal command-line wrapper around the shared Logseq importer.
+
 use std::env;
 use std::path::PathBuf;
 use std::process::ExitCode;

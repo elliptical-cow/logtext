@@ -1,3 +1,9 @@
+//! Recursive discovery of visible Markdown pages and physical folders.
+//!
+//! Scanner visibility is authoritative for both full and incremental indexes.
+//! Symlinks and generated/hidden application directories are skipped so they
+//! cannot escape the workspace boundary or create traversal cycles.
+
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;

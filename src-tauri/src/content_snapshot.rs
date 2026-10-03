@@ -1,3 +1,9 @@
+//! Disposable Markdown content used by whole-workspace queries.
+//!
+//! The snapshot avoids repeated reads during search and task listing, but disk
+//! remains authoritative. A missing cache entry therefore falls back to a safe
+//! workspace-relative read instead of becoming a user-visible data loss.
+
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs;

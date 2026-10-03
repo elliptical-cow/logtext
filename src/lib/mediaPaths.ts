@@ -1,3 +1,11 @@
+/**
+ * Validates Markdown image targets before creating workspace media URLs.
+ *
+ * URL conversion is not a security boundary by itself. Parent traversal,
+ * absolute paths, platform prefixes, and external schemes are rejected before
+ * the target reaches the backend's canonical-path checks.
+ */
+
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "./api.js";
 

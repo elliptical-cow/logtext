@@ -1,3 +1,11 @@
+/**
+ * Frontend mirror and mutation facade for the active workspace.
+ *
+ * Backend DTOs replace affected slices after file operations; components should
+ * not predict filesystem results locally. Store-owned failures remain here for
+ * the nearest workspace error dialog instead of being reported a second time.
+ */
+
 import { writable } from "svelte/store";
 import {
   createFolder as createFolderCommand,

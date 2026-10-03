@@ -1,3 +1,10 @@
+/**
+ * Recognition and presentation markers for direct-child `name:: value` blocks.
+ *
+ * This module only identifies a valid attribute line. Ownership and inheritance
+ * are resolved by the backend block tree, not inferred again in the UI.
+ */
+
 import { listItemTextFrom, parseListItemPrefix } from "./markdownPatterns.js";
 
 export const STATUS_CHANGED_AT_ATTRIBUTE = "status-changed-at";

@@ -1,4 +1,7 @@
 <script lang="ts">
+  // Navigation orchestration lives here; filesystem changes still go through
+  // workspace stores so link rewrites, safeguards, and derived state stay
+  // aligned.
   import { onDestroy, onMount, tick } from "svelte";
   import { confirm as confirmDialog, open } from "@tauri-apps/plugin-dialog";
   import { journalPathForDateInput, journalPathForDay, type JournalDay } from "../journals";

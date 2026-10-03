@@ -1,3 +1,11 @@
+/**
+ * Converts rich clipboard HTML into portable Markdown before editor insertion.
+ *
+ * Clipboard markup varies widely between applications. Structural list markers
+ * and safe inline formatting are normalized here; scripts and presentation-only
+ * elements are discarded rather than copied into the workspace.
+ */
+
 import TurndownService from "turndown";
 
 const turndown = new TurndownService({

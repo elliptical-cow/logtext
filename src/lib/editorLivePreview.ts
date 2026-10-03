@@ -1,3 +1,11 @@
+/**
+ * CodeMirror decorations for Logtext's hybrid live-preview mode.
+ *
+ * Inactive syntax may be replaced visually, but the document remains ordinary
+ * Markdown and the active construct exposes its source. Code, LaTeX, and link
+ * contexts must be identified before decorating to avoid nested reinterpretation.
+ */
+
 import { EditorState, RangeSetBuilder, StateField } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";

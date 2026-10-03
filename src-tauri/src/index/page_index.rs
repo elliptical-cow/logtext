@@ -1,3 +1,9 @@
+//! Case-insensitive page lookup and page-title metadata.
+//!
+//! Multiple physical paths may share a normalized key on case-sensitive file
+//! systems. The index preserves every path and reports collisions instead of
+//! silently choosing one.
+
 use std::collections::HashMap;
 
 use crate::workspace::paths::page_key_from_relative_path;

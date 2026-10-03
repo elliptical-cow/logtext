@@ -1,3 +1,9 @@
+//! Page reads and conflict-aware writes.
+//!
+//! Saves compare the content hash supplied by the editor with current disk
+//! content. Modification time is returned as useful metadata, but is not the
+//! sole conflict signal because filesystem timestamp precision varies.
+
 use std::fs;
 use std::path::PathBuf;
 use std::time::SystemTime;
@@ -8,6 +14,8 @@ use crate::workspace::paths::resolve_workspace_relative_path;
 use crate::workspace::scanner::file_modified_at_millis;
 
 pub fn content_hash(content: &str) -> String {
+    // This fast fingerprint detects concurrent edits; it is not used as a
+    // cryptographic digest or as proof that content is trustworthy.
     let mut hash = 0xcbf29ce484222325_u64;
 
     for byte in content.as_bytes() {

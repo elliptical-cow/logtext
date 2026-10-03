@@ -1,3 +1,9 @@
+//! Tauri commands that persist user and workspace configuration.
+//!
+//! Preference changes are prepared and validated before the live config is
+//! replaced. In particular, a media-folder change builds its replacement index
+//! first so a failed scan cannot leave config and derived state out of sync.
+
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::io::ErrorKind;

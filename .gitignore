@@ -11,3 +11,6 @@ target/
 *.log
 
 docs/example_workspace.zip
+
+# Local planning notes are intentionally not part of the public repository.
+backlog.md

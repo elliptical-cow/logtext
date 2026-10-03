@@ -1,3 +1,9 @@
+//! Tauri application bootstrap and the public backend module boundary.
+//!
+//! Native menu identifiers are translated into frontend events here. Workspace
+//! access itself stays behind registered commands so the WebView never receives
+//! direct filesystem capabilities.
+
 pub mod app_error;
 pub mod app_state;
 pub mod commands;

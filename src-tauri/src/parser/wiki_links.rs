@@ -1,3 +1,9 @@
+//! Wiki-link scanning and target rewriting for square and compact syntax.
+//!
+//! The scanner skips Markdown code and other protected contexts. Rewrites keep
+//! compact `#target` syntax only while the replacement remains valid, otherwise
+//! falling back to unambiguous `[[target]]` syntax.
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WikiLink {
     pub raw: String,

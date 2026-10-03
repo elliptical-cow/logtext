@@ -1,3 +1,9 @@
+/**
+ * Lightweight invalidation signal for views derived from a saved page.
+ * The monotonically increasing revision makes repeated saves of one path visible
+ * to Svelte subscribers.
+ */
+
 import { writable } from "svelte/store";
 
 export type PageContentUpdate = {

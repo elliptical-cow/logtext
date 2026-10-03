@@ -1,3 +1,11 @@
+/**
+ * Coordinates checkbox and task mutations from rendered surfaces.
+ *
+ * The coordinator chooses editor-vs-disk routing, waits for persistence, records
+ * one global undo operation, refreshes dependent views, and serializes work per
+ * normalized path so one timestamp insertion cannot stale another line number.
+ */
+
 import { get } from "svelte/store";
 import { toggleCheckbox, updateTaskPriority, updateTaskStatus } from "../api.js";
 import { toErrorMessage } from "../errors.js";
@@ -323,6 +331,8 @@ export function createMutationOperations(
 }
 
 function beginFileMutation(activePaths: Set<string>, path: string) {
+  // The page model is case-insensitive and paths can originate on any supported
+  // platform, so equivalent spellings must share one mutation lock.
   const key = path.replaceAll("\\", "/").toLowerCase();
   if (activePaths.has(key)) {
     return null;

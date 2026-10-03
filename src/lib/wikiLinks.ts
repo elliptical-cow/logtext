@@ -1,3 +1,11 @@
+/**
+ * Frontend wiki-link scanner, resolver, and display-label helpers.
+ *
+ * This intentionally mirrors the backend's square/compact link contract while
+ * also protecting frontend-only Markdown contexts. Keep shared syntax changes
+ * synchronized through the Markdown rule fixtures.
+ */
+
 import type { FolderColors, PageSummary } from "./types";
 import { wikiLinkColorStyle } from "./folderColors.js";
 

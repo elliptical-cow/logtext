@@ -1,3 +1,8 @@
+//! User-scoped configuration stored outside any workspace.
+//!
+//! This file currently remembers only the last workspace. Workspace content and
+//! workspace-specific preferences belong in the workspace `.config` instead.
+
 use std::fs;
 use std::path::{Path, PathBuf};
 

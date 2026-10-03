@@ -1,3 +1,9 @@
+//! Backlink index derived from parsed Markdown blocks.
+//!
+//! Contributions are retained both by target and by source page. The source
+//! view makes reindexing safe: old contributions can be removed before the new
+//! parse is inserted, without rebuilding unrelated pages.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::index::page_index::title_from_markdown_or_path;

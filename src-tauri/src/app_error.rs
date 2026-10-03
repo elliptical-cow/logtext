@@ -1,3 +1,8 @@
+//! Stable errors returned across the Tauri command boundary.
+//!
+//! Keep `message` suitable for users and put diagnostic context in `detail`.
+//! Frontend behavior may branch on `code`, but must not depend on message text.
+
 use serde::Serialize;
 
 pub type AppResult<T> = Result<T, AppError>;

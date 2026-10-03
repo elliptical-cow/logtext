@@ -1,3 +1,11 @@
+/**
+ * Pure task-status and `status-changed-at::` text transformations.
+ *
+ * Operations return the exact previous/generated attribute source. Global undo
+ * can therefore restore user Markdown verbatim and detect intervening edits
+ * instead of synthesizing a replacement timestamp.
+ */
+
 import { blockAttributeMatch, STATUS_CHANGED_AT_ATTRIBUTE } from "./blockAttributes.js";
 import { parseListItemPrefix } from "./markdownPatterns.js";
 import { taskKeywordMatch } from "./taskKeywords.js";

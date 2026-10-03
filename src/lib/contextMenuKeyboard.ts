@@ -1,3 +1,10 @@
+/**
+ * Shared WAI-ARIA-style keyboard behavior for editor and navigation menus.
+ *
+ * The helpers centralize wrapping, disabled-item skipping, submenu traversal,
+ * and focus restoration so mouse, arrows, and mnemonics share one menu state.
+ */
+
 const FLYOUT_CONFIGS = [
   {
     triggerClass: "editor-menu-flyout-trigger",

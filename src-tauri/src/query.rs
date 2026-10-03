@@ -1,3 +1,9 @@
+//! Workspace search and task mutation/query behavior.
+//!
+//! Whole-workspace reads prefer the disposable content snapshot. Task DTOs are
+//! assembled from the parsed hierarchy here so the frontend does not repeat
+//! inheritance rules for links and block attributes.
+
 use std::fs;
 
 use crate::app_state::WorkspaceState;

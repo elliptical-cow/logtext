@@ -1,3 +1,10 @@
+/**
+ * Produces portable HTML plus a Markdown/plain-text clipboard fallback.
+ *
+ * Inline styles are intentional: copied content must remain readable in clients
+ * that do not have access to Logtext's application stylesheet.
+ */
+
 import { createMarkdownRenderer } from "./markdownRenderer.js";
 import type { PageSummary } from "./types.js";
 

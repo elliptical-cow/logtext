@@ -1,3 +1,8 @@
+//! Serializable data-transfer objects exposed to the Svelte frontend.
+//!
+//! DTOs intentionally keep Rust-internal indexes and filesystem types out of
+//! the command contract. Field names are camel-cased to match TypeScript types.
+
 use serde::Serialize;
 use std::collections::HashMap;
 

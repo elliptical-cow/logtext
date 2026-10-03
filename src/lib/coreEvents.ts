@@ -1,3 +1,11 @@
+/**
+ * Connects native menu/window events and global shortcuts to frontend stores.
+ *
+ * Store-owned failures stay with their store dialog. Direct shell actions use
+ * the shared app-error reporter so one rejected action cannot create duplicate
+ * popups in multiple layers.
+ */
+
 import {
   closeWorkspace,
   onCoreEvent,

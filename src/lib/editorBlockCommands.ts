@@ -1,3 +1,11 @@
+/**
+ * Pure block-editing operations plus the CodeMirror keymap that applies them.
+ *
+ * Indentation defines block ancestry. Commands therefore move or renumber
+ * complete sibling ranges and preserve descendants rather than editing only the
+ * visual cursor line.
+ */
+
 import { EditorSelection, Prec, type ChangeSpec, type EditorState } from "@codemirror/state";
 import { keymap, type Command } from "@codemirror/view";
 import { listItemTextFrom, parseListItemPrefix } from "./markdownPatterns.js";

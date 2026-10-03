@@ -1,3 +1,10 @@
+/**
+ * Framework-free filtering, grouping, and row behavior for Task Overview.
+ *
+ * Attribute inheritance is deliberately absent: the backend resolves effective
+ * task attributes once and the frontend consumes that DTO as authoritative.
+ */
+
 import type {
   TaskAttribute,
   TaskAttributeFilterMode,

@@ -1,3 +1,9 @@
+//! Workspace-relative path normalization and containment boundary.
+//!
+//! Filesystem callers should resolve user-controlled paths through this module.
+//! Absolute paths, parent traversal, and platform-specific prefixes are rejected
+//! before a value is joined to the workspace root.
+
 use std::path::{Component, Path, PathBuf};
 
 pub fn page_key_from_link_target(target: &str) -> Option<String> {

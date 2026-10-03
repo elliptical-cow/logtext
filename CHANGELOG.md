@@ -7,6 +7,8 @@ current source version is `0.8.5`.
 
 ### Changed
 
+- Documented backend safety boundaries, derived-state invariants, frontend async
+  ownership, and complex editor and rendering behavior for external contributors.
 - Extended editor block-collapse shortcuts and the View menu from levels 1–4
   to levels 1–9.
 

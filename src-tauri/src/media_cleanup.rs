@@ -1,3 +1,9 @@
+//! Conservative discovery and disposal of unreferenced workspace images.
+//!
+//! Candidates are recomputed immediately before moving files to the operating
+//! system trash. If a file becomes referenced meanwhile it is skipped, and no
+//! failure falls back to permanent deletion.
+
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};

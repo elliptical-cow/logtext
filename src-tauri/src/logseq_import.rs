@@ -1,3 +1,9 @@
+//! One-way conversion from classic file-based Logseq graphs to Logtext.
+//!
+//! Import planning is completed before output is written. A real import writes
+//! into a temporary sibling and renames it only after every page, asset, config,
+//! and report succeeds; the source graph is always read-only.
+
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -632,6 +638,8 @@ fn write_import(plan: &ImportPlan) -> Result<(), String> {
         )
     })?;
     let staging = staging_path(parent);
+    // Keep staging beside the destination so the final rename stays on one
+    // filesystem and an incomplete import is never exposed as a workspace.
     fs::create_dir(&staging).map_err(|error| {
         format!(
             "Failed to create temporary import directory '{}': {error}",
@@ -648,6 +656,8 @@ fn write_import(plan: &ImportPlan) -> Result<(), String> {
         })
     });
     if result.is_err() && staging.exists() {
+        // Cleanup is best-effort: the original import error is more useful to
+        // the caller than a secondary failure while removing staging files.
         let _ = fs::remove_dir_all(&staging);
     }
     result
