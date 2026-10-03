@@ -38,7 +38,6 @@
   import ContextMenuShell from "./ContextMenuShell.svelte";
   import DatePickerPopover from "./DatePickerPopover.svelte";
   import ImageContextMenu from "./ImageContextMenu.svelte";
-  import { formatLocalDate } from "../calendarDates";
   import {
     applyInlineMarkdownFormat,
     canApplyInlineMarkdownFormat,
@@ -106,6 +105,7 @@
   import { runUserAction } from "../stores/appErrors";
   import {
     matchSlashCommand,
+    slashCommandInsertion,
     slashCommandsForQuery,
     type SlashCommandId,
   } from "../slashCommands";
@@ -1205,11 +1205,16 @@
     commandFrom: number,
     commandTo: number,
   ) {
-    if (command === "today") {
-      const dateInput = formatLocalDate(new Date());
+    const line = editorView.state.doc.lineAt(commandFrom);
+    const prefix = line.text.slice(0, commandFrom - line.from);
+    const insertion = slashCommandInsertion(command, {
+      continuationIndent: prefix.replace(/[^\t]/g, " "),
+      taskStates,
+    });
+    if (insertion) {
       editorView.dispatch({
-        changes: { from: commandFrom, to: commandTo, insert: dateInput },
-        selection: { anchor: commandFrom + dateInput.length },
+        changes: { from: commandFrom, to: commandTo, insert: insertion.text },
+        selection: { anchor: commandFrom + insertion.cursorOffset },
         annotations: pickedCompletion.of(completion),
         scrollIntoView: true,
       });

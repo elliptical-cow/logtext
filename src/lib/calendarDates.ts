@@ -13,6 +13,12 @@ export function formatLocalDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+export function formatLocalTime(date: Date) {
+  const hours = `${date.getHours()}`.padStart(2, "0");
+  const minutes = `${date.getMinutes()}`.padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 export function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }

@@ -14,6 +14,9 @@ current source version is `0.8.5`.
 
 ### Added
 
+- Extended editor slash commands with configured task-state and checkbox
+  insertion, local time and relative dates, and cursor-ready code, Mermaid, and
+  block-math scaffolds that preserve list indentation.
 - Added an initial cross-platform Rust command-line importer for classic Logseq
   Markdown graphs. It creates a separate Logtext workspace, converts conventional
   page and journal paths, rewrites known wiki-link and asset targets, copies

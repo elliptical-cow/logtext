@@ -293,8 +293,17 @@ typing to filter the list, use `Up`/`Down` to select a command, and press
 `Enter` to run it. `Escape` closes the command list.
 
 - `/today` replaces the command with today's local date in `YYYY-MM-DD` format.
+- `/tomorrow` and `/yesterday` insert the corresponding local date in the same
+  format.
 - `/date` opens the shared keyboard date picker and inserts the selected date
   in the same format. `Escape` closes the picker without replacing the command.
+- `/time` inserts the current local time in `HH:mm` format.
+- `/task` inserts the first configured task state followed by a space (`TODO `
+  with the default configuration).
+- `/checkbox` inserts an unchecked Markdown checkbox marker (`[ ] `).
+- `/code`, `/mermaid`, and `/math` insert an empty fenced code block, Mermaid
+  block, or block formula and place the cursor inside it. Multiline blocks keep
+  the surrounding list indentation.
 
 Slash commands are recognized only at the start of block content, including
 after a list or checkbox marker. Slashes in prose, paths, and URLs do not open
