@@ -25,10 +25,37 @@ current source version is `0.8.5`.
   the source graph.
 - Added standalone Logseq importer artifacts to Windows, macOS, and Linux CI and
   release builds, including a universal Apple Silicon/Intel macOS binary.
+
+## 0.8.5
+Changes since `v0.8.0`.
+
+### Added
+
+- Added keyboard-first navigation with Quick Open, a command palette, pane focus
+  cycling, accessible resizers, and keyboard workflows for files, search,
+  tasks, the calendar, and dialogs.
+- Added inheritable block metadata for tasks, including structured attributes,
+  parent-link resolution, `status-changed-at` tracking, and metadata filtering
+  and grouping in the Task Overview.
 - Added workspace-persistent controls, a `View > Hide/Show Panes` submenu, and
   keyboard shortcuts for independently collapsing all three panes into narrow
   restore rails. Pane content remains mounted so its active page and local UI
   state are retained.
+- Added editor-pane backlink actions for tasks, checkboxes, copying, and source
+  navigation, plus a compact action for opening search results in the right
+  pane.
+
+### Changed
+
+- Made complete Task Overview entries open their source context in the right
+  pane while retaining direct controls and context-menu actions.
+- Made dark mode the default for new workspaces and prefixed release artifact
+  versions consistently with `v`.
+
+### Fixed
+
+- Restored switching from dark mode to light mode.
+- Preserved normal wiki-link rendering and navigation in block-attribute values.
 
 ## 0.8.0
 Changes since `v0.7.5`.
