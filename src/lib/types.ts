@@ -80,6 +80,7 @@ export type PageSortMode =
   | "opened-desc";
 export type ManualPageOrder = Record<string, string[]>;
 export type ThemeMode = "light" | "dark";
+export type SlashCommandSortMode = "alphabetical" | "frequency";
 
 export type WorkspacePreferences = {
   journalFolder: string;
@@ -89,6 +90,7 @@ export type WorkspacePreferences = {
   taskStateColors: TaskStateColors;
   taskDoneSoundEnabled: boolean;
   defaultPageSort: PageSortMode;
+  slashCommandSort: SlashCommandSortMode;
   themeMode: ThemeMode;
 };
 
@@ -190,6 +192,8 @@ export type WorkspaceState = {
   navigationLayout: NavigationLayoutConfig;
   taskOverview: TaskOverviewConfig;
   backlinkView: BacklinkViewConfig;
+  slashCommandSort: SlashCommandSortMode;
+  slashCommandUsage: Record<string, number>;
   themeMode: ThemeMode;
   lastEditorPath: string | null;
   lastRightPanePath: string | null;

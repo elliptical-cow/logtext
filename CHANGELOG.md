@@ -11,9 +11,12 @@ current source version is `0.8.5`.
   ownership, and complex editor and rendering behavior for external contributors.
 - Extended editor block-collapse shortcuts and the View menu from levels 1–4
   to levels 1–9.
+- Seeded `/mermaid` output with a valid two-node example.
 
 ### Added
 
+- Added a workspace preference for sorting slash commands alphabetically or by
+  persisted usage frequency, with alphabetical ordering for equal counts.
 - Extended editor slash commands with configured task-state and checkbox
   insertion, local time and relative dates, and cursor-ready code, Mermaid, and
   block-math scaffolds that preserve list indentation.
@@ -25,6 +28,11 @@ current source version is `0.8.5`.
   the source graph.
 - Added standalone Logseq importer artifacts to Windows, macOS, and Linux CI and
   release builds, including a universal Apple Silicon/Intel macOS binary.
+
+### Fixed
+
+- Allowed slash commands after whitespace later on an existing line instead of
+  limiting the completion menu to the first command in each block.
 
 ## 0.8.5
 Changes since `v0.8.0`.

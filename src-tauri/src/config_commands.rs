@@ -53,6 +53,34 @@ pub fn save_workspace_preferences(
     })?
 }
 
+#[tauri::command]
+pub fn record_slash_command_usage(
+    command: String,
+    state: State<'_, AppState>,
+) -> Result<HashMap<String, u64>, String> {
+    state.with_workspace_mut(|workspace| {
+        let next_config = config_with_recorded_slash_command(&workspace.config, &command)?;
+        save_workspace_config(&workspace.root, &next_config)?;
+        workspace.config = next_config;
+        Ok(workspace.config.slash_command_usage.clone())
+    })?
+}
+
+fn config_with_recorded_slash_command(
+    config: &crate::workspace_config::WorkspaceConfig,
+    command: &str,
+) -> Result<crate::workspace_config::WorkspaceConfig, String> {
+    let command = command.trim().to_ascii_lowercase();
+    if command.is_empty() || !command.chars().all(|value| value.is_ascii_lowercase()) {
+        return Err("Invalid slash command id".to_string());
+    }
+
+    let mut next_config = config.clone();
+    let count = next_config.slash_command_usage.entry(command).or_default();
+    *count = count.saturating_add(1);
+    Ok(next_config)
+}
+
 fn validate_removed_task_states(
     workspace: &crate::app_state::WorkspaceState,
     next_states: &[String],
@@ -481,6 +509,19 @@ mod tests {
         assert_eq!(workspace.config.task_overview, saved);
         assert_eq!(workspace.config.page_favorites, vec!["Keep.md"]);
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn recording_slash_command_usage_increments_without_replacing_preferences() {
+        let mut config = WorkspaceConfig::default();
+        config.slash_command_sort = "frequency".to_string();
+        config.slash_command_usage = HashMap::from([("task".to_string(), 2)]);
+
+        let recorded = config_with_recorded_slash_command(&config, " task ").unwrap();
+
+        assert_eq!(recorded.slash_command_usage.get("task"), Some(&3));
+        assert_eq!(recorded.slash_command_sort, "frequency");
+        assert!(config_with_recorded_slash_command(&config, "bad-id").is_err());
     }
 
     #[test]

@@ -174,6 +174,10 @@ export function saveWorkspacePreferences(
   return invokeTauri<WorkspaceState>("save_workspace_preferences", { preferences });
 }
 
+export function recordSlashCommandUsage(command: string): Promise<Record<string, number>> {
+  return invokeTauri<Record<string, number>>("record_slash_command_usage", { command });
+}
+
 export function savePageSortConfig(
   defaultPageSort: PageSortMode,
   folderPageSort: Record<string, PageSortMode>,

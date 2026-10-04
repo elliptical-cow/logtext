@@ -152,6 +152,16 @@
           </select>
         </label>
         <p class="setting-note">Folder-specific sort orders remain available in the file tree.</p>
+        <label>
+          <span>Slash command sort</span>
+          <select bind:value={draft.slashCommandSort}>
+            <option value="alphabetical">Alphabetical</option>
+            <option value="frequency">Most frequently used</option>
+          </select>
+        </label>
+        <p class="setting-note">
+          Usage counts are stored in this workspace's <code>.config</code> file.
+        </p>
       </section>
 
       <section>

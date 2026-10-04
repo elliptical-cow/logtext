@@ -16,6 +16,7 @@ const defaults: WorkspacePreferences = {
   taskStateColors: { TODO: "red", DONE: "green" },
   taskDoneSoundEnabled: true,
   defaultPageSort: "name-desc",
+  slashCommandSort: "alphabetical",
   themeMode: "light",
 };
 

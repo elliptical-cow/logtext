@@ -288,9 +288,10 @@ Common block actions:
 
 ### Slash Commands
 
-Type `/` at the start of a line or list block to open editor commands. Continue
-typing to filter the list, use `Up`/`Down` to select a command, and press
-`Enter` to run it. `Escape` closes the command list.
+Type `/` at the start of a line, list block, or after whitespace later on the
+same line to open editor commands. Continue typing to filter the list, use
+`Up`/`Down` to select a command, and press `Enter` to run it. `Escape` closes
+the command list. The visible choices narrow as the command name is typed.
 
 - `/today` replaces the command with today's local date in `YYYY-MM-DD` format.
 - `/tomorrow` and `/yesterday` insert the corresponding local date in the same
@@ -301,13 +302,14 @@ typing to filter the list, use `Up`/`Down` to select a command, and press
 - `/task` inserts the first configured task state followed by a space (`TODO `
   with the default configuration).
 - `/checkbox` inserts an unchecked Markdown checkbox marker (`[ ] `).
-- `/code`, `/mermaid`, and `/math` insert an empty fenced code block, Mermaid
-  block, or block formula and place the cursor inside it. Multiline blocks keep
-  the surrounding list indentation.
+- `/code` and `/math` insert an empty fenced code block or block formula.
+- `/mermaid` inserts a valid `graph TD` example with two connected nodes so the
+  rendered result is immediately visible and editable.
+- Multiline command output keeps the surrounding list indentation.
 
-Slash commands are recognized only at the start of block content, including
-after a list or checkbox marker. Slashes in prose, paths, and URLs do not open
-the command list.
+Slash commands require either the start of block content or preceding
+whitespace. Slashes embedded in prose, paths, and URLs do not open the command
+list.
 
 Use `View > Plain markdown edit` or `Cmd/Ctrl+Shift+L` to switch between live
 preview and plain Markdown. In live preview, Markdown markers are reduced on
@@ -707,6 +709,9 @@ select `Save Preferences`; `Cancel` discards them.
 - **Theme:** Light or Dark. New workspaces start in Dark mode.
 - **Default page sort:** Name A–Z, Name Z–A, Recently modified, or Recently
   opened.
+- **Slash command sort:** Alphabetical, or most frequently used. Usage counts
+  are maintained per workspace in `.config`; commands with equal counts remain
+  alphabetically ordered.
 
 `Recently modified` uses the Markdown files' filesystem timestamps. `Recently
 opened` uses workspace-local opening history from both content panes.

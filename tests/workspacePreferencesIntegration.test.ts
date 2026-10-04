@@ -24,6 +24,8 @@ test("wires the native Preferences menu to the workspace dialog", () => {
   assert.match(dialog, /Save Preferences/);
   assert.match(dialog, /Completed state/);
   assert.match(dialog, /Recently opened/);
+  assert.match(dialog, /Slash command sort/);
+  assert.match(dialog, /Most frequently used/);
 });
 
 test("saves user preferences through one typed backend command", () => {
@@ -32,8 +34,11 @@ test("saves user preferences through one typed backend command", () => {
   const store = readFileSync(join(root, "src/lib/stores/workspace.ts"), "utf8");
 
   assert.match(backend, /pub fn save_workspace_preferences/);
+  assert.match(backend, /pub fn record_slash_command_usage/);
   assert.match(backend, /validate_removed_task_states/);
   assert.match(backend, /validate_journal_folder_contents/);
   assert.match(api, /invokeTauri<WorkspaceState>\("save_workspace_preferences"/);
+  assert.match(api, /"record_slash_command_usage"/);
   assert.match(store, /async savePreferences\(preferences: WorkspacePreferences\)/);
+  assert.match(store, /async recordSlashCommandUsage\(command: string\)/);
 });

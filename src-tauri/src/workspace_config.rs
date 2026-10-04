@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_TASK_STATES: [&str; 4] = ["TODO", "INPROGRESS", "WAITING", "DONE"];
 pub const DEFAULT_PAGE_SORT: &str = "name-desc";
+pub const DEFAULT_SLASH_COMMAND_SORT: &str = "alphabetical";
 pub const DEFAULT_THEME_MODE: &str = "dark";
 pub const DEFAULT_JOURNAL_FOLDER: &str = "journal";
 pub const DEFAULT_MEDIA_FOLDER: &str = "media";
@@ -52,6 +53,10 @@ pub struct WorkspaceConfig {
     pub task_overview: TaskOverviewConfig,
     #[serde(default)]
     pub backlink_view: BacklinkViewConfig,
+    #[serde(default = "default_slash_command_sort")]
+    pub slash_command_sort: String,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub slash_command_usage: HashMap<String, u64>,
     #[serde(default = "default_theme_mode")]
     pub theme_mode: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -70,6 +75,8 @@ pub struct WorkspacePreferences {
     pub task_state_colors: HashMap<String, String>,
     pub task_done_sound_enabled: bool,
     pub default_page_sort: String,
+    #[serde(default = "default_slash_command_sort")]
+    pub slash_command_sort: String,
     pub theme_mode: String,
 }
 
@@ -175,6 +182,8 @@ impl Default for WorkspaceConfig {
             navigation_layout: NavigationLayoutConfig::default(),
             task_overview: TaskOverviewConfig::default(),
             backlink_view: BacklinkViewConfig::default(),
+            slash_command_sort: default_slash_command_sort(),
+            slash_command_usage: HashMap::new(),
             theme_mode: default_theme_mode(),
             last_editor_path: None,
             last_right_pane_path: None,
@@ -232,6 +241,8 @@ pub fn load_or_create_workspace_config(root: &Path) -> Result<WorkspaceConfig, S
         navigation_layout: normalize_navigation_layout_config(config.navigation_layout),
         task_overview: normalize_task_overview_config(config.task_overview),
         backlink_view: normalize_backlink_view_config(config.backlink_view),
+        slash_command_sort: normalize_slash_command_sort(config.slash_command_sort),
+        slash_command_usage: normalize_slash_command_usage(config.slash_command_usage),
         theme_mode: normalize_theme_mode(config.theme_mode),
         last_editor_path: normalize_optional_page_path(config.last_editor_path),
         last_right_pane_path: normalize_optional_page_path(config.last_right_pane_path),
@@ -263,6 +274,7 @@ pub fn apply_workspace_preferences(
     next.task_states = task_states;
     next.task_done_sound_enabled = preferences.task_done_sound_enabled;
     next.default_page_sort = normalize_page_sort(preferences.default_page_sort, DEFAULT_PAGE_SORT);
+    next.slash_command_sort = normalize_slash_command_sort(preferences.slash_command_sort);
     next.theme_mode = normalize_theme_mode(preferences.theme_mode);
     Ok(next)
 }
@@ -434,6 +446,31 @@ pub fn normalize_theme_mode(theme_mode: String) -> String {
         "light" | "dark" => theme_mode.trim().to_ascii_lowercase(),
         _ => default_theme_mode(),
     }
+}
+
+pub fn normalize_slash_command_sort(sort_mode: String) -> String {
+    match sort_mode.trim() {
+        "frequency" => "frequency".to_string(),
+        _ => default_slash_command_sort(),
+    }
+}
+
+pub fn normalize_slash_command_usage(usage: HashMap<String, u64>) -> HashMap<String, u64> {
+    let mut normalized = HashMap::new();
+    for (command, count) in usage {
+        let command = command.trim().to_ascii_lowercase();
+        if count == 0
+            || command.is_empty()
+            || !command.chars().all(|value| value.is_ascii_lowercase())
+        {
+            continue;
+        }
+        normalized
+            .entry(command)
+            .and_modify(|existing: &mut u64| *existing = existing.saturating_add(count))
+            .or_insert(count);
+    }
+    normalized
 }
 
 pub fn normalize_journal_folder(journal_folder: String) -> Result<String, String> {
@@ -699,6 +736,10 @@ fn default_page_sort() -> String {
     DEFAULT_PAGE_SORT.to_string()
 }
 
+fn default_slash_command_sort() -> String {
+    DEFAULT_SLASH_COMMAND_SORT.to_string()
+}
+
 fn default_theme_mode() -> String {
     DEFAULT_THEME_MODE.to_string()
 }
@@ -760,6 +801,8 @@ mod tests {
             Some(&"name-desc".to_string())
         );
         assert!(config.folder_colors.is_empty());
+        assert_eq!(config.slash_command_sort, "alphabetical");
+        assert!(config.slash_command_usage.is_empty());
         assert_eq!(config.theme_mode, "dark");
         assert_eq!(config.last_editor_path, None);
         assert_eq!(config.last_right_pane_path, None);
@@ -809,6 +852,26 @@ mod tests {
     }
 
     #[test]
+    fn loads_and_normalizes_slash_command_preferences() {
+        let root = temp_workspace();
+        fs::write(
+            root.join(".config"),
+            r#"{"taskStates":["TODO","DONE"],"slashCommandSort":"frequency","slashCommandUsage":{"task":3," DATE ":2,"bad-id":4,"code":0}}"#,
+        )
+        .unwrap();
+
+        let config = load_or_create_workspace_config(&root).unwrap();
+
+        assert_eq!(config.slash_command_sort, "frequency");
+        assert_eq!(
+            config.slash_command_usage,
+            HashMap::from([("task".to_string(), 3), ("date".to_string(), 2)])
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn applies_preferences_without_replacing_application_managed_state() {
         let mut config = WorkspaceConfig::default();
         config.page_favorites = vec!["Projects.md".to_string()];
@@ -826,6 +889,7 @@ mod tests {
             ]),
             task_done_sound_enabled: false,
             default_page_sort: "name-asc".to_string(),
+            slash_command_sort: "frequency".to_string(),
             theme_mode: "dark".to_string(),
         };
 
@@ -837,6 +901,7 @@ mod tests {
         assert_eq!(updated.page_favorites, config.page_favorites);
         assert_eq!(updated.last_opened_at, config.last_opened_at);
         assert_eq!(updated.folder_page_sort, config.folder_page_sort);
+        assert_eq!(updated.slash_command_sort, "frequency");
     }
 
     #[test]
@@ -850,6 +915,7 @@ mod tests {
             task_state_colors: config.task_state_colors.clone(),
             task_done_sound_enabled: true,
             default_page_sort: "name-desc".to_string(),
+            slash_command_sort: "alphabetical".to_string(),
             theme_mode: "light".to_string(),
         };
         assert!(apply_workspace_preferences(&config, preferences.clone()).is_err());
@@ -1208,6 +1274,8 @@ mod tests {
             navigation_layout: NavigationLayoutConfig::default(),
             task_overview: TaskOverviewConfig::default(),
             backlink_view: BacklinkViewConfig::default(),
+            slash_command_sort: default_slash_command_sort(),
+            slash_command_usage: HashMap::new(),
             theme_mode: "light".to_string(),
             last_editor_path: None,
             last_right_pane_path: None,
@@ -1268,6 +1336,8 @@ mod tests {
             backlink_view: BacklinkViewConfig {
                 open_tasks_only: true,
             },
+            slash_command_sort: "frequency".to_string(),
+            slash_command_usage: HashMap::from([("task".to_string(), 4)]),
             theme_mode: "dark".to_string(),
             last_editor_path: Some("projects/alpha.md".to_string()),
             last_right_pane_path: Some("journal/2026-08-21.md".to_string()),
@@ -1283,6 +1353,9 @@ mod tests {
         assert!(saved.contains("\"themeMode\": \"dark\""));
         assert!(saved.contains("\"openTasksOnly\": true"));
         assert!(saved.contains("\"taskDoneSoundEnabled\": false"));
+        assert!(saved.contains("\"slashCommandSort\": \"frequency\""));
+        assert!(saved.contains("\"slashCommandUsage\""));
+        assert!(saved.contains("\"task\": 4"));
         assert!(saved.contains("\"journalRightPaneContinuousScrolling\": true"));
         assert!(saved.contains("\"defaultPageSort\": \"name-asc\""));
         assert!(saved.contains("\"folderPageSort\""));

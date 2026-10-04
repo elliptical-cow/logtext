@@ -283,6 +283,7 @@ pub fn run() {
             config_commands::save_backlink_view_config,
             config_commands::save_theme_config,
             config_commands::save_workspace_preferences,
+            config_commands::record_slash_command_usage,
             commands::list_pages,
             commands::create_page,
             commands::create_folder,

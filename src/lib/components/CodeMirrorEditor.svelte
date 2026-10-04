@@ -97,7 +97,12 @@
   } from "../wikiLinkCompletion";
   import { resolveWikiTarget } from "../wikiLinks";
   import type { LinkTargetPane } from "../stores/linkOperations";
-  import type { FolderColors, PageSummary, TaskStateColors } from "../types";
+  import type {
+    FolderColors,
+    PageSummary,
+    SlashCommandSortMode,
+    TaskStateColors,
+  } from "../types";
   import {
     clipboardImageToPngFile,
     type ImageContextMenuTarget,
@@ -105,9 +110,11 @@
   import { runUserAction } from "../stores/appErrors";
   import {
     matchSlashCommand,
+    slashCommandBlockLayout,
     slashCommandInsertion,
     slashCommandsForQuery,
     type SlashCommandId,
+    type SlashCommandUsage,
   } from "../slashCommands";
 
   export let value = "";
@@ -117,6 +124,8 @@
   export let taskStateColors: TaskStateColors = {};
   export let folderColors: FolderColors = {};
   export let taskDoneSoundEnabled = true;
+  export let slashCommandSort: SlashCommandSortMode = "alphabetical";
+  export let slashCommandUsage: SlashCommandUsage = {};
   export let disabled = false;
   export let revealLine: number | null = null;
   export let revealToken = 0;
@@ -136,6 +145,7 @@
     throw new Error("Image paste is unavailable");
   };
   export let onPasteImageError: (error: unknown) => void = () => {};
+  export let onSlashCommandUsed: (command: SlashCommandId) => void = () => {};
   type ContextMenuLink = {
     link: WikiLinkAtPosition;
     resolvedPath: string | null;
@@ -1168,7 +1178,7 @@
     const match = matchSlashCommand(textBeforeCursor, context.pos);
     if (!match) return null;
 
-    const commands = slashCommandsForQuery(match.query);
+    const commands = slashCommandsForQuery(match.query, slashCommandSort, slashCommandUsage);
     if (commands.length === 0) return null;
 
     return {
@@ -1185,7 +1195,7 @@
           to: number,
         ) => applySlashCommand(command.id, editorView, completion, from - 1, to),
       })),
-      filter: false,
+      filter: true,
       validFor: /^[a-z]*$/i,
     };
   }
@@ -1208,7 +1218,7 @@
     const line = editorView.state.doc.lineAt(commandFrom);
     const prefix = line.text.slice(0, commandFrom - line.from);
     const insertion = slashCommandInsertion(command, {
-      continuationIndent: prefix.replace(/[^\t]/g, " "),
+      ...slashCommandBlockLayout(prefix),
       taskStates,
     });
     if (insertion) {
@@ -1218,6 +1228,7 @@
         annotations: pickedCompletion.of(completion),
         scrollIntoView: true,
       });
+      onSlashCommandUsed(command);
       return;
     }
 
@@ -1269,6 +1280,7 @@
       selection: { anchor: pending.commandFrom + dateInput.length },
       scrollIntoView: true,
     });
+    onSlashCommandUsed("date");
     pending.editorView.focus();
   }
 

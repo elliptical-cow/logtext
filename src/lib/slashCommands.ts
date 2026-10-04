@@ -1,13 +1,14 @@
 /**
  * Registry and pure text generation for editor slash commands.
  *
- * Commands replace only the slash expression at the start of block content;
- * list markers and indentation remain ordinary Markdown owned by the editor.
+ * Commands replace only the active, whitespace-delimited slash expression;
+ * surrounding text, list markers, and indentation remain ordinary Markdown.
  */
 
 import { listItemTextFrom, parseListItemPrefix } from "./markdownPatterns.js";
 import { formatLocalDate, formatLocalTime } from "./calendarDates.js";
 import { DEFAULT_TASK_STATES } from "./taskKeywords.js";
+import type { SlashCommandSortMode } from "./types.js";
 
 export type SlashCommandId =
   | "checkbox"
@@ -20,6 +21,8 @@ export type SlashCommandId =
   | "today"
   | "tomorrow"
   | "yesterday";
+
+export type SlashCommandUsage = Partial<Record<SlashCommandId, number>>;
 
 export type SlashCommandDefinition = {
   id: SlashCommandId;
@@ -39,9 +42,15 @@ export type SlashCommandInsertion = {
 };
 
 export type SlashCommandInsertionOptions = {
+  blockPrefix?: string;
   continuationIndent?: string;
   now?: Date;
   taskStates?: readonly string[];
+};
+
+export type SlashCommandBlockLayout = {
+  blockPrefix: string;
+  continuationIndent: string;
 };
 
 export const SLASH_COMMANDS: readonly SlashCommandDefinition[] = [
@@ -62,10 +71,8 @@ export function matchSlashCommand(
   cursorPosition: number,
 ): SlashCommandMatch | null {
   const listPrefix = parseListItemPrefix(textBeforeCursor);
-  const contentFrom = listPrefix
-    ? listItemTextFrom(listPrefix)
-    : /^[\t ]*/.exec(textBeforeCursor)?.[0].length ?? 0;
-  const match = /^\/([a-z]*)$/i.exec(textBeforeCursor.slice(contentFrom));
+  const contentFrom = listPrefix ? listItemTextFrom(listPrefix) : 0;
+  const match = /(?:^|[\t ])\/([a-z]*)$/i.exec(textBeforeCursor.slice(contentFrom));
   if (!match) return null;
 
   const query = match[1];
@@ -77,14 +84,40 @@ export function matchSlashCommand(
   };
 }
 
-export function slashCommandsForQuery(query: string) {
+export function slashCommandsForQuery(
+  query: string,
+  sortMode: SlashCommandSortMode = "alphabetical",
+  usage: SlashCommandUsage = {},
+) {
   const normalized = query.toLowerCase();
-  return SLASH_COMMANDS.filter((command) => command.label.startsWith(normalized));
+  return SLASH_COMMANDS.filter((command) => command.label.startsWith(normalized)).sort(
+    (left, right) => {
+      if (sortMode === "frequency") {
+        const usageDifference = (usage[right.id] ?? 0) - (usage[left.id] ?? 0);
+        if (usageDifference !== 0) return usageDifference;
+      }
+      return left.label.localeCompare(right.label);
+    },
+  );
+}
+
+export function slashCommandBlockLayout(linePrefix: string): SlashCommandBlockLayout {
+  const listPrefix = parseListItemPrefix(linePrefix);
+  const contentFrom = listPrefix
+    ? listItemTextFrom(listPrefix)
+    : /^[\t ]*/.exec(linePrefix)?.[0].length ?? 0;
+  const continuationIndent = linePrefix.slice(0, contentFrom).replace(/[^\t]/g, " ");
+  const hasBlockContent = linePrefix.slice(contentFrom).trim().length > 0;
+  return {
+    blockPrefix: hasBlockContent ? `\n${continuationIndent}` : "",
+    continuationIndent,
+  };
 }
 
 export function slashCommandInsertion(
   command: SlashCommandId,
   {
+    blockPrefix = "",
     continuationIndent = "",
     now = new Date(),
     taskStates = DEFAULT_TASK_STATES,
@@ -106,11 +139,17 @@ export function slashCommandInsertion(
     case "checkbox":
       return inlineInsertion("[ ] ");
     case "code":
-      return blockInsertion("```", "```", continuationIndent);
+      return blockInsertion("```", "```", blockPrefix, continuationIndent);
     case "mermaid":
-      return blockInsertion("```mermaid", "```", continuationIndent);
+      return blockInsertion(
+        "```mermaid",
+        "```",
+        blockPrefix,
+        continuationIndent,
+        ["graph TD", "  A[Start] --> B[End]"],
+      );
     case "math":
-      return blockInsertion("$$", "$$", continuationIndent);
+      return blockInsertion("$$", "$$", blockPrefix, continuationIndent);
   }
 }
 
@@ -125,11 +164,14 @@ function relativeLocalDate(date: Date, dayOffset: number) {
 function blockInsertion(
   opening: string,
   closing: string,
+  blockPrefix: string,
   continuationIndent: string,
+  content: readonly string[] = [""],
 ): SlashCommandInsertion {
-  const text = `${opening}\n${continuationIndent}\n${continuationIndent}${closing}`;
+  const body = content.map((line) => `${continuationIndent}${line}`).join("\n");
+  const text = `${blockPrefix}${opening}\n${body}\n${continuationIndent}${closing}`;
   return {
     text,
-    cursorOffset: opening.length + 1 + continuationIndent.length,
+    cursorOffset: blockPrefix.length + opening.length + 1 + body.length,
   };
 }

@@ -232,6 +232,8 @@
       taskStateColors={$workspaceStore.taskStateColors}
       folderColors={$workspaceStore.folderColors}
       taskDoneSoundEnabled={$workspaceStore.taskDoneSoundEnabled}
+      slashCommandSort={$workspaceStore.slashCommandSort}
+      slashCommandUsage={$workspaceStore.slashCommandUsage}
       mode={$editorModeStore}
       revealLine={$editorSessionStore.revealLine}
       revealToken={$editorSessionStore.revealToken}
@@ -245,6 +247,7 @@
       onOpenSourceLineInRightPane={openCurrentLineInRightPane}
       onPasteImage={savePastedImage}
       onPasteImageError={(error) => (pageViewError = toErrorMessage(error))}
+      onSlashCommandUsed={(command) => void workspaceStore.recordSlashCommandUsage(command)}
     />
     {#if missingLinkPath}
       <div class="dialog-backdrop" role="presentation">

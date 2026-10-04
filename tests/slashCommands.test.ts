@@ -6,11 +6,12 @@ import test from "node:test";
 import { calendarDays, formatLocalDate, formatLocalTime } from "../src/lib/calendarDates.js";
 import {
   matchSlashCommand,
+  slashCommandBlockLayout,
   slashCommandInsertion,
   slashCommandsForQuery,
 } from "../src/lib/slashCommands.js";
 
-test("recognizes slash commands only at the start of block content", () => {
+test("recognizes slash commands at whitespace-delimited positions", () => {
   assert.deepEqual(matchSlashCommand("/da", 3), {
     commandFrom: 0,
     queryFrom: 1,
@@ -31,8 +32,18 @@ test("recognizes slash commands only at the start of block content", () => {
     query: "date",
   });
 
-  assert.equal(matchSlashCommand("note /date", 10), null);
+  assert.deepEqual(matchSlashCommand("note /date", 10), {
+    commandFrom: 5,
+    queryFrom: 6,
+    query: "date",
+  });
+  assert.deepEqual(matchSlashCommand("2026-10-04 /", 12), {
+    commandFrom: 11,
+    queryFrom: 12,
+    query: "",
+  });
   assert.equal(matchSlashCommand("/date later", 11), null);
+  assert.equal(matchSlashCommand("note/date", 9), null);
   assert.equal(matchSlashCommand("https://example.com", 19), null);
 });
 
@@ -40,16 +51,16 @@ test("filters registered slash commands by their typed prefix", () => {
   assert.deepEqual(
     slashCommandsForQuery("").map((command) => command.id),
     [
+      "checkbox",
+      "code",
       "date",
+      "math",
+      "mermaid",
+      "task",
+      "time",
       "today",
       "tomorrow",
       "yesterday",
-      "time",
-      "task",
-      "checkbox",
-      "code",
-      "mermaid",
-      "math",
     ],
   );
   assert.deepEqual(
@@ -57,6 +68,23 @@ test("filters registered slash commands by their typed prefix", () => {
     ["date"],
   );
   assert.deepEqual(slashCommandsForQuery("missing"), []);
+  assert.deepEqual(
+    slashCommandsForQuery("", "frequency", { task: 5, code: 5, date: 2 }).map(
+      (command) => command.id,
+    ),
+    [
+      "code",
+      "task",
+      "date",
+      "checkbox",
+      "math",
+      "mermaid",
+      "time",
+      "today",
+      "tomorrow",
+      "yesterday",
+    ],
+  );
 });
 
 test("formats local dates and builds a Monday-first calendar grid", () => {
@@ -106,13 +134,31 @@ test("builds indented block scaffolds and places the cursor inside", () => {
     cursorOffset: 6,
   });
   assert.deepEqual(slashCommandInsertion("mermaid", { continuationIndent: "    " }), {
-    text: "```mermaid\n    \n    ```",
-    cursorOffset: 15,
+    text: "```mermaid\n    graph TD\n      A[Start] --> B[End]\n    ```",
+    cursorOffset: 49,
   });
   assert.deepEqual(slashCommandInsertion("math"), {
     text: "$$\n\n$$",
     cursorOffset: 3,
   });
+});
+
+test("starts multiline commands on a valid continuation line after existing text", () => {
+  assert.deepEqual(slashCommandBlockLayout("Existing text "), {
+    blockPrefix: "\n",
+    continuationIndent: "",
+  });
+  assert.deepEqual(slashCommandBlockLayout("  - Existing text "), {
+    blockPrefix: "\n    ",
+    continuationIndent: "    ",
+  });
+  assert.deepEqual(
+    slashCommandInsertion("code", slashCommandBlockLayout("Existing text ")),
+    {
+      text: "\n```\n\n```",
+      cursorOffset: 5,
+    },
+  );
 });
 
 test("wires slash completions to the shared keyboard date picker", () => {
@@ -129,6 +175,13 @@ test("wires slash completions to the shared keyboard date picker", () => {
   assert.match(editor, /displayLabel: `\/\$\{command\.label\}`/);
   assert.match(editor, /completion\.type === "slash-command" \? "cm-slash-command" : ""/);
   assert.match(editor, /slashCommandInsertion\(command/);
+  assert.match(
+    editor,
+    /slashCommandsForQuery\(match\.query, slashCommandSort, slashCommandUsage\)/,
+  );
+  assert.match(editor, /onSlashCommandUsed\(command\)/);
+  assert.match(editor, /onSlashCommandUsed\("date"\)/);
+  assert.match(editor, /filter: true,\s+validFor: \/\^\[a-z\]\*\$\/i/);
   assert.match(editor, /label="Insert date"/);
   assert.match(picker, /role="grid"/);
   assert.match(picker, /role="gridcell"/);

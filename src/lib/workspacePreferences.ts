@@ -18,6 +18,7 @@ export function workspacePreferencesFromState(
     | "taskStateColors"
     | "taskDoneSoundEnabled"
     | "defaultPageSort"
+    | "slashCommandSort"
     | "themeMode"
   >,
 ): WorkspacePreferences {
@@ -29,6 +30,7 @@ export function workspacePreferencesFromState(
     taskStateColors: { ...workspace.taskStateColors },
     taskDoneSoundEnabled: workspace.taskDoneSoundEnabled,
     defaultPageSort: workspace.defaultPageSort,
+    slashCommandSort: workspace.slashCommandSort,
     themeMode: workspace.themeMode,
   };
 }

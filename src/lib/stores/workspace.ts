@@ -18,6 +18,7 @@ import {
   movePage as movePageCommand,
   openWorkspace as openWorkspaceCommand,
   recordPageOpened as recordPageOpenedCommand,
+  recordSlashCommandUsage as recordSlashCommandUsageCommand,
   renameFolder as renameFolderCommand,
   renamePage as renamePageCommand,
   saveBacklinkViewConfig as saveBacklinkViewConfigCommand,
@@ -50,6 +51,7 @@ import type {
   NavigationLayoutConfig,
   PageSortMode,
   PageSummary,
+  SlashCommandSortMode,
   TaskOverviewConfig,
   TaskStateColors,
   TaskStatus,
@@ -116,6 +118,8 @@ type WorkspaceStoreState = {
   navigationLayout: NavigationLayoutConfig;
   taskOverview: TaskOverviewConfig;
   backlinkView: BacklinkViewConfig;
+  slashCommandSort: SlashCommandSortMode;
+  slashCommandUsage: Record<string, number>;
   themeMode: ThemeMode;
   lastEditorPath: string | null;
   lastRightPanePath: string | null;
@@ -146,6 +150,8 @@ const initialState: WorkspaceStoreState = {
   navigationLayout: DEFAULT_NAVIGATION_LAYOUT,
   taskOverview: DEFAULT_TASK_OVERVIEW_CONFIG,
   backlinkView: DEFAULT_BACKLINK_VIEW_CONFIG,
+  slashCommandSort: "alphabetical",
+  slashCommandUsage: {},
   themeMode: DEFAULT_THEME_MODE,
   lastEditorPath: null,
   lastRightPanePath: null,
@@ -181,6 +187,8 @@ function storeStateFromWorkspace(workspace: WorkspaceStateDto): WorkspaceStoreSt
     navigationLayout: workspace.navigationLayout ?? DEFAULT_NAVIGATION_LAYOUT,
     taskOverview: workspace.taskOverview ?? DEFAULT_TASK_OVERVIEW_CONFIG,
     backlinkView: workspace.backlinkView ?? DEFAULT_BACKLINK_VIEW_CONFIG,
+    slashCommandSort: workspace.slashCommandSort ?? "alphabetical",
+    slashCommandUsage: workspace.slashCommandUsage ?? {},
     themeMode,
     lastEditorPath: workspace.lastEditorPath ?? null,
     lastRightPanePath: workspace.lastRightPanePath ?? null,
@@ -562,6 +570,19 @@ function createWorkspaceStore() {
         update((state) => ({
           ...state,
           ...configSaveError("workspace preferences", error),
+        }));
+        return null;
+      }
+    },
+    async recordSlashCommandUsage(command: string) {
+      try {
+        const slashCommandUsage = await recordSlashCommandUsageCommand(command);
+        update((state) => ({ ...state, slashCommandUsage, error: null }));
+        return slashCommandUsage;
+      } catch (error) {
+        update((state) => ({
+          ...state,
+          ...configSaveError("slash command usage", error),
         }));
         return null;
       }

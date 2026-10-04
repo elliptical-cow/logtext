@@ -305,7 +305,8 @@ Workspace-level config:
 - Stores derived UI and workspace preferences such as task states, task colors,
   folder colors, expanded folders, favorites, recent pages, page-open
   timestamps, task overview filters, backlink view options, sort configuration,
-  the journal and media folders, pane session state, and navigation layout values
+  slash-command ordering and usage counts, the journal and media folders, pane
+  session state, and navigation layout values
 
 The workspace config is normalized when loaded. Invalid or unknown values are
 discarded or replaced with defaults where practical.
