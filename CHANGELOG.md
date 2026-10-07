@@ -37,6 +37,8 @@ current source version is `0.8.5`.
 
 ### Fixed
 
+- Updated `markdown-it`, DOMPurify, and devalue to patched versions for their
+  respective denial-of-service and DOM-sanitization security advisories.
 - Allowed slash commands after whitespace later on an existing line instead of
   limiting the completion menu to the first command in each block.
 
