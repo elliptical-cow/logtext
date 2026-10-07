@@ -15,6 +15,12 @@ current source version is `0.8.5`.
 
 ### Added
 
+- Added a Workspace Health diagnostic view with search, severity and type
+  filters for missing wiki-link targets, case-insensitive page collisions,
+  missing and unreferenced media, and unlinked non-journal pages. The report
+  never changes files automatically. Findings can open their source page and
+  line directly; missing link targets offer an explicit page-creation action
+  that opens the new page in the right pane.
 - Added a workspace preference for sorting slash commands alphabetically or by
   persisted usage frequency, with alphabetical ordering for equal counts.
 - Extended editor slash commands with configured task-state and checkbox

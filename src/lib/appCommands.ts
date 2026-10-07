@@ -27,6 +27,7 @@ export type CommandId =
   | "view.historyBack"
   | "view.historyForward"
   | "view.toggleTasks"
+  | "view.workspaceHealth"
   | "view.toggleEditorMode"
   | "view.toggleLeftPane"
   | "view.toggleMiddlePane"
@@ -122,6 +123,7 @@ export const commandDefinitions: CommandDefinition[] = [
     keyBinding: { key: "ArrowRight", alt: true, scope: "global", label: "Alt+Right" },
   },
   { id: "view.toggleTasks", title: "Toggle Task Overview", category: "View", requiresWorkspace: true },
+  { id: "view.workspaceHealth", title: "Toggle Workspace Health", category: "View", requiresWorkspace: true },
   { id: "view.toggleEditorMode", title: "Toggle Editor Mode", category: "View", requiresWorkspace: true },
   { id: "view.toggleLeftPane", title: "Show or Hide Left Pane", category: "View", requiresWorkspace: true },
   { id: "view.toggleMiddlePane", title: "Show or Hide Middle Pane", category: "View", requiresWorkspace: true },

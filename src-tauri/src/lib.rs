@@ -24,6 +24,7 @@ pub mod user_config;
 pub mod watcher;
 pub mod workspace;
 pub mod workspace_config;
+pub mod workspace_health;
 pub mod workspace_index;
 
 use serde::Serialize;
@@ -46,6 +47,7 @@ const MENU_COPY_FORMATTED: &str = "edit.copy_formatted";
 const MENU_PREFERENCES: &str = "app.preferences";
 const MENU_TOGGLE_DARK_MODE: &str = "view.toggle_dark_mode";
 const MENU_TOGGLE_TASK_OVERVIEW: &str = "view.toggle_task_overview";
+const MENU_WORKSPACE_HEALTH: &str = "view.workspace_health";
 const MENU_TOGGLE_EDITOR_MODE: &str = "view.toggle_editor_mode";
 const MENU_TOGGLE_LEFT_PANE: &str = "view.toggle_left_pane";
 const MENU_TOGGLE_MIDDLE_PANE: &str = "view.toggle_middle_pane";
@@ -231,6 +233,7 @@ pub fn run() {
                 MENU_PREFERENCES => Some("menu-preferences"),
                 MENU_TOGGLE_DARK_MODE => Some("menu-toggle-dark-mode"),
                 MENU_TOGGLE_TASK_OVERVIEW => Some("menu-toggle-task-overview"),
+                MENU_WORKSPACE_HEALTH => Some("menu-workspace-health"),
                 MENU_TOGGLE_EDITOR_MODE => Some("menu-toggle-editor-mode"),
                 MENU_TOGGLE_LEFT_PANE => Some("menu-toggle-left-pane"),
                 MENU_TOGGLE_MIDDLE_PANE => Some("menu-toggle-middle-pane"),
@@ -304,7 +307,8 @@ pub fn run() {
             commands::toggle_checkbox,
             media::save_pasted_image,
             media_cleanup::list_unused_media,
-            media_cleanup::move_unused_media_to_trash
+            media_cleanup::move_unused_media_to_trash,
+            workspace_health::get_workspace_health
         ])
         .run(tauri::generate_context!())
         .expect("error while running Logtext");
@@ -475,6 +479,8 @@ fn ensure_view_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
         MenuItemBuilder::with_id(MENU_TOGGLE_TASK_OVERVIEW, task_overview_menu_text(false))
             .accelerator("CmdOrCtrl+Shift+T")
             .build(handle)?;
+    let workspace_health =
+        MenuItemBuilder::with_id(MENU_WORKSPACE_HEALTH, "Workspace Health").build(handle)?;
     let toggle_editor_mode =
         MenuItemBuilder::with_id(MENU_TOGGLE_EDITOR_MODE, editor_mode_menu_text(true))
             .accelerator("CmdOrCtrl+Shift+L")
@@ -577,6 +583,7 @@ fn ensure_view_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
                 &toggle_dark_mode,
                 &separator_after_theme,
                 &toggle_task_overview,
+                &workspace_health,
                 &toggle_editor_mode,
                 &pane_visibility_submenu,
                 &separator_after_mode,
@@ -596,6 +603,7 @@ fn ensure_view_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
             .item(&toggle_dark_mode)
             .separator()
             .item(&toggle_task_overview)
+            .item(&workspace_health)
             .item(&toggle_editor_mode)
             .item(&pane_visibility_submenu)
             .separator()

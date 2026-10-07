@@ -213,6 +213,12 @@ export async function setupCoreEvents() {
     await toggleTaskOverview();
   });
 
+  await onCoreEvent("menu-workspace-health", async () => {
+    window.dispatchEvent(
+      new CustomEvent("logtext-execute-command", { detail: { id: "view.workspaceHealth" } }),
+    );
+  });
+
   await onCoreEvent("menu-toggle-editor-mode", async () => {
     editorModeStore.toggle();
   });

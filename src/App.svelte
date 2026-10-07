@@ -13,6 +13,7 @@
   import PreferencesDialog from "./lib/components/PreferencesDialog.svelte";
   import RightPane from "./lib/components/RightPane.svelte";
   import TaskOverview from "./lib/components/TaskOverview.svelte";
+  import WorkspaceHealth from "./lib/components/WorkspaceHealth.svelte";
   import { listUnusedMedia, moveUnusedMediaToTrash, setWindowTitle } from "./lib/api";
   import {
     commandDefinitions,
@@ -274,6 +275,10 @@
           mainViewStore.set("tasks");
           void taskStore.refresh();
         }
+        requestAnimationFrame(() => focusWorkspaceRegion("middle"));
+        return;
+      case "view.workspaceHealth":
+        mainViewStore.set($mainViewStore === "health" ? "editor" : "health");
         requestAnimationFrame(() => focusWorkspaceRegion("middle"));
         return;
       case "view.toggleEditorMode":
@@ -800,6 +805,8 @@
       >
         {#if $mainViewStore === "tasks"}
           <TaskOverview />
+        {:else if $mainViewStore === "health"}
+          <WorkspaceHealth />
         {:else}
           <EditorPane />
         {/if}

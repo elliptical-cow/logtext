@@ -29,9 +29,9 @@ through links, backlinks, search, and tasks.
 - Core workflow: [Three-Pane Layout](#three-pane-layout), [Journals](#journals),
   [Wiki Links and Tags](#wiki-links-and-tags), [Backlinks](#backlinks), and
   [Editing](#editing)
-- Tasks and content: [Tasks](#tasks), [Checkboxes](#checkboxes),
-  [Images and Media](#images-and-media), [LaTeX](#latex), and
-  [Mermaid](#mermaid)
+- Tasks and content: [Tasks](#tasks), [Workspace Health](#workspace-health),
+  [Checkboxes](#checkboxes), [Images and Media](#images-and-media),
+  [LaTeX](#latex), and [Mermaid](#mermaid)
 - Finding and navigating: [Keyboard-First Navigation](#keyboard-first-navigation),
   [Navigation and File Operations](#navigation-and-file-operations),
   [Search](#search), and [Keyboard Shortcuts](#keyboard-shortcuts)
@@ -136,7 +136,7 @@ The window has three resizable panes:
 
 - **Left:** file tree, journal navigation, favorites, recent files, task overview,
   and workspace search.
-- **Middle:** the active Markdown editor or Task Overview.
+- **Middle:** the active Markdown editor, Task Overview, or Workspace Health.
 - **Right:** an independently navigable rendered page, journal feed, and linked
   references.
 
@@ -445,6 +445,25 @@ Clicking the task card, including its status or priority marker, opens and
 highlights its source context in the right pane. Links and the `Edit` button
 retain their own actions. Right-click the status or priority marker to open the
 task menu. `Edit` opens the source in the middle pane and selects its line.
+
+### Workspace Health
+
+Open `View > Workspace Health` or run `Toggle Workspace Health` from the
+Command Palette. The diagnostic report checks the current workspace for:
+
+- wiki links whose target page does not exist
+- physical pages that collide under Logtext's case-insensitive page-name rules
+- local Markdown image references whose file is missing
+- supported images in the configured media folder that are not referenced
+- pages without incoming links from another page
+
+Journal pages in the configured journal folder are excluded from the unlinked-
+page list. Use the text, severity, and type filters to narrow the report. `Open`
+navigates to the affected page and source line when one is available. Refresh
+reruns the checks. The report never changes files automatically. Missing wiki-
+link targets offer an explicit `Create Page` action; it uses the original link
+target as the page path and opens the created page in the right pane. No other
+finding offers repair, move, or delete actions.
 
 ## Checkboxes
 

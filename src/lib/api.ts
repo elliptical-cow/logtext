@@ -38,6 +38,7 @@ import type {
   WorkspacePreferences,
   MediaCleanupCandidate,
   MediaTrashResult,
+  WorkspaceHealthReport,
 } from "./types.js";
 
 const TAURI_REQUIRED_MESSAGE =
@@ -142,6 +143,10 @@ export function listUnusedMedia(): Promise<MediaCleanupCandidate[]> {
 
 export function moveUnusedMediaToTrash(paths: string[]): Promise<MediaTrashResult> {
   return invokeTauri<MediaTrashResult>("move_unused_media_to_trash", { paths });
+}
+
+export function getWorkspaceHealth(): Promise<WorkspaceHealthReport> {
+  return invokeTauri<WorkspaceHealthReport>("get_workspace_health");
 }
 
 export function saveExpandedFolders(expandedFolders: string[]): Promise<void> {

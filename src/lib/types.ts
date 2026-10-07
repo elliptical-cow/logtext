@@ -170,6 +170,29 @@ export type MediaTrashResult = {
   failures: MediaTrashFailure[];
 };
 
+export type WorkspaceHealthIssueKind =
+  | "page-key-collision"
+  | "missing-wiki-target"
+  | "missing-media"
+  | "unused-media"
+  | "orphan-page";
+
+export type WorkspaceHealthSeverity = "error" | "warning" | "info";
+
+export type WorkspaceHealthIssue = {
+  kind: WorkspaceHealthIssueKind;
+  severity: WorkspaceHealthSeverity;
+  path: string | null;
+  line: number | null;
+  target: string | null;
+  message: string;
+  context: string | null;
+};
+
+export type WorkspaceHealthReport = {
+  issues: WorkspaceHealthIssue[];
+};
+
 export type WorkspaceState = {
   root: string;
   journalFolder: string;

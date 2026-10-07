@@ -57,6 +57,9 @@ Create database -> define schema -> create document -> fill fields
 - configurable task states, colors, and priorities
 - filtered and grouped task overview
 - images/screenshots and media cleanup
+- workspace health diagnostics for broken links, page-name collisions, missing
+  or unreferenced media, and unlinked pages, with explicit page creation for
+  missing wiki-link targets
 - LaTeX rendering in Markdown views and editor live preview
 - Mermaid diagrams
 

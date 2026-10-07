@@ -19,6 +19,7 @@ pub struct ParsedPage {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Backlink {
     pub target_key: String,
+    pub target: String,
     pub source_path: String,
     pub source_title: String,
     pub source_headings: Vec<String>,
@@ -114,6 +115,13 @@ impl BacklinkIndex {
             .cloned()
             .unwrap_or_default()
     }
+
+    /// Returns every indexed wiki-link contribution for workspace-wide diagnostics.
+    pub fn all_backlinks(&self) -> impl Iterator<Item = &Backlink> {
+        self.source_backlinks_by_path
+            .values()
+            .flat_map(|backlinks| backlinks.iter())
+    }
 }
 
 struct BacklinkPageContext<'a> {
@@ -180,6 +188,7 @@ fn add_backlink(
     let context = backlink_context_markdown(page.source_lines, ancestors, context_block);
     backlinks.push(Backlink {
         target_key,
+        target: link.target.clone(),
         source_path: page.source_path.to_string(),
         source_title: page.source_title.to_string(),
         source_headings: page

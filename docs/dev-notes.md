@@ -183,6 +183,8 @@ Top-level modules in `src-tauri/src`:
 - `app_state.rs`: process-wide guarded application state
 - `dto.rs`: serializable types crossing the command boundary
 - `workspace_index.rs`: full workspace scan and index construction
+- `workspace_health.rs`: read-only diagnostics assembled from page and backlink
+  indexes, the content snapshot, and the conservative media scan
 - `page_io.rs`: page content read and write with conflict metadata
 - `page_ops.rs`: create, delete, move, rename, and link rewriting
 - `page_view.rs`: rendered page payloads for the panes
@@ -426,6 +428,12 @@ percent-decoded, path separators and case are normalized, and any occurrence of
 the workspace-relative media path retains the file. The backend recomputes the
 unused set immediately before moving requested candidates with the cross-platform
 system-trash API. Failures are reported per file.
+
+Workspace Health reuses the same unreferenced-media scan and the existing page,
+backlink, and content indexes. It performs no repair actions and owns no
+persistent data. Missing local image references are resolved through the same
+workspace-relative containment helper used by filesystem operations. Journal
+pages are excluded only from the unlinked-page category.
 
 Primary components:
 
