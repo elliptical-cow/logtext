@@ -196,6 +196,79 @@ test("queues a follow-up autosave when content changes during an in-flight save"
   assert.equal(get(store).contentHash, "h2");
 });
 
+test("debounces typing changes until one period of inactivity", async () => {
+  const saveCalls: string[] = [];
+  const store = savingStore(async (_path, content) => {
+    saveCalls.push(content);
+    return {
+      status: "saved",
+      path: "Inbox.md",
+      modifiedAt: "m1",
+      contentHash: "h1",
+    };
+  });
+
+  await store.open("Inbox.md");
+  store.setContent("first");
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  store.setContent("second");
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  assert.deepEqual(saveCalls, ["second"]);
+});
+
+test("saves command changes immediately", async () => {
+  const saveCalls: string[] = [];
+  const store = savingStore(async (_path, content) => {
+    saveCalls.push(content);
+    return {
+      status: "saved",
+      path: "Inbox.md",
+      modifiedAt: "m1",
+      contentHash: "h1",
+    };
+  });
+
+  await store.open("Inbox.md");
+  store.setContent("command result", true);
+
+  assert.deepEqual(saveCalls, ["command result"]);
+});
+
+test("saves a command change immediately after an in-flight save", async () => {
+  let resolveFirstSave: (result: SavePageResult) => void = () => {};
+  const saveCalls: string[] = [];
+  const store = savingStore(async (_path, content) => {
+    saveCalls.push(content);
+    if (saveCalls.length === 1) {
+      return new Promise<SavePageResult>((resolve) => {
+        resolveFirstSave = resolve;
+      });
+    }
+    return {
+      status: "saved",
+      path: "Inbox.md",
+      modifiedAt: "m2",
+      contentHash: "h2",
+    };
+  });
+
+  await store.open("Inbox.md");
+  store.setContent("typing");
+  const firstSave = store.save();
+  store.setContent("command result", true);
+
+  resolveFirstSave({
+    status: "saved",
+    path: "Inbox.md",
+    modifiedAt: "m1",
+    contentHash: "h1",
+  });
+  await firstSave;
+
+  assert.deepEqual(saveCalls, ["typing", "command result"]);
+});
+
 test("reports a save conflict as unsuccessful", async () => {
   const store = savingStore(async () => ({
     status: "conflict",

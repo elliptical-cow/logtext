@@ -80,6 +80,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
   let currentState = initialState;
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
   let pendingSave = false;
+  let pendingImmediateSave = false;
   let openSequence = 0;
   const navigationHistory = createNavigationHistory();
 
@@ -184,7 +185,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
     }
   }
 
-  async function save(contentOverride?: string) {
+  async function save(contentOverride?: string, immediate = true) {
     if (contentOverride !== undefined) {
       update((value) => ({
         ...value,
@@ -204,6 +205,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
 
     if (state.saving) {
       pendingSave = true;
+      pendingImmediateSave ||= immediate;
       return false;
     }
 
@@ -261,10 +263,16 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
           };
         });
 
+        const saveImmediately = pendingImmediateSave;
         pendingSave = false;
+        pendingImmediateSave = false;
 
         if (needsFollowUpSave) {
-          scheduleAutoSave(() => save());
+          if (saveImmediately) {
+            void save();
+          } else {
+            scheduleAutoSave(() => save(undefined, false));
+          }
         }
 
         dependencies.notifyPageChanged?.(savedPage.path);
@@ -289,6 +297,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
         };
       });
       pendingSave = false;
+      pendingImmediateSave = false;
       return false;
     } catch (error) {
       update((value) => {
@@ -303,6 +312,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
         };
       });
       pendingSave = false;
+      pendingImmediateSave = false;
       return false;
     }
   }
@@ -357,7 +367,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
     clearError() {
       update((state) => ({ ...state, error: null }));
     },
-    setContent(content: string) {
+    setContent(content: string, saveImmediately = false) {
       update((state) => {
         if (!state.path || state.conflict) {
           return { ...state, content };
@@ -365,7 +375,11 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
 
         return { ...state, content, dirty: true, error: null };
       });
-      scheduleAutoSave(save);
+      if (saveImmediately) {
+        void save();
+      } else {
+        scheduleAutoSave(() => save(undefined, false));
+      }
     },
     toggleCheckboxLine(line: number) {
       const result = toggleCheckboxLineInContent(currentState.content, line);
@@ -484,6 +498,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
     clear() {
       clearSaveTimer();
       pendingSave = false;
+      pendingImmediateSave = false;
       openSequence += 1;
       navigationHistory.clear();
       set(initialState);
@@ -495,6 +510,7 @@ export function createEditorSessionStore(dependencies: EditorSessionDependencies
 
       clearSaveTimer();
       pendingSave = false;
+      pendingImmediateSave = false;
       navigationHistory.clear();
       set(initialState);
     },

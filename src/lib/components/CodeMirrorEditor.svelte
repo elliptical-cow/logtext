@@ -130,7 +130,7 @@
   export let revealLine: number | null = null;
   export let revealToken = 0;
   export let mode: EditorMode = "source";
-  export let onChange: (value: string) => void = () => {};
+  export let onChange: (value: string, saveImmediately?: boolean) => void = () => {};
   export let onSave: (content: string) => void = () => {};
   export let onEditorHistoryChange: (path: string | null) => void = () => {};
   export let onEditorHistoryDiscard: (path: string | null) => void = () => {};
@@ -303,6 +303,15 @@
     const content = view?.state.doc.toString() ?? value;
     onChange(content);
     onSave(content);
+  }
+
+  function isTypingTransaction(update: { transactions: readonly Transaction[] }) {
+    return update.transactions.every(
+      (transaction) =>
+        !transaction.docChanged ||
+        transaction.isUserEvent("input.type") ||
+        transaction.isUserEvent("delete"),
+    );
   }
 
   function undoCurrentDocument() {
@@ -1432,7 +1441,7 @@
           return;
         }
 
-        onChange(update.state.doc.toString());
+        onChange(update.state.doc.toString(), !isTypingTransaction(update));
         if (
           !applyingHistoryCommand &&
           undoDepth(update.state) > undoDepth(update.startState)
