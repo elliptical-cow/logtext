@@ -195,6 +195,8 @@ export type WorkspaceHealthReport = {
 
 export type WorkspaceState = {
   root: string;
+  source: "folder" | "cryptomator";
+  vaultPath: string | null;
   journalFolder: string;
   mediaFolder: string;
   journalRightPaneContinuousScrolling: boolean;
@@ -221,6 +223,22 @@ export type WorkspaceState = {
   lastEditorPath: string | null;
   lastRightPanePath: string | null;
 };
+
+export type LastWorkspaceDescriptor = {
+  kind: "folder" | "cryptomator";
+  path: string;
+};
+
+export type CryptomatorCliInfo = {
+  executablePath: string;
+  version: string;
+  mounter: string;
+};
+
+export type CloseWorkspaceResult =
+  | { status: "closed" }
+  | { status: "timedOut"; detail: string }
+  | { status: "unmountFailed"; detail: string };
 
 export type NavigationLayoutConfig = {
   quickAccessHeight: number;

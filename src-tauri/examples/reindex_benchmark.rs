@@ -4,7 +4,7 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use logtext_lib::app_state::WorkspaceState;
+use logtext_lib::app_state::{WorkspaceSource, WorkspaceState};
 use logtext_lib::content_snapshot::ContentSnapshot;
 use logtext_lib::dto::SavePageResultDto;
 use logtext_lib::index::backlink_index::BacklinkIndex;
@@ -242,6 +242,7 @@ fn run_benchmarks(
 fn empty_workspace(root: PathBuf) -> WorkspaceState {
     WorkspaceState {
         root,
+        source: WorkspaceSource::Folder,
         config: WorkspaceConfig::default(),
         folders: Vec::new(),
         pages: PageIndex::default(),

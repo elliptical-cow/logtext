@@ -25,7 +25,8 @@ through links, backlinks, search, and tasks.
 ## Contents
 
 - Getting started: [Installation](#installation), [First Start](#first-start),
-  and [Workspace Files](#workspace-files)
+  [Workspace Files](#workspace-files), and
+  [Cryptomator Workspaces](#cryptomator-workspaces)
 - Core workflow: [Three-Pane Layout](#three-pane-layout), [Journals](#journals),
   [Wiki Links and Tags](#wiki-links-and-tags), [Backlinks](#backlinks), and
   [Editing](#editing)
@@ -129,6 +130,50 @@ workspace/
 Logtext also stores the last workspace path in `~/.logtext`. On startup it
 reopens that workspace if it is still available. The right pane restores its
 previous context page.
+
+## Cryptomator Workspaces
+
+Logtext can use a Cryptomator vault without adding encryption code or a second
+file-access implementation. An externally installed
+[`cryptomator-cli`](https://github.com/cryptomator/cli) unlocks the vault and
+mounts it through the operating system's native WebDAV support. Logtext then
+uses the reported local mount path as a normal workspace.
+
+To open a vault:
+
+1. Install `cryptomator-cli`. Version 0.7.0 is the current reference version;
+   Logtext checks the available commands and required mounter instead of
+   requiring an exact version.
+2. Select `File > Open Cryptomator Vault...` or use the `Cryptomator` button on
+   the start screen.
+3. Choose the directory that contains `vault.cryptomator` and enter its
+   password.
+4. If automatic CLI detection fails, select the `cryptomator-cli` executable.
+
+Logtext searches a previously selected executable, `PATH`, and known macOS app
+locations. It requires these native WebDAV mounters:
+
+- macOS: AppleScript WebDAV mounter
+- Windows: Windows WebDAV mounter
+- Linux: GIO/GVFS WebDAV mounter
+
+Linux therefore requires a working GIO/GVFS desktop environment; the selected
+mounter is not supported under KDE. Windows WebDAV can impose operating-system
+limits, including file-size restrictions. FUSE, FUSE-T, macFUSE, WinFsp, and a
+raw HTTP WebDAV connection are not used by this integration.
+
+The password is sent only over the CLI process's standard input. It is not
+stored in `~/.logtext`, `.config`, command arguments, environment variables, or
+Logtext logs. The selected CLI path and original vault path are stored so the
+vault can be shown as locked on the next start; Logtext never asks for the
+password or unlocks it automatically at startup.
+
+While a vault is open, save, search, indexing, file operations, and conflict
+detection use the same code paths as an ordinary folder workspace. Closing the
+workspace waits for pending saves, stops the watcher, asks `cryptomator-cli` to
+unmount, and reports a timeout or incomplete unmount explicitly. If the CLI
+exits unexpectedly, Logtext blocks further filesystem access and leaves dirty
+editor text visible so it can be copied before the workspace is discarded.
 
 ## Three-Pane Layout
 
@@ -851,6 +896,8 @@ operating-system absolute paths, and `..` path segments.
 - `.config` contains settings and UI state, not note content.
 - Keep normal filesystem backups or version-control history for important
   workspaces.
+- After a Cryptomator unmount warning, verify the operating system's mounted
+  volumes before assuming the vault is locked.
 - Use Logtext's move and rename actions when wiki links should be updated.
 - Review the candidate list before confirming `Clean Media`.
 
@@ -866,6 +913,13 @@ Logtext is provided without warranty and is still in early development. See the
   paths.
 - The thin Linux archive does not install desktop integration or system
   dependencies.
+- Filesystem events from native WebDAV mounts are not reliable on every
+  platform. Logtext's own writes update the in-memory index immediately, but
+  changes made by another program can remain invisible until the vault is
+  reopened.
+- Cryptomator vaults require an external `cryptomator-cli` installation and
+  the platform-specific native WebDAV mounter described above. Password
+  keychain support and automatic crash recovery are not available.
 
 For implementation details and recorded design decisions, see
 [Developer Notes](dev-notes.md).

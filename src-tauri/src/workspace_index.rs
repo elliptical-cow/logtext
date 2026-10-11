@@ -172,6 +172,7 @@ mod tests {
     fn empty_workspace(root: std::path::PathBuf) -> WorkspaceState {
         WorkspaceState {
             root,
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::default(),

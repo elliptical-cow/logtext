@@ -293,6 +293,7 @@ mod tests {
         pages.insert_page("projects/Roadmap.md".to_string(), "# Roadmap");
         let workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages,

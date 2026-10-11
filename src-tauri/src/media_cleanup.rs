@@ -331,6 +331,7 @@ mod tests {
         fs::write(root.join("Notes.md"), "# Notes").unwrap();
         let workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::default(),

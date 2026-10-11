@@ -10,8 +10,9 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
 use crate::app_error::AppError;
-use crate::app_state::{AppState, WorkspaceState};
+use crate::app_state::{AppState, WorkspaceSource, WorkspaceState};
 use crate::content_snapshot::ContentSnapshot;
+use crate::cryptomator::{mount_vault, probe_cli, CloseWorkspaceResultDto, CryptomatorCliInfoDto};
 use crate::dto::{
     page_summaries, workspace_state, CreateFolderResultDto, CreatePageResultDto,
     DeleteFolderResultDto, DeletePageResultDto, MovePageResultDto, PageContentDto, PageSummaryDto,
@@ -35,14 +36,16 @@ use crate::query::{
     toggle_checkbox_in_workspace, update_task_priority_in_workspace,
     update_task_status_in_workspace,
 };
-use crate::user_config::{load_or_create_user_config, save_last_workspace};
+use crate::user_config::{
+    load_or_create_user_config, save_cryptomator_workspace, save_last_workspace, LastWorkspace,
+};
 use crate::watcher::start_workspace_watcher;
 use crate::workspace::paths::resolve_workspace_relative_path;
 use crate::workspace_config::load_or_create_workspace_config;
 use crate::workspace_index::reindex_workspace;
 
 #[tauri::command]
-pub fn get_last_workspace(app_handle: AppHandle) -> Result<Option<String>, String> {
+pub fn get_last_workspace(app_handle: AppHandle) -> Result<Option<LastWorkspace>, String> {
     let home_dir = app_handle
         .path()
         .home_dir()
@@ -57,14 +60,128 @@ pub fn open_workspace(
     app_handle: AppHandle,
 ) -> Result<WorkspaceStateDto, String> {
     let root = PathBuf::from(path);
+    state.begin_open()?;
+    let result = (|| {
+        let home_dir = app_handle
+            .path()
+            .home_dir()
+            .map_err(|error| format!("Failed to resolve user home directory: {error}"))?;
+        let last_workspace = LastWorkspace::folder(&root);
+        open_workspace_from_root(
+            root,
+            WorkspaceSource::Folder,
+            &state,
+            &app_handle,
+            None,
+            || save_last_workspace(&home_dir, last_workspace),
+        )
+    })();
+    if result.is_err() {
+        let _ = state.abort_open();
+    }
+    result
+}
 
+#[tauri::command]
+pub fn probe_cryptomator_cli(
+    candidate_path: Option<String>,
+    app_handle: AppHandle,
+) -> Result<CryptomatorCliInfoDto, String> {
+    let home_dir = app_handle
+        .path()
+        .home_dir()
+        .map_err(|error| format!("Failed to resolve user home directory: {error}"))?;
+    let config = load_or_create_user_config(&home_dir)?;
+    probe_cli(
+        candidate_path.as_deref(),
+        config.cryptomator_cli_path.as_deref(),
+    )
+}
+
+#[tauri::command]
+pub async fn open_cryptomator_workspace(
+    vault_path: String,
+    password: String,
+    cli_path: Option<String>,
+    app_handle: AppHandle,
+) -> Result<WorkspaceStateDto, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app_handle.state::<AppState>();
+        state.begin_open()?;
+        let result = (|| {
+            let vault_path = PathBuf::from(vault_path);
+            let home_dir = app_handle
+                .path()
+                .home_dir()
+                .map_err(|error| format!("Failed to resolve user home directory: {error}"))?;
+            let config = load_or_create_user_config(&home_dir)?;
+            let explicit_cli_path = cli_path.as_deref().map(PathBuf::from);
+            let cli = probe_cli(
+                explicit_cli_path.as_deref().and_then(|path| path.to_str()),
+                config.cryptomator_cli_path.as_deref(),
+            )?;
+            let resolved_cli_path = PathBuf::from(&cli.executable_path);
+            let (process, mount_path) = mount_vault(&resolved_cli_path, &vault_path, password)?;
+            let response = open_workspace_from_root(
+                mount_path,
+                WorkspaceSource::Cryptomator {
+                    vault_path: vault_path.clone(),
+                },
+                &state,
+                &app_handle,
+                Some(process.clone()),
+                || save_cryptomator_workspace(&home_dir, &vault_path, explicit_cli_path.as_deref()),
+            );
+            if response.is_err() {
+                let _ = process.stop(false);
+                return response;
+            }
+            process.start_exit_monitor(app_handle.clone());
+            response
+        })();
+        if result.is_err() {
+            let _ = state.abort_open();
+        }
+        result
+    })
+    .await
+    .map_err(|error| format!("Cryptomator workspace task failed: {error}"))?
+}
+
+#[tauri::command]
+pub fn close_workspace(
+    force_cryptomator: Option<bool>,
+    state: State<'_, AppState>,
+) -> Result<CloseWorkspaceResultDto, String> {
+    let Some(process) = state.take_for_close()? else {
+        state.finish_close()?;
+        return Ok(CloseWorkspaceResultDto::Closed);
+    };
+
+    let result = process.stop(force_cryptomator.unwrap_or(false));
+    if process.is_running() {
+        state.retain_closing_process(process)?;
+    } else {
+        state.finish_close()?;
+    }
+    Ok(result)
+}
+
+fn open_workspace_from_root(
+    root: PathBuf,
+    source: WorkspaceSource,
+    state: &AppState,
+    app_handle: &AppHandle,
+    cryptomator: Option<crate::cryptomator::ManagedCryptomator>,
+    before_activation: impl FnOnce() -> Result<(), String>,
+) -> Result<WorkspaceStateDto, String> {
     if !root.is_dir() {
         return Err("Workspace path is not a directory".to_string());
     }
-
     let config = load_or_create_workspace_config(&root)?;
     let mut workspace = WorkspaceState {
         root: root.clone(),
+        source,
         config,
         folders: Vec::new(),
         pages: PageIndex::default(),
@@ -73,22 +190,10 @@ pub fn open_workspace(
     };
     reindex_workspace(&mut workspace)?;
     let response = workspace_state(&workspace);
-    let home_dir = app_handle
-        .path()
-        .home_dir()
-        .map_err(|error| format!("Failed to resolve user home directory: {error}"))?;
-    save_last_workspace(&home_dir, &root)?;
-    let watcher = start_workspace_watcher(root, app_handle)?;
-
-    state.set_workspace(workspace)?;
-    state.set_watcher(watcher)?;
-
+    before_activation()?;
+    let watcher = start_workspace_watcher(root, app_handle.clone())?;
+    state.finish_open(workspace, watcher, cryptomator)?;
     Ok(response)
-}
-
-#[tauri::command]
-pub fn close_workspace(state: State<'_, AppState>) -> Result<(), String> {
-    state.clear_workspace()
 }
 
 #[tauri::command]
@@ -458,6 +563,7 @@ mod tests {
         fs::write(root.join("Projekte").join("Alpha.md"), "# Alpha").unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::default(),
@@ -1792,6 +1898,7 @@ mod tests {
     fn test_workspace_state(root: PathBuf, pages: PageIndex) -> WorkspaceState {
         WorkspaceState {
             root,
+            source: WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages,

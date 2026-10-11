@@ -236,6 +236,7 @@ mod tests {
         ]);
         let workspace = WorkspaceState {
             root: PathBuf::new(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config,
             folders: vec!["projects".to_string()],
             pages: PageIndex::from_paths(vec![
@@ -261,6 +262,7 @@ mod tests {
         config.default_page_sort = "name-desc".to_string();
         let workspace = WorkspaceState {
             root: PathBuf::new(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config,
             folders: vec!["team".to_string(), "journal".to_string()],
             pages: PageIndex::from_paths(vec![
@@ -288,6 +290,7 @@ mod tests {
             HashMap::from([("alpha.md".to_string(), 100), ("zeta.md".to_string(), 300)]);
         let workspace = WorkspaceState {
             root: PathBuf::new(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config,
             folders: Vec::new(),
             pages: PageIndex::from_paths(vec![
@@ -318,6 +321,7 @@ mod tests {
         pages.insert_page_with_modified_at("team/new.md".to_string(), "", 250);
         let workspace = WorkspaceState {
             root: PathBuf::new(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config,
             folders: vec!["team".to_string()],
             pages,

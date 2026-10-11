@@ -913,6 +913,7 @@ mod tests {
         fs::write(root.join("journal/2026-08-09.md"), "# 2026-08-09").unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: vec!["journal".to_string()],
             pages: PageIndex::default(),
@@ -974,6 +975,7 @@ mod tests {
         config.journal_folder = "daily/logs".to_string();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config,
             folders: Vec::new(),
             pages: PageIndex::default(),
@@ -999,6 +1001,7 @@ mod tests {
         fs::create_dir_all(root.join("archive")).unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: vec!["archive".to_string()],
             pages: PageIndex::default(),
@@ -1028,6 +1031,7 @@ mod tests {
 
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::from_paths(vec!["Alpha.md".to_string(), "Source.md".to_string()]),
@@ -1072,6 +1076,7 @@ mod tests {
 
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::default(),
@@ -1123,6 +1128,7 @@ mod tests {
         fs::write(root.join("Inbox.md"), "# Inbox").unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: vec!["projects".to_string(), "projects/archive".to_string()],
             pages: PageIndex::from_paths(vec!["Inbox.md".to_string()]),
@@ -1150,6 +1156,7 @@ mod tests {
         fs::write(root.join("projects/Alpha.md"), "# Alpha").unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: vec!["projects".to_string(), "projects/archive".to_string()],
             pages: PageIndex::from_paths(vec!["projects/Alpha.md".to_string()]),
@@ -1181,6 +1188,7 @@ mod tests {
         config.media_folder = "assets/media".to_string();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config,
             folders: vec!["assets".to_string(), "projects".to_string()],
             pages: PageIndex::default(),
@@ -1229,6 +1237,7 @@ mod tests {
         .unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::default(),
@@ -1280,6 +1289,7 @@ mod tests {
         fs::write(root.join("Source.md"), "- See [[projects/Alpha]]").unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: vec!["projects".to_string()],
             pages: PageIndex::from_paths(vec![
@@ -1320,6 +1330,7 @@ mod tests {
         fs::write(root.join("Quelle.md"), "- Siehe [[PROJEKTE/ÜBERSICHT]]").unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::default(),
@@ -1368,6 +1379,7 @@ mod tests {
         config.last_editor_path = Some("Alpha.md".to_string());
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config,
             folders: Vec::new(),
             pages: PageIndex::default(),
@@ -1403,6 +1415,7 @@ mod tests {
         fs::set_permissions(&source, fs::Permissions::from_mode(0o000)).unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::from_paths(vec!["Alpha.md".to_string()]),

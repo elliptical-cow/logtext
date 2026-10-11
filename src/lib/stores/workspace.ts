@@ -16,6 +16,7 @@ import {
   listPages,
   moveFolder as moveFolderCommand,
   movePage as movePageCommand,
+  openCryptomatorWorkspace as openCryptomatorWorkspaceCommand,
   openWorkspace as openWorkspaceCommand,
   recordPageOpened as recordPageOpenedCommand,
   recordSlashCommandUsage as recordSlashCommandUsageCommand,
@@ -98,6 +99,10 @@ function workspaceError(error: unknown) {
 
 type WorkspaceStoreState = {
   root: string | null;
+  source: "folder" | "cryptomator" | null;
+  vaultPath: string | null;
+  lockedVaultPath: string | null;
+  disconnected: boolean;
   journalFolder: string;
   mediaFolder: string;
   journalRightPaneContinuousScrolling: boolean;
@@ -130,6 +135,10 @@ type WorkspaceStoreState = {
 
 const initialState: WorkspaceStoreState = {
   root: null,
+  source: null,
+  vaultPath: null,
+  lockedVaultPath: null,
+  disconnected: false,
   journalFolder: DEFAULT_JOURNAL_FOLDER,
   mediaFolder: "media",
   journalRightPaneContinuousScrolling: true,
@@ -164,6 +173,10 @@ function storeStateFromWorkspace(workspace: WorkspaceStateDto): WorkspaceStoreSt
   const themeMode = workspace.themeMode ?? DEFAULT_THEME_MODE;
   return {
     root: workspace.root,
+    source: workspace.source,
+    vaultPath: workspace.vaultPath,
+    lockedVaultPath: null,
+    disconnected: false,
     journalFolder: workspace.journalFolder ?? DEFAULT_JOURNAL_FOLDER,
     mediaFolder: workspace.mediaFolder ?? "media",
     journalRightPaneContinuousScrolling: workspace.journalRightPaneContinuousScrolling ?? true,
@@ -208,8 +221,8 @@ function createWorkspaceStore() {
 
   return {
     subscribe,
-    clear() {
-      set(initialState);
+    clear(lockedVaultPath: string | null = null) {
+      set({ ...initialState, lockedVaultPath });
       themeStore.set(DEFAULT_THEME_MODE);
     },
     clearError() {
@@ -237,14 +250,45 @@ function createWorkspaceStore() {
         }));
       }
     },
+    async openCryptomator(vaultPath: string, password: string, cliPath?: string) {
+      const trimmed = vaultPath.trim();
+      if (!trimmed) {
+        update((state) => ({ ...state, error: "Select a Cryptomator vault.", errorDetail: null }));
+        return false;
+      }
+
+      update((state) => ({ ...state, loading: true, error: null, errorDetail: null }));
+      try {
+        const workspace = await openCryptomatorWorkspaceCommand(
+          trimmed,
+          password,
+          cliPath,
+        );
+        themeStore.set(workspace.themeMode ?? DEFAULT_THEME_MODE);
+        set(storeStateFromWorkspace(workspace));
+        return true;
+      } catch (error) {
+        update((state) => ({
+          ...state,
+          loading: false,
+          lockedVaultPath: trimmed,
+          ...workspaceError(error),
+        }));
+        return false;
+      }
+    },
     async openLastWorkspace() {
       try {
-        const path = await getLastWorkspace();
-        if (!path) {
+        const workspace = await getLastWorkspace();
+        if (!workspace) {
+          return false;
+        }
+        if (workspace.kind === "cryptomator") {
+          update((state) => ({ ...state, lockedVaultPath: workspace.path }));
           return false;
         }
 
-        await this.open(path);
+        await this.open(workspace.path);
         return true;
       } catch (error) {
         update((state) => ({
@@ -254,6 +298,17 @@ function createWorkspaceStore() {
         }));
         return false;
       }
+    },
+    setLockedVault(path: string | null) {
+      update((state) => ({ ...state, lockedVaultPath: path }));
+    },
+    setDisconnected(error: string | null) {
+      update((state) => ({
+        ...state,
+        disconnected: true,
+        error,
+        errorDetail: null,
+      }));
     },
     async createPage(path: string) {
       const trimmed = path.trim();
@@ -656,11 +711,13 @@ function createWorkspaceStore() {
 
       try {
         await saveWorkspaceSessionConfig(lastEditorPath, lastRightPanePath);
+        return true;
       } catch (error) {
         update((state) => ({
           ...state,
           ...configSaveError("workspace session", error),
         }));
+        return false;
       }
     },
     async saveNavigationConfig(pageFavorites: string[], recentPages: string[]) {

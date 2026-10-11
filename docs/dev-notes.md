@@ -154,13 +154,17 @@ behavior needs to differ by category.
 
 ## Workspace State
 
-The backend holds the currently opened workspace in `AppState`.
+The backend holds the currently opened workspace in `AppState`. A single
+`RuntimeState` mutex owns the workspace, watcher, optional managed Cryptomator
+process, and the `idle | opening | open | closing | disconnected` lifecycle.
+Index construction and CLI startup happen outside the lock; complete resources
+are activated together.
 
 Important backend structures:
 
 - `AppState`: process-wide application state guarded for Tauri command access
-- `WorkspaceState`: opened workspace root, workspace config, folders, page
-  index, backlink index, and content snapshot
+- `WorkspaceState`: opened workspace root and source descriptor, workspace
+  config, folders, page index, backlink index, and content snapshot
 - `PageIndex`: in-memory index of Markdown pages by relative path and
   case-insensitive page key
 - `BacklinkIndex`: in-memory index of wiki-link backlinks by target page key;
@@ -180,6 +184,8 @@ Top-level modules in `src-tauri/src`:
 - `commands.rs`: page, navigation, task, and search commands
 - `config_commands.rs`: user and workspace configuration commands
 - `content_snapshot.rs`: derived Markdown content cache with disk fallback
+- `cryptomator.rs`: external CLI discovery, bounded process output, native
+  WebDAV mount readiness, platform shutdown signaling, and unmount results
 - `app_state.rs`: process-wide guarded application state
 - `dto.rs`: serializable types crossing the command boundary
 - `workspace_index.rs`: full workspace scan and index construction
@@ -298,7 +304,10 @@ User-level config:
 
 - Stored in the user's home directory as `.logtext`
 - Managed by `src-tauri/src/user_config.rs`
-- Currently stores the last opened workspace path
+- Stores the last workspace descriptor (`folder` or `cryptomator`) and an
+  explicitly selected `cryptomator-cli` path. Legacy string paths deserialize
+  as folder descriptors.
+- Never stores a vault password, temporary mount path, or process state.
 
 Workspace-level config:
 
@@ -734,6 +743,40 @@ Watching `.config` later would require an explicit reload/merge policy and
 suppression of events caused by Logtext's own config writes. It should therefore
 be introduced as a separate feature rather than added to the Markdown watcher
 implicitly.
+
+Native WebDAV mounts can omit or coalesce filesystem events. Cryptomator
+workspaces deliberately use the same watcher and in-memory indexes as folder
+workspaces: internal writes update indexes synchronously, while undetected
+external writes become visible after reopening the vault. There is no polling,
+focus refresh, or persistent index in the first implementation.
+
+## Cryptomator Workspace Lifecycle
+
+`src-tauri/src/cryptomator.rs` integrates an externally installed
+`cryptomator-cli`; Logtext does not implement encryption or direct WebDAV file
+access. The backend probes `--version` and `list-mounters`, chooses one fixed
+native WebDAV mounter per supported platform, starts `unlock` without a shell,
+and sends the password through stdin. stdout and stderr feed a bounded log and
+readiness parser. Only a reported local `file:` URI can become a workspace
+root.
+
+Folder and Cryptomator roots share `open_workspace_from_root`, so config load,
+full indexing, watcher startup, DTO creation, saves, queries, and file
+operations do not branch on encryption. The frontend likewise shares
+`closeActiveWorkspace` across menu close, workspace replacement, and native
+window close.
+
+On close, backend state rejects new workspace commands before dropping the
+watcher and indexes. Unix sends `SIGTERM`; Windows starts the CLI in a separate
+console process group and sends `CTRL_BREAK_EVENT`. A timeout retains the child
+handle so the user can wait again or explicitly force-stop it. Output containing
+`GRACEFUL UNMOUNT FAILED`, or a mount path that remains reachable after process
+exit, produces an explicit unmount warning rather than an automatic hard kill.
+
+The CLI monitor marks the runtime `disconnected` after an unexpected exit.
+Further backend access is rejected, but the frontend keeps dirty editor text
+visible for manual copying. Reconnection and implicit content merging are
+deliberately outside this lifecycle.
 
 ## Navigation And Ordering
 

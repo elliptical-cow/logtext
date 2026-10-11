@@ -346,6 +346,7 @@ mod tests {
         config.journal_folder = "journals".to_string();
         WorkspaceState {
             root: root.to_path_buf(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config,
             folders: vec!["journals".to_string(), "media".to_string()],
             pages,

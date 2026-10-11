@@ -550,6 +550,7 @@ mod tests {
     fn indexed_workspace(root: std::path::PathBuf) -> WorkspaceState {
         let mut workspace = WorkspaceState {
             root,
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::default(),

@@ -344,6 +344,10 @@
     }
   }
 
+  function openCryptomator() {
+    window.dispatchEvent(new CustomEvent("logtext-open-cryptomator"));
+  }
+
   function handleNewPageEvent(event: Event) {
     const detail = event instanceof CustomEvent ? event.detail : null;
     const folderPath = typeof detail?.folderPath === "string" ? detail.folderPath : "";
@@ -2340,11 +2344,15 @@
 >
   <WorkspaceHeader
     root={$workspaceStore.root}
+    source={$workspaceStore.source}
+    vaultPath={$workspaceStore.vaultPath}
+    lockedVaultPath={$workspaceStore.lockedVaultPath}
     loading={$workspaceStore.loading}
     diagnostics={$workspaceStore.diagnostics}
     bind:workspacePath
     {openWorkspace}
     {chooseWorkspaceFolder}
+    {openCryptomator}
     {openJournal}
     {openJournalDate}
     taskLoading={$taskStore.loading}

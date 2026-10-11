@@ -590,6 +590,19 @@ textarea {
   white-space: nowrap;
 }
 
+.workspace-title small,
+.vault-status {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-status {
+  justify-self: start;
+}
+
 .icon-button {
   width: 28px;
   height: 28px;
@@ -680,7 +693,7 @@ textarea {
 
 .workspace-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 

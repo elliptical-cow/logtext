@@ -125,6 +125,7 @@ mod tests {
         fs::write(root.join("Target.md"), "# Target").unwrap();
         let mut workspace = WorkspaceState {
             root: root.clone(),
+            source: crate::app_state::WorkspaceSource::Folder,
             config: WorkspaceConfig::default(),
             folders: Vec::new(),
             pages: PageIndex::default(),

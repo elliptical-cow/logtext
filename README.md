@@ -51,6 +51,8 @@ Create database -> define schema -> create document -> fill fields
 ## Main Features
 
 - local workspaces made of ordinary folders and Markdown files
+- optional Cryptomator vault workspaces through an externally installed
+  `cryptomator-cli`
 - `[[wiki links]]` and `#tags` to reference people, projects, or any other entity
 - daily journal pages stored as `YYYY-MM-DD.md`
 - backlinks with parent and child block context
@@ -109,6 +111,21 @@ See the [manual](docs/manual.md#installation) for more detail.
 A ready-to-open workspace is included in
 [`docs/example_workspace`](docs/example_workspace). Open the folder in Logtext
 and begin with [Start Here](docs/example_workspace/Start%20Here.md).
+
+### Cryptomator Vaults
+
+Logtext can open a Cryptomator vault with `File > Open Cryptomator Vault...`.
+This optional workflow requires a separately installed
+[`cryptomator-cli`](https://github.com/cryptomator/cli). Logtext uses the
+platform's native WebDAV mounter, passes the vault password to the CLI over
+standard input, and treats the resulting local mount like an ordinary
+workspace. The password is not stored.
+
+Closing the workspace also stops the managed CLI process and unmounts the
+vault. A previously used vault is shown as locked after restarting Logtext and
+is never unlocked automatically. See the
+[manual](docs/manual.md#cryptomator-workspaces) for platform requirements and
+limitations.
 
 ## Markdown Syntax
 

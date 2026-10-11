@@ -2,9 +2,11 @@
   // The application shell coordinates panes, native commands, and dialogs;
   // document and filesystem behavior remains in stores and backend commands.
   import { getVersion } from "@tauri-apps/api/app";
+  import { getCurrentWindow, type CloseRequestedEvent } from "@tauri-apps/api/window";
   import { onDestroy, onMount } from "svelte";
   import { get } from "svelte/store";
   import CommandPalette from "./lib/components/CommandPalette.svelte";
+  import CryptomatorDialog from "./lib/components/CryptomatorDialog.svelte";
   import EditorPane from "./lib/components/EditorPane.svelte";
   import ErrorDialog from "./lib/components/ErrorDialog.svelte";
   import FileTree from "./lib/components/FileTree.svelte";
@@ -14,7 +16,12 @@
   import RightPane from "./lib/components/RightPane.svelte";
   import TaskOverview from "./lib/components/TaskOverview.svelte";
   import WorkspaceHealth from "./lib/components/WorkspaceHealth.svelte";
-  import { listUnusedMedia, moveUnusedMediaToTrash, setWindowTitle } from "./lib/api";
+  import {
+    isTauriRuntime,
+    listUnusedMedia,
+    moveUnusedMediaToTrash,
+    setWindowTitle,
+  } from "./lib/api";
   import {
     commandDefinitions,
     commandForKeyboardEvent,
@@ -48,6 +55,7 @@
   import { zoomStore } from "./lib/stores/zoom";
   import type { MediaCleanupCandidate, WorkspacePreferences } from "./lib/types";
   import { workspacePreferencesFromState } from "./lib/workspacePreferences";
+  import { closeActiveWorkspace } from "./lib/workspaceLifecycle";
 
   const layoutStorageKey = "logtext:layout:columns";
   const defaultLeftWidth = 280;
@@ -66,6 +74,7 @@
   let showKeyboardShortcuts = false;
   let showMediaCleanup = false;
   let showPreferences = false;
+  let showCryptomator = false;
   let preferences: WorkspacePreferences | null = null;
   let preferencesError: string | null = null;
   let preferencesErrorDetail: string | null = null;
@@ -83,6 +92,7 @@
   let paletteMode: "commands" | "pages" | null = null;
   let navigationCommandAvailable = false;
   let editorSelectionAvailable = false;
+  let unlistenCloseRequested: (() => void) | null = null;
 
   onMount(() => {
     void initializeApp();
@@ -95,6 +105,7 @@
     window.addEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.addEventListener("logtext-clean-media", handleCleanMediaRequest);
     window.addEventListener("logtext-show-preferences", openPreferencesDialog);
+    window.addEventListener("logtext-open-cryptomator", handleOpenCryptomatorRequest);
     window.addEventListener("logtext-execute-command", handleExecuteCommandEvent);
     window.addEventListener("logtext-navigation-context", handleNavigationContext);
     window.addEventListener(
@@ -103,6 +114,13 @@
     );
     window.addEventListener("wheel", handleWheel, { passive: false });
     window.addEventListener("keydown", handleKeyboardCommand, { capture: true });
+    if (isTauriRuntime()) {
+      void runUserAction("Could not install the application close handler", async () => {
+        unlistenCloseRequested = await getCurrentWindow().onCloseRequested(
+          handleWindowCloseRequest,
+        );
+      });
+    }
   });
 
   async function initializeApp() {
@@ -401,6 +419,26 @@
     preferencesError = null;
     preferencesErrorDetail = null;
     workspaceStore.clearError();
+  }
+
+  async function handleOpenCryptomatorRequest() {
+    if ($workspaceStore.root && !(await closeActiveWorkspace(false))) {
+      return;
+    }
+    showCryptomator = true;
+  }
+
+  function closeCryptomatorDialog() {
+    showCryptomator = false;
+  }
+
+  function handleCryptomatorOpened() {
+    showCryptomator = false;
+  }
+
+  async function handleWindowCloseRequest(event: CloseRequestedEvent) {
+    event.preventDefault();
+    await closeActiveWorkspace(true);
   }
 
   async function savePreferences(nextPreferences: WorkspacePreferences) {
@@ -726,6 +764,7 @@
     window.removeEventListener("logtext-show-keyboard-shortcuts", openKeyboardShortcutsDialog);
     window.removeEventListener("logtext-clean-media", handleCleanMediaRequest);
     window.removeEventListener("logtext-show-preferences", openPreferencesDialog);
+    window.removeEventListener("logtext-open-cryptomator", handleOpenCryptomatorRequest);
     window.removeEventListener("logtext-execute-command", handleExecuteCommandEvent);
     window.removeEventListener("logtext-navigation-context", handleNavigationContext);
     window.removeEventListener(
@@ -734,6 +773,7 @@
     );
     window.removeEventListener("wheel", handleWheel);
     window.removeEventListener("keydown", handleKeyboardCommand, { capture: true });
+    unlistenCloseRequested?.();
   });
 </script>
 
@@ -895,6 +935,14 @@
     saveErrorDetail={preferencesErrorDetail}
     onCancel={closePreferencesDialog}
     onSave={savePreferences}
+  />
+{/if}
+
+{#if showCryptomator}
+  <CryptomatorDialog
+    initialVaultPath={$workspaceStore.lockedVaultPath ?? ""}
+    onCancel={closeCryptomatorDialog}
+    onOpened={handleCryptomatorOpened}
   />
 {/if}
 

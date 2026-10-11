@@ -237,7 +237,7 @@
       mode={$editorModeStore}
       revealLine={$editorSessionStore.revealLine}
       revealToken={$editorSessionStore.revealToken}
-      disabled={!$editorSessionStore.path || $editorSessionStore.loading}
+      disabled={!$editorSessionStore.path || $editorSessionStore.loading || $workspaceStore.disconnected}
       onChange={(content, saveImmediately) => editorSessionStore.setContent(content, saveImmediately)}
       onSave={(content) => void editorSessionStore.save(content)}
       onEditorHistoryChange={(path) => appUndoStore.recordEditorChange(path)}

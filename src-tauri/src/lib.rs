@@ -9,6 +9,7 @@ pub mod app_state;
 pub mod commands;
 pub mod config_commands;
 pub mod content_snapshot;
+pub mod cryptomator;
 pub mod dto;
 pub mod index;
 pub mod logseq_import;
@@ -34,6 +35,7 @@ use tauri::{
 };
 
 const MENU_OPEN_WORKSPACE: &str = "file.open_workspace";
+const MENU_OPEN_CRYPTOMATOR: &str = "file.open_cryptomator";
 const MENU_NEW_FILE: &str = "file.new_file";
 const MENU_CLOSE_WORKSPACE: &str = "file.close_workspace";
 const MENU_SAVE: &str = "file.save";
@@ -208,6 +210,11 @@ fn update_preferences_menu_enabled(app: AppHandle, enabled: bool) -> Result<(), 
     set_menu_item_enabled(&menu, MENU_PREFERENCES, enabled)
 }
 
+#[tauri::command]
+fn exit_application(app: AppHandle) {
+    app.exit(0);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -220,6 +227,7 @@ pub fn run() {
         .on_menu_event(|app, event| {
             let event_name = match event.id().as_ref() {
                 MENU_OPEN_WORKSPACE => Some("menu-open-workspace"),
+                MENU_OPEN_CRYPTOMATOR => Some("menu-open-cryptomator"),
                 MENU_NEW_FILE => Some("menu-new-file"),
                 MENU_CLOSE_WORKSPACE => Some("menu-close-workspace"),
                 MENU_SAVE => Some("menu-save"),
@@ -271,8 +279,11 @@ pub fn run() {
             update_editor_mode_menu_label,
             update_pane_visibility_menu,
             update_preferences_menu_enabled,
+            exit_application,
             commands::get_last_workspace,
             commands::open_workspace,
+            commands::probe_cryptomator_cli,
+            commands::open_cryptomator_workspace,
             commands::close_workspace,
             config_commands::save_expanded_folders,
             config_commands::save_page_sort_config,
@@ -377,7 +388,10 @@ fn ensure_file_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
     let open_workspace = MenuItemBuilder::with_id(MENU_OPEN_WORKSPACE, "Open Workspace Folder...")
         .accelerator("CmdOrCtrl+O")
         .build(handle)?;
-    let close_workspace = MenuItemBuilder::with_id(MENU_CLOSE_WORKSPACE, "Close Workspace Folder")
+    let open_cryptomator =
+        MenuItemBuilder::with_id(MENU_OPEN_CRYPTOMATOR, "Open Cryptomator Vault...")
+            .build(handle)?;
+    let close_workspace = MenuItemBuilder::with_id(MENU_CLOSE_WORKSPACE, "Close Workspace")
         .accelerator("CmdOrCtrl+Shift+W")
         .build(handle)?;
     let save = MenuItemBuilder::with_id(MENU_SAVE, "Save")
@@ -393,6 +407,7 @@ fn ensure_file_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
             &[
                 &new_file,
                 &open_workspace,
+                &open_cryptomator,
                 &close_workspace,
                 &separator_after_workspace,
                 &save,
@@ -406,6 +421,7 @@ fn ensure_file_menu<R: Runtime>(handle: &AppHandle<R>, menu: &Menu<R>) -> tauri:
         let file_menu = SubmenuBuilder::new(handle, "File")
             .item(&new_file)
             .item(&open_workspace)
+            .item(&open_cryptomator)
             .item(&close_workspace)
             .separator()
             .item(&save)

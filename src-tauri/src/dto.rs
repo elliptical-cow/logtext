@@ -6,7 +6,7 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
-use crate::app_state::WorkspaceState;
+use crate::app_state::{WorkspaceSource, WorkspaceState};
 use crate::index::backlink_index::Backlink;
 use crate::index::page_index::{Page, PageIndex};
 use crate::workspace_config::{BacklinkViewConfig, NavigationLayoutConfig, TaskOverviewConfig};
@@ -26,6 +26,8 @@ pub struct PageSummaryDto {
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceStateDto {
     pub root: String,
+    pub source: String,
+    pub vault_path: Option<String>,
     pub journal_folder: String,
     pub media_folder: String,
     pub journal_right_pane_continuous_scrolling: bool,
@@ -54,8 +56,17 @@ pub struct WorkspaceStateDto {
 }
 
 pub fn workspace_state(workspace: &WorkspaceState) -> WorkspaceStateDto {
+    let (source, vault_path) = match &workspace.source {
+        WorkspaceSource::Folder => ("folder".to_string(), None),
+        WorkspaceSource::Cryptomator { vault_path } => (
+            "cryptomator".to_string(),
+            Some(vault_path.to_string_lossy().to_string()),
+        ),
+    };
     WorkspaceStateDto {
         root: workspace.root.to_string_lossy().to_string(),
+        source,
+        vault_path,
         journal_folder: workspace.config.journal_folder.clone(),
         media_folder: workspace.config.media_folder.clone(),
         journal_right_pane_continuous_scrolling: workspace

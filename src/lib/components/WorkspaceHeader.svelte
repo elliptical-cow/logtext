@@ -6,11 +6,15 @@
   import TaskListPanel from "./TaskListPanel.svelte";
 
   export let root: string | null = null;
+  export let source: "folder" | "cryptomator" | null = null;
+  export let vaultPath: string | null = null;
+  export let lockedVaultPath: string | null = null;
   export let loading = false;
   export let diagnostics: Diagnostic[] = [];
   export let workspacePath = "";
   export let openWorkspace: () => void;
   export let chooseWorkspaceFolder: () => void;
+  export let openCryptomator: () => void;
   export let openJournal: (day: JournalDay) => void;
   export let openJournalDate: (date: string) => void | Promise<void>;
   export let taskLoading = false;
@@ -44,10 +48,12 @@
 <div class="workspace-header">
   {#if !root}
     <div class="workspace-title">
-      <p>Open a folder to begin</p>
+      <p>{lockedVaultPath ? "Cryptomator vault is locked" : "Open a folder to begin"}</p>
+      {#if lockedVaultPath}<small>{lockedVaultPath}</small>{/if}
     </div>
   {/if}
   {#if root}
+    {#if source === "cryptomator"}<span class="vault-status" title={vaultPath ?? "Cryptomator vault"}>Locked on close</span>{/if}
     <TaskListPanel loading={taskLoading} {taskCount} {toggleTaskOverview} />
   {/if}
 </div>
@@ -67,6 +73,9 @@
         </button>
         <button type="button" disabled={loading} on:click={chooseWorkspaceFolder}>
           Browse
+        </button>
+        <button type="button" disabled={loading} on:click={openCryptomator}>
+          {lockedVaultPath ? "Unlock Vault" : "Cryptomator"}
         </button>
       </div>
     </div>

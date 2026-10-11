@@ -39,6 +39,9 @@ import type {
   MediaCleanupCandidate,
   MediaTrashResult,
   WorkspaceHealthReport,
+  LastWorkspaceDescriptor,
+  CryptomatorCliInfo,
+  CloseWorkspaceResult,
 } from "./types.js";
 
 const TAURI_REQUIRED_MESSAGE =
@@ -65,6 +68,17 @@ export function onCoreEvent(
   }
 
   return listen(event, handler);
+}
+
+export function onCoreEventPayload<T>(
+  event: string,
+  handler: (payload: T) => void | Promise<void>,
+): Promise<UnlistenFn | null> {
+  if (!isTauriRuntime()) {
+    return Promise.resolve(null);
+  }
+
+  return listen<T>(event, ({ payload }) => handler(payload));
 }
 
 export async function setWindowTitle(title: string): Promise<void> {
@@ -129,12 +143,34 @@ export function openWorkspace(path: string): Promise<WorkspaceState> {
   return invokeTauri<WorkspaceState>("open_workspace", { path });
 }
 
-export function getLastWorkspace(): Promise<string | null> {
-  return invokeTauri<string | null>("get_last_workspace");
+export function getLastWorkspace(): Promise<LastWorkspaceDescriptor | null> {
+  return invokeTauri<LastWorkspaceDescriptor | null>("get_last_workspace");
 }
 
-export function closeWorkspace(): Promise<void> {
-  return invokeTauri<void>("close_workspace");
+export function probeCryptomatorCli(candidatePath?: string): Promise<CryptomatorCliInfo> {
+  return invokeTauri<CryptomatorCliInfo>("probe_cryptomator_cli", {
+    candidatePath: candidatePath ?? null,
+  });
+}
+
+export function openCryptomatorWorkspace(
+  vaultPath: string,
+  password: string,
+  cliPath?: string,
+): Promise<WorkspaceState> {
+  return invokeTauri<WorkspaceState>("open_cryptomator_workspace", {
+    vaultPath,
+    password,
+    cliPath: cliPath ?? null,
+  });
+}
+
+export function closeWorkspace(forceCryptomator = false): Promise<CloseWorkspaceResult> {
+  return invokeTauri<CloseWorkspaceResult>("close_workspace", { forceCryptomator });
+}
+
+export function exitApplication(): Promise<void> {
+  return invokeTauri<void>("exit_application");
 }
 
 export function listUnusedMedia(): Promise<MediaCleanupCandidate[]> {

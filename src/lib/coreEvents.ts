@@ -7,8 +7,8 @@
  */
 
 import {
-  closeWorkspace,
   onCoreEvent,
+  onCoreEventPayload,
   updateEditorModeMenuLabel,
   updateFormattedCopyMenuEnabled,
   updatePaneVisibilityMenu,
@@ -17,7 +17,7 @@ import {
   updateTaskOverviewMenuLabel,
   updateThemeMenuLabel,
 } from "./api";
-import { confirm as confirmDialog, message, open } from "@tauri-apps/plugin-dialog";
+import { message, open } from "@tauri-apps/plugin-dialog";
 import { get } from "svelte/store";
 import { runUserAction } from "./stores/appErrors.js";
 import { collapseLevelFromShortcut } from "./keyboardShortcuts";
@@ -30,6 +30,7 @@ import { taskStore } from "./stores/tasks";
 import { themeStore } from "./stores/theme";
 import { workspaceStore } from "./stores/workspace";
 import { zoomStore } from "./stores/zoom";
+import { closeActiveWorkspace } from "./workspaceLifecycle.js";
 
 let initialized = false;
 let undoRunning = false;
@@ -80,6 +81,10 @@ export async function setupCoreEvents() {
     userAction("Could not open the workspace folder dialog", openWorkspaceFromDialog),
   );
 
+  await onCoreEvent("menu-open-cryptomator", async () => {
+    window.dispatchEvent(new CustomEvent("logtext-open-cryptomator"));
+  });
+
   for (const [eventName, commandId] of [
     ["menu-quick-open", "app.quickOpen"],
     ["menu-command-palette", "app.commandPalette"],
@@ -110,28 +115,29 @@ export async function setupCoreEvents() {
   await onCoreEvent(
     "menu-close-workspace",
     userAction("Could not close the workspace", async () => {
-      const editor = get(editorSessionStore);
-      if (editor.saving) {
-        await message("Wait for the current save to finish before closing the workspace.", {
-          title: "Logtext",
-          kind: "warning",
-        });
-        return;
-      }
-
-      if (
-        (editor.dirty || editor.conflict) &&
-        !(await confirmDialog("Close workspace and discard unsaved editor changes?", {
-          title: "Logtext",
-          kind: "warning",
-        }))
-      ) {
-        return;
-      }
-
-      await closeWorkspace();
-      clearWorkspaceUi();
+      await closeActiveWorkspace(false);
     }),
+  );
+
+  await onCoreEventPayload<{ message: string }>(
+    "cryptomator-process-exited",
+    async ({ message: exitMessage }) => {
+      await runUserAction("Could not handle the disconnected Cryptomator workspace", async () => {
+        const editor = get(editorSessionStore);
+        if (editor.dirty || editor.conflict) {
+          workspaceStore.setDisconnected(
+            `${exitMessage} Unsaved editor content remains visible and can be copied before closing the workspace.`,
+          );
+        } else {
+          workspaceStore.setDisconnected(null);
+          await closeActiveWorkspace(false);
+          await message(exitMessage, {
+            title: "Cryptomator disconnected",
+            kind: "error",
+          });
+        }
+      });
+    },
   );
 
   await onCoreEvent("menu-save", async () => {
@@ -593,15 +599,9 @@ async function openWorkspaceFromDialog() {
   });
 
   if (typeof selected === "string") {
+    if (get(workspaceStore).root && !(await closeActiveWorkspace(false))) {
+      return;
+    }
     await workspaceStore.open(selected);
   }
-}
-
-function clearWorkspaceUi() {
-  editorSessionStore.clear();
-  rightPaneStore.clear();
-  workspaceStore.clear();
-  taskStore.clear();
-  appUndoStore.clear();
-  mainViewStore.set("editor");
 }
