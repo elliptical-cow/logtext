@@ -357,36 +357,119 @@ fn probe_candidate(candidate: &Path) -> Result<CryptomatorCliInfoDto, String> {
 fn cli_candidates(candidate_path: Option<&str>, configured_path: Option<&str>) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     if let Some(candidate) = candidate_path.filter(|path| !path.trim().is_empty()) {
-        candidates.push(PathBuf::from(candidate));
+        push_cli_candidate(&mut candidates, PathBuf::from(candidate));
     }
     if let Some(candidate) = configured_path.filter(|path| !path.trim().is_empty()) {
-        let candidate = PathBuf::from(candidate);
+        push_cli_candidate(&mut candidates, PathBuf::from(candidate));
+    }
+
+    // Command names use the inherited PATH without reproducing shell lookup.
+    candidates.push(PathBuf::from(cli_executable_name()));
+    for candidate in platform_cli_locations() {
+        push_cli_candidate(&mut candidates, candidate);
+    }
+    candidates
+}
+
+fn push_cli_candidate(candidates: &mut Vec<PathBuf>, selected_path: PathBuf) {
+    for candidate in expand_cli_candidate(selected_path) {
         if !candidates.contains(&candidate) {
             candidates.push(candidate);
+        }
+    }
+}
+
+/// Accepts either the executable itself or the root produced by the official
+/// archive. On macOS, Finder presents the app bundle as one selectable item.
+fn expand_cli_candidate(selected_path: PathBuf) -> Vec<PathBuf> {
+    #[cfg(target_os = "macos")]
+    if selected_path
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("app"))
+    {
+        return vec![selected_path.join("Contents/MacOS/cryptomator-cli")];
+    }
+
+    let executable_name = cli_executable_name();
+    if !selected_path.is_dir()
+        && selected_path
+            .file_name()
+            .is_some_and(|name| name == std::ffi::OsStr::new(executable_name))
+    {
+        return vec![selected_path];
+    }
+
+    let mut expanded = vec![selected_path.clone()];
+    expanded.push(selected_path.join(executable_name));
+    expanded.push(selected_path.join("cryptomator-cli").join(executable_name));
+    #[cfg(target_os = "macos")]
+    expanded.push(
+        selected_path
+            .join("cryptomator-cli.app")
+            .join("Contents/MacOS/cryptomator-cli"),
+    );
+    expanded
+}
+
+fn cli_executable_name() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "cryptomator-cli.exe"
+    } else {
+        "cryptomator-cli"
+    }
+}
+
+fn platform_cli_locations() -> Vec<PathBuf> {
+    let mut locations = Vec::new();
+
+    if let Ok(current_executable) = std::env::current_exe() {
+        if let Some(directory) = current_executable.parent() {
+            locations.push(directory.to_path_buf());
         }
     }
 
     #[cfg(target_os = "macos")]
-    for candidate in [
-        "/Applications/cryptomator-cli.app/Contents/MacOS/cryptomator-cli",
-        "/Applications/Cryptomator CLI.app/Contents/MacOS/cryptomator-cli",
-    ] {
-        let candidate = PathBuf::from(candidate);
-        if !candidates.contains(&candidate) {
-            candidates.push(candidate);
+    {
+        locations.extend([
+            PathBuf::from("/Applications/cryptomator-cli.app"),
+            PathBuf::from("/Applications/Cryptomator CLI.app"),
+        ]);
+        if let Some(home) = std::env::var_os("HOME") {
+            let applications = PathBuf::from(home).join("Applications");
+            locations.push(applications.join("cryptomator-cli.app"));
+            locations.push(applications.join("Cryptomator CLI.app"));
         }
     }
 
-    let command_name = if cfg!(target_os = "windows") {
-        "cryptomator-cli.exe"
-    } else {
-        "cryptomator-cli"
-    };
-    let command = PathBuf::from(command_name);
-    if !candidates.contains(&command) {
-        candidates.push(command);
+    #[cfg(target_os = "windows")]
+    {
+        for variable in ["ProgramFiles", "ProgramFiles(x86)"] {
+            if let Some(directory) = std::env::var_os(variable) {
+                let directory = PathBuf::from(directory);
+                locations.push(directory.join("cryptomator-cli"));
+                locations.push(directory.join("Cryptomator CLI"));
+            }
+        }
+        if let Some(directory) = std::env::var_os("LOCALAPPDATA") {
+            let programs = PathBuf::from(directory).join("Programs");
+            locations.push(programs.join("cryptomator-cli"));
+            locations.push(programs.join("Cryptomator CLI"));
+        }
     }
-    candidates
+
+    #[cfg(target_os = "linux")]
+    {
+        locations.extend([
+            PathBuf::from("/usr/local/bin/cryptomator-cli"),
+            PathBuf::from("/usr/bin/cryptomator-cli"),
+            PathBuf::from("/opt/cryptomator-cli"),
+        ]);
+        if let Some(home) = std::env::var_os("HOME") {
+            locations.push(PathBuf::from(home).join(".local/bin/cryptomator-cli"));
+        }
+    }
+
+    locations
 }
 
 fn read_output(
@@ -685,6 +768,39 @@ mod tests {
         output_thread.join().unwrap();
     }
 
+    #[test]
+    fn prefers_path_lookup_before_platform_locations() {
+        let candidates = cli_candidates(None, None);
+
+        assert_eq!(
+            candidates.first(),
+            Some(&PathBuf::from(cli_executable_name()))
+        );
+    }
+
+    #[test]
+    fn expands_an_extracted_app_image_directory() {
+        let root = test_directory("app-image");
+        let package = root.join("cryptomator-cli");
+        std::fs::create_dir_all(&package).unwrap();
+
+        let candidates = expand_cli_candidate(package.clone());
+
+        assert!(candidates.contains(&package.join(cli_executable_name())));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn resolves_a_selected_macos_app_bundle() {
+        let bundle = PathBuf::from("/tmp/cryptomator-cli.app");
+
+        assert_eq!(
+            expand_cli_candidate(bundle.clone()),
+            vec![bundle.join("Contents/MacOS/cryptomator-cli")]
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn probes_mounts_and_stops_a_fake_cli_without_exposing_password() {
@@ -772,7 +888,6 @@ mod tests {
         format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
     }
 
-    #[cfg(unix)]
     fn test_directory(label: &str) -> PathBuf {
         let path =
             std::env::temp_dir().join(format!("logtext-cryptomator-{label}-{}", Uuid::new_v4()));

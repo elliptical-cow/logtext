@@ -148,10 +148,19 @@ To open a vault:
    the start screen.
 3. Choose the directory that contains `vault.cryptomator` and enter its
    password.
-4. If automatic CLI detection fails, select the `cryptomator-cli` executable.
+4. If automatic CLI detection fails, Logtext opens a file chooser. On macOS,
+   select `cryptomator-cli.app`; on Windows or Linux, select the
+   `cryptomator-cli` executable inside the extracted folder.
 
-Logtext searches a previously selected executable, `PATH`, and known macOS app
-locations. It requires these native WebDAV mounters:
+Logtext searches a previously selected executable, `PATH`, its own executable
+directory, and common platform locations: `/Applications` and
+`~/Applications` on macOS, Program Files and the local Programs directory on
+Windows, and `/usr/local/bin`, `/usr/bin`, `/opt`, and `~/.local/bin` on Linux.
+Package roots are resolved to the platform executable automatically, including
+`cryptomator-cli.app/Contents/MacOS/cryptomator-cli` on macOS. Download folders
+are not executed automatically; packages kept there must be selected once and
+their resolved executable path is then remembered. Logtext requires these
+native WebDAV mounters:
 
 - macOS: AppleScript WebDAV mounter
 - Windows: Windows WebDAV mounter

@@ -18,6 +18,8 @@ test("wires Cryptomator open through the native menu, dialog, store, and typed A
   assert.match(events, /menu-open-cryptomator/);
   assert.match(app, /<CryptomatorDialog/);
   assert.match(dialog, /probeCryptomatorCli/);
+  assert.match(dialog, /onMount/);
+  assert.match(dialog, /await chooseCli\(\)/);
   assert.match(dialog, /type="password"/);
   assert.match(workspace, /openCryptomatorWorkspaceCommand/);
   assert.match(api, /invokeTauri<WorkspaceState>\("open_cryptomator_workspace"/);

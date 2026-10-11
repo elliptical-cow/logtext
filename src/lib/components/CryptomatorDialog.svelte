@@ -1,6 +1,6 @@
 <script lang="ts">
   import { open } from "@tauri-apps/plugin-dialog";
-  import { tick } from "svelte";
+  import { onMount, tick } from "svelte";
   import { get } from "svelte/store";
   import { probeCryptomatorCli } from "../api.js";
   import { trapDialogFocus } from "../dialogFocus.js";
@@ -15,10 +15,26 @@
   let vaultPath = initialVaultPath;
   let password = "";
   let cliPath = "";
+  let detectedCliPath = "";
+  let cliChecking = true;
+  let cliMissing = false;
   let mounting = false;
   let error: string | null = null;
   let errorDetail: string | null = null;
   let passwordInput: HTMLInputElement | null = null;
+
+  onMount(async () => {
+    try {
+      const info = await probeCryptomatorCli();
+      detectedCliPath = info.executablePath;
+    } catch {
+      cliMissing = true;
+      await tick();
+      await chooseCli();
+    } finally {
+      cliChecking = false;
+    }
+  });
 
   $: if (!mounting && initialVaultPath && !vaultPath) {
     vaultPath = initialVaultPath;
@@ -41,7 +57,7 @@
     const selected = await open({
       directory: false,
       multiple: false,
-      title: "Select cryptomator-cli executable",
+      title: "Select cryptomator-cli app or executable",
     });
     if (typeof selected !== "string") {
       return;
@@ -49,6 +65,8 @@
     try {
       const info = await probeCryptomatorCli(selected);
       cliPath = info.executablePath;
+      detectedCliPath = info.executablePath;
+      cliMissing = false;
     } catch (candidateError) {
       showError(candidateError);
     }
@@ -121,7 +139,11 @@
           />
         </label>
         <div class="cli-row">
-          <span>{cliPath || "cryptomator-cli is detected automatically"}</span>
+          <span class:missing={cliMissing}>
+            {cliChecking
+              ? "Looking for cryptomator-cli…"
+              : detectedCliPath || "cryptomator-cli was not found. Select the extracted app or executable."}
+          </span>
           <button type="button" on:click={chooseCli} disabled={mounting}>Locate CLI</button>
         </div>
       </div>
@@ -131,7 +153,7 @@
         <button
           type="submit"
           class="primary-action"
-          disabled={mounting || !vaultPath.trim() || !password}
+          disabled={mounting || cliChecking || cliMissing || !vaultPath.trim() || !password}
         >
           {mounting ? "Unlocking…" : "Unlock and open"}
         </button>
@@ -200,6 +222,10 @@
     justify-content: space-between;
     color: var(--text-muted);
     font-size: 0.92em;
+  }
+
+  .cli-row .missing {
+    color: var(--text-danger);
   }
 
   footer {

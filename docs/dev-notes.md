@@ -760,6 +760,14 @@ and sends the password through stdin. stdout and stderr feed a bounded log and
 readiness parser. Only a reported local `file:` URI can become a workspace
 root.
 
+CLI discovery expands a manually selected package root to its native
+executable (`.app/Contents/MacOS/cryptomator-cli` on macOS and the executable
+inside the Windows/Linux app-image directory). Stored paths and `PATH` are
+preferred, followed by conservative platform installation locations. Download
+folders are deliberately not searched because auto-executing a name-matching
+download would cross a trust boundary; failed discovery asks the user to select
+the package or executable instead.
+
 Folder and Cryptomator roots share `open_workspace_from_root`, so config load,
 full indexing, watcher startup, DTO creation, saves, queries, and file
 operations do not branch on encryption. The frontend likewise shares
