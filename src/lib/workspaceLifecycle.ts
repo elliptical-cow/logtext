@@ -30,6 +30,7 @@ export async function closeActiveWorkspace(exitAfterClose = false): Promise<bool
       return false;
     }
     if (exitAfterClose) {
+      await finishBackendWorkspaceClose();
       await exitApplication();
     }
     return true;
@@ -37,7 +38,7 @@ export async function closeActiveWorkspace(exitAfterClose = false): Promise<bool
 
   closing = true;
   try {
-    if (!(await prepareEditorForClose())) {
+    if (!(await prepareEditorForClose(workspace.disconnected))) {
       return false;
     }
 
@@ -50,35 +51,26 @@ export async function closeActiveWorkspace(exitAfterClose = false): Promise<bool
       }
     }
 
-    let result = await closeWorkspace(false);
-    while (result.status === "timedOut") {
-      const force = await confirm(
-        `Cryptomator is still closing. Force the process to stop? The vault may require manual unmounting.\n\n${result.detail}`,
-        {
-          title: "Cryptomator is still closing",
-          kind: "warning",
-          okLabel: "Force stop",
-          cancelLabel: "Wait another 30 seconds",
-        },
-      );
-      result = await closeWorkspace(force);
-    }
-
-    if (result.status === "unmountFailed") {
-      await message(
-        `Cryptomator exited, but Logtext could not confirm a clean unmount. Check the mounted volumes before assuming the vault is locked.\n\n${result.detail}`,
-        {
-          title: "Cryptomator unmount incomplete",
-          kind: "warning",
-        },
-      );
-    }
+    await finishBackendWorkspaceClose();
 
     clearWorkspaceUi(workspace.source === "cryptomator" ? workspace.vaultPath : null);
     if (exitAfterClose) {
       await exitApplication();
     }
     return true;
+  } finally {
+    closing = false;
+  }
+}
+
+/** Completes cleanup retained by the backend after a post-mount open failure. */
+export async function closeFailedCryptomatorOpen(): Promise<void> {
+  if (closing) {
+    return;
+  }
+  closing = true;
+  try {
+    await finishBackendWorkspaceClose();
   } finally {
     closing = false;
   }
@@ -93,7 +85,7 @@ export function clearWorkspaceUi(lockedVaultPath: string | null = null) {
   mainViewStore.set("editor");
 }
 
-async function prepareEditorForClose(): Promise<boolean> {
+async function prepareEditorForClose(disconnected: boolean): Promise<boolean> {
   if (!(await waitForEditorSave())) {
     await message("Wait for the current save to finish before closing the workspace.", {
       title: "Logtext",
@@ -105,6 +97,18 @@ async function prepareEditorForClose(): Promise<boolean> {
   let editor = get(editorSessionStore);
   if (!editor.dirty && !editor.conflict) {
     return true;
+  }
+
+  if (disconnected) {
+    return confirm(
+      "The Cryptomator vault is no longer mounted, so these editor changes cannot be saved. Copy any content you need before discarding it.",
+      {
+        title: "Discard disconnected editor changes?",
+        kind: "warning",
+        okLabel: "Discard and close",
+        cancelLabel: "Cancel",
+      },
+    );
   }
 
   if (!editor.conflict) {
@@ -127,6 +131,32 @@ async function prepareEditorForClose(): Promise<boolean> {
     okLabel: "Discard and close",
     cancelLabel: "Cancel",
   });
+}
+
+async function finishBackendWorkspaceClose(): Promise<void> {
+  let result = await closeWorkspace(false);
+  while (result.status === "timedOut") {
+    const force = await confirm(
+      `Cryptomator is still closing. Force the process to stop? The vault may require manual unmounting.\n\n${result.detail}`,
+      {
+        title: "Cryptomator is still closing",
+        kind: "warning",
+        okLabel: "Force stop",
+        cancelLabel: "Wait another 30 seconds",
+      },
+    );
+    result = await closeWorkspace(force);
+  }
+
+  if (result.status === "unmountFailed") {
+    await message(
+      `Logtext could not confirm a clean unmount. Check the mounted volumes before assuming the vault is locked.\n\n${result.detail}`,
+      {
+        title: "Cryptomator unmount incomplete",
+        kind: "warning",
+      },
+    );
+  }
 }
 
 async function waitForEditorSave(timeoutMs = 10_000): Promise<boolean> {

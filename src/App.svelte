@@ -422,10 +422,11 @@
   }
 
   async function handleOpenCryptomatorRequest() {
-    if ($workspaceStore.root && !(await closeActiveWorkspace(false))) {
-      return;
-    }
     showCryptomator = true;
+  }
+
+  async function prepareCryptomatorOpen() {
+    return !$workspaceStore.root || closeActiveWorkspace(false);
   }
 
   function closeCryptomatorDialog() {
@@ -941,6 +942,7 @@
 {#if showCryptomator}
   <CryptomatorDialog
     initialVaultPath={$workspaceStore.lockedVaultPath ?? ""}
+    onBeforeOpen={prepareCryptomatorOpen}
     onCancel={closeCryptomatorDialog}
     onOpened={handleCryptomatorOpened}
   />

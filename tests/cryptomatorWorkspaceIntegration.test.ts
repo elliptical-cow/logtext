@@ -21,6 +21,8 @@ test("wires Cryptomator open through the native menu, dialog, store, and typed A
   assert.match(dialog, /onMount/);
   assert.match(dialog, /await chooseCli\(\)/);
   assert.match(dialog, /type="password"/);
+  assert.match(dialog, /await onBeforeOpen\(\)/);
+  assert.match(dialog, /closeFailedCryptomatorOpen/);
   assert.match(workspace, /openCryptomatorWorkspaceCommand/);
   assert.match(api, /invokeTauri<WorkspaceState>\("open_cryptomator_workspace"/);
 });
@@ -48,4 +50,20 @@ test("shares one close workflow across menus, workspace replacement, and native 
   assert.match(lifecycle, /closeWorkspace\(false\)/);
   assert.match(lifecycle, /result\.status === "timedOut"/);
   assert.match(lifecycle, /result\.status === "unmountFailed"/);
+  assert.match(lifecycle, /prepareEditorForClose\(workspace\.disconnected\)/);
+  assert.match(lifecycle, /if \(disconnected\)[\s\S]*cannot be saved/);
+});
+
+test("keeps the current workspace open until the Cryptomator form is submitted", () => {
+  const app = source("src/App.svelte");
+
+  assert.match(app, /onBeforeOpen=\{prepareCryptomatorOpen\}/);
+  assert.match(
+    app,
+    /function handleOpenCryptomatorRequest\(\) \{\s*showCryptomator = true;\s*\}/,
+  );
+  assert.match(
+    app,
+    /async function prepareCryptomatorOpen\(\) \{\s*return !\$workspaceStore\.root \|\| closeActiveWorkspace\(false\);/,
+  );
 });

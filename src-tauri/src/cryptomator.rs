@@ -5,7 +5,7 @@
 //! workspace implementation.
 
 use std::collections::VecDeque;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,7 +25,11 @@ const READY_MARKER: &str = "Unlocked and mounted vault successfully to ";
 const UNMOUNT_FAILED_MARKER: &str = "GRACEFUL UNMOUNT FAILED";
 const START_TIMEOUT: Duration = Duration::from_secs(120);
 const STOP_TIMEOUT: Duration = Duration::from_secs(30);
+const PROBE_TIMEOUT: Duration = Duration::from_secs(10);
+const PROBE_OUTPUT_LIMIT: usize = 64 * 1024;
 const LOG_LINE_LIMIT: usize = 200;
+const LOG_BYTE_LIMIT: usize = 64 * 1024;
+const LOG_LINE_BYTE_LIMIT: usize = 8 * 1024;
 
 #[cfg(target_os = "macos")]
 const REQUIRED_MOUNTER: &str = "org.cryptomator.frontend.webdav.mount.MacAppleScriptMounter";
@@ -62,6 +66,7 @@ pub enum CloseWorkspaceResultDto {
 pub struct ManagedCryptomator {
     child: Arc<Mutex<Child>>,
     expected_exit: Arc<AtomicBool>,
+    forced_stop_requested: Arc<AtomicBool>,
     output: Arc<Mutex<OutputLog>>,
     output_threads: Arc<Mutex<Vec<thread::JoinHandle<()>>>>,
     mount_path: PathBuf,
@@ -71,13 +76,20 @@ pub struct ManagedCryptomator {
 #[derive(Debug, Default)]
 struct OutputLog {
     lines: VecDeque<String>,
+    bytes: usize,
 }
 
 impl OutputLog {
     fn push(&mut self, line: String) {
-        if self.lines.len() == LOG_LINE_LIMIT {
-            self.lines.pop_front();
+        while !self.lines.is_empty()
+            && (self.lines.len() >= LOG_LINE_LIMIT
+                || self.bytes.saturating_add(line.len()) > LOG_BYTE_LIMIT)
+        {
+            if let Some(removed) = self.lines.pop_front() {
+                self.bytes = self.bytes.saturating_sub(removed.len());
+            }
         }
+        self.bytes = self.bytes.saturating_add(line.len());
         self.lines.push_back(line);
     }
 
@@ -115,7 +127,7 @@ pub fn probe_cli(
 pub fn mount_vault(
     cli_path: &Path,
     vault_path: &Path,
-    password: String,
+    password: Zeroizing<String>,
 ) -> Result<(ManagedCryptomator, PathBuf), String> {
     if !vault_path.is_dir() || !vault_path.join("vault.cryptomator").is_file() {
         return Err("Select a Cryptomator vault containing vault.cryptomator.".to_string());
@@ -153,7 +165,6 @@ pub fn mount_vault(
             return Err("Failed to open cryptomator-cli stdin.".to_string());
         }
     };
-    let password = Zeroizing::new(password);
     if let Err(error) = stdin
         .write_all(password.as_bytes())
         .and_then(|_| stdin.write_all(b"\n"))
@@ -209,6 +220,7 @@ pub fn mount_vault(
     let managed = ManagedCryptomator {
         child,
         expected_exit: Arc::new(AtomicBool::new(false)),
+        forced_stop_requested: Arc::new(AtomicBool::new(false)),
         output,
         output_threads,
         mount_path: mount_path.clone(),
@@ -256,17 +268,27 @@ impl ManagedCryptomator {
         self.pid
     }
 
-    pub fn is_running(&self) -> bool {
-        self.child
+    pub fn is_running(&self) -> Result<bool, String> {
+        let mut child = self
+            .child
             .lock()
-            .ok()
-            .and_then(|mut child| child.try_wait().ok().flatten())
-            .is_none()
+            .map_err(|_| "Failed to lock cryptomator-cli process.".to_string())?;
+        child
+            .try_wait()
+            .map(|status| status.is_none())
+            .map_err(|error| format!("Failed to inspect cryptomator-cli: {error}"))
     }
 
     pub fn stop(&self, force: bool) -> CloseWorkspaceResultDto {
         self.expected_exit.store(true, Ordering::SeqCst);
-        if !self.is_running() {
+        if force {
+            self.forced_stop_requested.store(true, Ordering::SeqCst);
+        }
+        let running = match self.is_running() {
+            Ok(running) => running,
+            Err(detail) => return CloseWorkspaceResultDto::TimedOut { detail },
+        };
+        if !running {
             return self.completed_stop_result();
         }
         let signal_result = if force {
@@ -286,10 +308,14 @@ impl ManagedCryptomator {
             return CloseWorkspaceResultDto::TimedOut { detail: error };
         }
 
-        if !wait_for_exit(&self.child, STOP_TIMEOUT) {
-            return CloseWorkspaceResultDto::TimedOut {
-                detail: "cryptomator-cli did not exit within 30 seconds.".to_string(),
-            };
+        match wait_for_exit(&self.child, STOP_TIMEOUT) {
+            Ok(true) => {}
+            Ok(false) => {
+                return CloseWorkspaceResultDto::TimedOut {
+                    detail: "cryptomator-cli did not exit within 30 seconds.".to_string(),
+                }
+            }
+            Err(detail) => return CloseWorkspaceResultDto::TimedOut { detail },
         }
 
         self.completed_stop_result()
@@ -307,10 +333,10 @@ impl ManagedCryptomator {
             return CloseWorkspaceResultDto::UnmountFailed { detail: output };
         }
 
-        if self.mount_path.is_dir() {
+        if self.forced_stop_requested.load(Ordering::SeqCst) {
             return CloseWorkspaceResultDto::UnmountFailed {
                 detail: format!(
-                    "cryptomator-cli exited, but the mount path still exists: {}",
+                    "cryptomator-cli was force-stopped. Confirm that the vault is no longer mounted at {}.",
                     self.mount_path.display()
                 ),
             };
@@ -321,20 +347,15 @@ impl ManagedCryptomator {
 }
 
 fn probe_candidate(candidate: &Path) -> Result<CryptomatorCliInfoDto, String> {
-    let version_output = Command::new(candidate)
-        .arg("--version")
-        .output()
-        .map_err(|error| error.to_string())?;
-    if !version_output.status.success() {
+    let version_output = run_probe_command(candidate, &["--version"], PROBE_TIMEOUT)?;
+    if !version_output.success {
         return Err("--version returned an error".to_string());
     }
     let version = combined_output(&version_output.stdout, &version_output.stderr);
 
-    let mounter_output = Command::new(candidate)
-        .args(["list-mounters", "--withDisplayName"])
-        .output()
+    let mounter_output = run_probe_command(candidate, &["list-mounters"], PROBE_TIMEOUT)
         .map_err(|error| format!("list-mounters failed: {error}"))?;
-    if !mounter_output.status.success() {
+    if !mounter_output.success {
         return Err("list-mounters returned an error".to_string());
     }
     let mounters = combined_output(&mounter_output.stdout, &mounter_output.stderr);
@@ -351,6 +372,102 @@ fn probe_candidate(candidate: &Path) -> Result<CryptomatorCliInfoDto, String> {
         executable_path: candidate.to_string_lossy().to_string(),
         version: version.trim().to_string(),
         mounter: REQUIRED_MOUNTER.to_string(),
+    })
+}
+
+#[derive(Debug)]
+struct ProbeOutput {
+    success: bool,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+}
+
+/// Runs a short-lived CLI capability check without allowing a wrong executable
+/// to block the application or produce unbounded captured output.
+fn run_probe_command(
+    candidate: &Path,
+    arguments: &[&str],
+    timeout: Duration,
+) -> Result<ProbeOutput, String> {
+    let mut child = Command::new(candidate)
+        .args(arguments)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    let stdout = match child.stdout.take() {
+        Some(stdout) => stdout,
+        None => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("Failed to capture probe stdout.".to_string());
+        }
+    };
+    let stderr = match child.stderr.take() {
+        Some(stderr) => stderr,
+        None => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("Failed to capture probe stderr.".to_string());
+        }
+    };
+    let stdout_reader = read_limited_output(stdout, PROBE_OUTPUT_LIMIT);
+    let stderr_reader = read_limited_output(stderr, PROBE_OUTPUT_LIMIT);
+
+    let deadline = Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = stdout_reader.join();
+                let _ = stderr_reader.join();
+                return Err(format!("Failed to inspect probe process: {error}"));
+            }
+            Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(50)),
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = stdout_reader.join();
+                let _ = stderr_reader.join();
+                return Err(format!(
+                    "cryptomator-cli probe timed out after {} seconds",
+                    timeout.as_secs()
+                ));
+            }
+            Ok(Some(status)) => break status,
+        }
+    };
+
+    let stdout = stdout_reader
+        .join()
+        .map_err(|_| "Failed to read probe stdout.".to_string())?;
+    let stderr = stderr_reader
+        .join()
+        .map_err(|_| "Failed to read probe stderr.".to_string())?;
+    Ok(ProbeOutput {
+        success: status.success(),
+        stdout,
+        stderr,
+    })
+}
+
+fn read_limited_output(
+    mut reader: impl Read + Send + 'static,
+    limit: usize,
+) -> thread::JoinHandle<Vec<u8>> {
+    thread::spawn(move || {
+        let mut captured = Vec::with_capacity(limit.min(4096));
+        let mut buffer = [0_u8; 4096];
+        while let Ok(count) = reader.read(&mut buffer) {
+            if count == 0 {
+                break;
+            }
+            let remaining = limit.saturating_sub(captured.len());
+            captured.extend_from_slice(&buffer[..count.min(remaining)]);
+        }
+        captured
     })
 }
 
@@ -473,18 +590,55 @@ fn platform_cli_locations() -> Vec<PathBuf> {
 }
 
 fn read_output(
-    reader: impl Read + Send + 'static,
+    mut reader: impl Read + Send + 'static,
     sender: mpsc::SyncSender<String>,
     output: Arc<Mutex<OutputLog>>,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        for line in BufReader::new(reader).lines().map_while(Result::ok) {
-            if let Ok(mut output) = output.lock() {
-                output.push(line.clone());
+        let mut buffer = [0_u8; 4096];
+        let mut line = Vec::new();
+        let mut truncated = false;
+        loop {
+            let count = match reader.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(count) => count,
+                Err(_) => break,
+            };
+            for byte in &buffer[..count] {
+                if *byte == b'\n' {
+                    emit_output_line(&mut line, &mut truncated, &sender, &output);
+                } else if line.len() < LOG_LINE_BYTE_LIMIT {
+                    line.push(*byte);
+                } else {
+                    truncated = true;
+                }
             }
-            let _ = sender.send(line);
+        }
+        if !line.is_empty() || truncated {
+            emit_output_line(&mut line, &mut truncated, &sender, &output);
         }
     })
+}
+
+fn emit_output_line(
+    bytes: &mut Vec<u8>,
+    truncated: &mut bool,
+    sender: &mpsc::SyncSender<String>,
+    output: &Arc<Mutex<OutputLog>>,
+) {
+    if bytes.last() == Some(&b'\r') {
+        bytes.pop();
+    }
+    let mut line = String::from_utf8_lossy(bytes).into_owned();
+    if *truncated {
+        line.push_str(" [truncated]");
+    }
+    if let Ok(mut output) = output.lock() {
+        output.push(line.clone());
+    }
+    let _ = sender.send(line);
+    bytes.clear();
+    *truncated = false;
 }
 
 fn finish_output_readers(readers: &Arc<Mutex<Vec<thread::JoinHandle<()>>>>) {
@@ -547,25 +701,26 @@ fn mount_path_from_line(line: &str) -> Result<Option<PathBuf>, String> {
         .map_err(|_| format!("Could not convert the mount URI to a local path: {uri}"))
 }
 
-fn wait_for_exit(child: &Arc<Mutex<Child>>, timeout: Duration) -> bool {
+fn wait_for_exit(child: &Arc<Mutex<Child>>, timeout: Duration) -> Result<bool, String> {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
         if child
             .lock()
-            .ok()
-            .and_then(|mut child| child.try_wait().ok().flatten())
+            .map_err(|_| "Failed to lock cryptomator-cli process.".to_string())?
+            .try_wait()
+            .map_err(|error| format!("Failed to inspect cryptomator-cli: {error}"))?
             .is_some()
         {
-            return true;
+            return Ok(true);
         }
         thread::sleep(Duration::from_millis(100));
     }
-    false
+    Ok(false)
 }
 
 fn terminate_failed_start(pid: u32, child: &Arc<Mutex<Child>>) {
     let _ = send_graceful_signal(pid);
-    if !wait_for_exit(child, Duration::from_secs(5)) {
+    if !wait_for_exit(child, Duration::from_secs(5)).unwrap_or(false) {
         if let Ok(mut child) = child.lock() {
             let _ = child.kill();
         }
@@ -829,14 +984,23 @@ mod tests {
         let info = probe_cli(executable.to_str(), None).unwrap();
         assert_eq!(info.executable_path, executable.to_string_lossy());
 
-        let (process, mounted_path) =
-            mount_vault(&executable, &vault, "top secret".to_string()).unwrap();
+        let (process, mounted_path) = mount_vault(
+            &executable,
+            &vault,
+            Zeroizing::new("top secret".to_string()),
+        )
+        .unwrap();
         assert_eq!(mounted_path, mount);
         assert!(!process.output.lock().unwrap().text().contains("top secret"));
+        let state = AppState::default();
+        state.begin_open().unwrap();
+        state.retain_failed_open_process(process).unwrap();
+        let retained_process = state.take_for_close().unwrap().unwrap();
         assert!(matches!(
-            process.stop(false),
+            retained_process.stop(false),
             CloseWorkspaceResultDto::Closed
         ));
+        state.finish_close().unwrap();
         assert!(!mount.exists());
 
         fs::remove_dir_all(root).unwrap();
@@ -861,6 +1025,7 @@ mod tests {
             pid: child.id(),
             child: Arc::new(Mutex::new(child)),
             expected_exit: Arc::new(AtomicBool::new(false)),
+            forced_stop_requested: Arc::new(AtomicBool::new(false)),
             output: Arc::new(Mutex::new(OutputLog::default())),
             output_threads: Arc::new(Mutex::new(Vec::new())),
             mount_path: std::env::temp_dir().join(Uuid::new_v4().to_string()),
@@ -871,6 +1036,39 @@ mod tests {
             process.stop(false),
             CloseWorkspaceResultDto::Closed
         ));
+    }
+
+    #[test]
+    fn bounds_captured_probe_output_while_draining_the_stream() {
+        let reader = std::io::Cursor::new(vec![b'x'; PROBE_OUTPUT_LIMIT * 2]);
+
+        let captured = read_limited_output(reader, PROBE_OUTPUT_LIMIT)
+            .join()
+            .unwrap();
+
+        assert_eq!(captured.len(), PROBE_OUTPUT_LIMIT);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn terminates_a_probe_that_exceeds_its_timeout() {
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+
+        let root = test_directory("probe-timeout");
+        let executable = root.join("slow-probe");
+        fs::write(&executable, "#!/bin/sh\nexec sleep 5\n").unwrap();
+        let mut permissions = fs::metadata(&executable).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&executable, permissions).unwrap();
+
+        let started = Instant::now();
+        let error =
+            run_probe_command(&executable, &["--version"], Duration::from_millis(100)).unwrap_err();
+
+        assert!(error.contains("timed out"));
+        assert!(started.elapsed() < Duration::from_secs(2));
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(any(target_os = "macos", target_os = "windows"))]

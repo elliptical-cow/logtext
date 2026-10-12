@@ -756,9 +756,10 @@ focus refresh, or persistent index in the first implementation.
 `cryptomator-cli`; Logtext does not implement encryption or direct WebDAV file
 access. The backend probes `--version` and `list-mounters`, chooses one fixed
 native WebDAV mounter per supported platform, starts `unlock` without a shell,
-and sends the password through stdin. stdout and stderr feed a bounded log and
-readiness parser. Only a reported local `file:` URI can become a workspace
-root.
+and sends the password through stdin. Capability probes have a short timeout
+and bounded output. The long-running process feeds stdout and stderr into a log
+bounded by line length, line count, and total bytes, as well as the readiness
+parser. Only a reported local `file:` URI can become a workspace root.
 
 CLI discovery expands a manually selected package root to its native
 executable (`.app/Contents/MacOS/cryptomator-cli` on macOS and the executable
@@ -778,8 +779,15 @@ On close, backend state rejects new workspace commands before dropping the
 watcher and indexes. Unix sends `SIGTERM`; Windows starts the CLI in a separate
 console process group and sends `CTRL_BREAK_EVENT`. A timeout retains the child
 handle so the user can wait again or explicitly force-stop it. Output containing
-`GRACEFUL UNMOUNT FAILED`, or a mount path that remains reachable after process
-exit, produces an explicit unmount warning rather than an automatic hard kill.
+`GRACEFUL UNMOUNT FAILED` produces an explicit unmount warning. A force-stopped
+process always produces the same conservative warning because its cleanup
+cannot be confirmed. Filesystem-path existence is not used as an unmount test:
+some mounters can leave an ordinary directory at the former mount point.
+
+If workspace initialization fails after the CLI has already mounted the vault,
+the runtime retains ownership of the process in `closing` state. The frontend
+then uses the same timeout, retry, force-stop, and warning workflow as an
+ordinary workspace close instead of dropping an active child process.
 
 The CLI monitor marks the runtime `disconnected` after an unexpected exit.
 Further backend access is rejected, but the frontend keeps dirty editor text

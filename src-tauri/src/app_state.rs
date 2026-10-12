@@ -127,6 +127,18 @@ impl AppState {
         Ok(())
     }
 
+    pub fn retain_failed_open_process(&self, process: ManagedCryptomator) -> Result<(), String> {
+        let mut runtime = self.lock_runtime()?;
+        if runtime.phase != RuntimePhase::Opening {
+            return Err("Cryptomator cleanup could not take ownership of the process.".to_string());
+        }
+        runtime.workspace = None;
+        runtime.watcher = None;
+        runtime.cryptomator = Some(process);
+        runtime.phase = RuntimePhase::Closing;
+        Ok(())
+    }
+
     /// Kept for focused unit tests that install a detached workspace directly.
     pub fn set_workspace(&self, workspace: WorkspaceState) -> Result<(), String> {
         let mut runtime = self.lock_runtime()?;

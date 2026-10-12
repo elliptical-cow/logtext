@@ -8,6 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use tauri::{AppHandle, Manager, State};
+use zeroize::Zeroizing;
 
 use crate::app_error::AppError;
 use crate::app_state::{AppState, WorkspaceSource, WorkspaceState};
@@ -105,6 +106,7 @@ pub async fn open_cryptomator_workspace(
     cli_path: Option<String>,
     app_handle: AppHandle,
 ) -> Result<WorkspaceStateDto, String> {
+    let password = Zeroizing::new(password);
     tauri::async_runtime::spawn_blocking(move || {
         let state = app_handle.state::<AppState>();
         state.begin_open()?;
@@ -122,7 +124,7 @@ pub async fn open_cryptomator_workspace(
             )?;
             let resolved_cli_path = PathBuf::from(&cli.executable_path);
             let (process, mount_path) = mount_vault(&resolved_cli_path, &vault_path, password)?;
-            let response = open_workspace_from_root(
+            match open_workspace_from_root(
                 mount_path,
                 WorkspaceSource::Cryptomator {
                     vault_path: vault_path.clone(),
@@ -131,13 +133,22 @@ pub async fn open_cryptomator_workspace(
                 &app_handle,
                 Some(process.clone()),
                 || save_cryptomator_workspace(&home_dir, &vault_path, explicit_cli_path.as_deref()),
-            );
-            if response.is_err() {
-                let _ = process.stop(false);
-                return response;
+            ) {
+                Ok(response) => {
+                    process.start_exit_monitor(app_handle.clone());
+                    Ok(response)
+                }
+                Err(open_error) => {
+                    if let Err(retain_error) = state.retain_failed_open_process(process.clone()) {
+                        let cleanup = process.stop(false);
+                        return Err(format!(
+                            "{} Cleanup ownership also failed: {retain_error}. Cleanup result: {cleanup:?}",
+                            open_error
+                        ));
+                    }
+                    Err(open_error)
+                }
             }
-            process.start_exit_monitor(app_handle.clone());
-            response
         })();
         if result.is_err() {
             let _ = state.abort_open();
@@ -159,10 +170,13 @@ pub fn close_workspace(
     };
 
     let result = process.stop(force_cryptomator.unwrap_or(false));
-    if process.is_running() {
-        state.retain_closing_process(process)?;
-    } else {
-        state.finish_close()?;
+    match process.is_running() {
+        Ok(true) => state.retain_closing_process(process)?,
+        Ok(false) => state.finish_close()?,
+        Err(detail) => {
+            state.retain_closing_process(process)?;
+            return Ok(CloseWorkspaceResultDto::TimedOut { detail });
+        }
     }
     Ok(result)
 }

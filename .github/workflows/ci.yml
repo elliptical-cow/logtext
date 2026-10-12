@@ -116,6 +116,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Test platform Cryptomator lifecycle
+        working-directory: src-tauri
+        run: cargo test --locked cryptomator
+
       - name: Build Tauri application
         run: npm run tauri build -- ${{ matrix.bundle_args }}
 

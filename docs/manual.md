@@ -180,9 +180,12 @@ password or unlocks it automatically at startup.
 While a vault is open, save, search, indexing, file operations, and conflict
 detection use the same code paths as an ordinary folder workspace. Closing the
 workspace waits for pending saves, stops the watcher, asks `cryptomator-cli` to
-unmount, and reports a timeout or incomplete unmount explicitly. If the CLI
-exits unexpectedly, Logtext blocks further filesystem access and leaves dirty
-editor text visible so it can be copied before the workspace is discarded.
+unmount, and reports a timeout or incomplete unmount explicitly. Force-stopping
+the CLI always produces a warning because a clean unmount can no longer be
+confirmed. If the CLI exits unexpectedly, Logtext blocks further filesystem
+access and leaves dirty editor text visible so it can be copied before the
+workspace is discarded; it no longer offers to save into the disconnected
+mount.
 
 ## Three-Pane Layout
 

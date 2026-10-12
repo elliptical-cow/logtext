@@ -6,9 +6,11 @@
   import { trapDialogFocus } from "../dialogFocus.js";
   import { toErrorPresentation } from "../errors.js";
   import { workspaceStore } from "../stores/workspace.js";
+  import { closeFailedCryptomatorOpen } from "../workspaceLifecycle.js";
   import ErrorDialog from "./ErrorDialog.svelte";
 
   export let initialVaultPath = "";
+  export let onBeforeOpen: () => Promise<boolean>;
   export let onCancel: () => void;
   export let onOpened: () => void;
 
@@ -80,6 +82,9 @@
     error = null;
     errorDetail = null;
     try {
+      if (!(await onBeforeOpen())) {
+        return;
+      }
       const opened = await workspaceStore.openCryptomator(vaultPath, password, cliPath || undefined);
       password = "";
       if (opened) {
@@ -90,6 +95,14 @@
       error = workspace.error ?? "Could not open the Cryptomator vault.";
       errorDetail = workspace.errorDetail;
       workspaceStore.clearError();
+      try {
+        await closeFailedCryptomatorOpen();
+      } catch (cleanupError) {
+        const cleanup = toErrorPresentation(cleanupError);
+        errorDetail = [errorDetail, `Cleanup failed: ${cleanup.message}`, cleanup.detail]
+          .filter(Boolean)
+          .join("\n\n");
+      }
     } catch (openError) {
       password = "";
       showError(openError);
