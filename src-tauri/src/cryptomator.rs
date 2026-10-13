@@ -804,13 +804,15 @@ fn send_graceful_signal(pid: u32) -> Result<(), String> {
 fn configure_process(command: &mut Command) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     use windows_sys::Win32::System::Console::{
-        AllocConsole, GetConsoleWindow, SetConsoleCtrlHandler,
+        AllocConsole, GetConsoleCP, GetConsoleWindow, SetConsoleCtrlHandler,
     };
     use windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP;
     use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
 
     unsafe {
-        if GetConsoleWindow().is_null() {
+        // A process attached to a pseudoconsole can have no console window. The
+        // console code page therefore provides a more reliable attachment check.
+        if GetConsoleCP() == 0 {
             if AllocConsole() == 0 {
                 return Err(format!(
                     "Failed to allocate a control console: {}",
@@ -822,7 +824,12 @@ fn configure_process(command: &mut Command) -> Result<(), String> {
                 ShowWindow(window, SW_HIDE);
             }
         }
-        SetConsoleCtrlHandler(None, 1);
+        if SetConsoleCtrlHandler(None, 1) == 0 {
+            return Err(format!(
+                "Failed to configure console control handling: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
     }
     command.creation_flags(CREATE_NEW_PROCESS_GROUP);
     Ok(())
@@ -880,13 +887,13 @@ mod tests {
 
     #[test]
     fn parses_file_mount_uri_with_encoded_spaces() {
-        let path = mount_path_from_line(
-            "INFO Unlocked and mounted vault successfully to file:///tmp/Logtext%20Vault/",
-        )
-        .unwrap()
-        .unwrap();
+        let expected = std::env::temp_dir().join("Logtext Vault");
+        let uri = Url::from_directory_path(&expected).unwrap();
+        assert!(uri.as_str().contains("Logtext%20Vault"));
+        let output = format!("INFO {READY_MARKER}{uri}");
+        let path = mount_path_from_line(&output).unwrap().unwrap();
 
-        assert_eq!(path, PathBuf::from("/tmp/Logtext Vault/"));
+        assert_eq!(path, expected);
     }
 
     #[test]
