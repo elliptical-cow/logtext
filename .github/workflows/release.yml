@@ -128,13 +128,6 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build release bundles
-        run: npm run tauri build -- ${{ matrix.bundle_args }}
-
-      - name: Build Logseq importer
-        if: matrix.kind != 'macos'
-        run: cargo build --manifest-path src-tauri/Cargo.toml --release --locked --bin logtext-import-logseq
-
       - name: Build universal macOS Logseq importer
         if: matrix.kind == 'macos'
         run: |
@@ -142,6 +135,19 @@ jobs:
             --bin logtext-import-logseq --target aarch64-apple-darwin
           cargo build --manifest-path src-tauri/Cargo.toml --release --locked \
             --bin logtext-import-logseq --target x86_64-apple-darwin
+          # Tauri combines only the main binary, but bundles every Cargo binary.
+          mkdir -p src-tauri/target/universal-apple-darwin/release
+          lipo -create \
+            src-tauri/target/aarch64-apple-darwin/release/logtext-import-logseq \
+            src-tauri/target/x86_64-apple-darwin/release/logtext-import-logseq \
+            -output src-tauri/target/universal-apple-darwin/release/logtext-import-logseq
+
+      - name: Build release bundles
+        run: npm run tauri build -- ${{ matrix.bundle_args }}
+
+      - name: Build Logseq importer
+        if: matrix.kind != 'macos'
+        run: cargo build --manifest-path src-tauri/Cargo.toml --release --locked --bin logtext-import-logseq
 
       - name: Stage Windows release assets
         if: matrix.kind == 'windows'
@@ -165,10 +171,8 @@ jobs:
           app_path=$(find src-tauri/target -type d -name "Logtext.app" | head -1)
           test -n "$app_path"
           ditto -c -k --keepParent "$app_path" "release-assets/Logtext-v${version}-macos-universal-app.zip"
-          lipo -create \
-            src-tauri/target/aarch64-apple-darwin/release/logtext-import-logseq \
-            src-tauri/target/x86_64-apple-darwin/release/logtext-import-logseq \
-            -output "release-assets/logtext-import-logseq-v${version}-macos-universal"
+          install -m 0755 src-tauri/target/universal-apple-darwin/release/logtext-import-logseq \
+            "release-assets/logtext-import-logseq-v${version}-macos-universal"
 
       - name: Stage Linux release assets
         if: matrix.kind == 'linux'

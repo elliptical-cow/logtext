@@ -100,6 +100,34 @@ test("builds and stages the Logseq importer in CI and releases", () => {
   assert.match(releaseWorkflow, /lipo -create/);
 });
 
+test("prepares the universal importer before macOS app bundling", () => {
+  const releaseWorkflow = readFileSync(
+    join(root, ".github/workflows/release.yml"),
+    "utf8",
+  );
+  const steps = releaseWorkflow.split(/^      - name: /m);
+  const importerIndex = steps.findIndex((step) =>
+    step.startsWith("Build universal macOS Logseq importer\n"),
+  );
+  const bundleIndex = steps.findIndex((step) =>
+    step.startsWith("Build release bundles\n"),
+  );
+  assert.ok(importerIndex > 0 && bundleIndex > 0, "release build steps must exist");
+  assert.ok(importerIndex < bundleIndex, "Tauri bundling needs the universal importer first");
+
+  const importerStep = steps[importerIndex];
+  assert.match(importerStep, /if: matrix\.kind == 'macos'/);
+  for (const architecture of ["aarch64", "x86_64"]) {
+    assert.ok(importerStep.includes(`--target ${architecture}-apple-darwin`));
+    assert.ok(importerStep.includes(`src-tauri/target/${architecture}-apple-darwin/release/logtext-import-logseq`));
+  }
+  assert.match(importerStep, /lipo -create/);
+  assert.match(importerStep, /-output src-tauri\/target\/universal-apple-darwin\/release\/logtext-import-logseq/);
+
+  const stagingStep = steps.find((step) => step.startsWith("Stage macOS release asset\n")) ?? "";
+  assert.match(stagingStep, /install -m 0755 src-tauri\/target\/universal-apple-darwin\/release\/logtext-import-logseq\s+\\\n\s+"release-assets\/logtext-import-logseq-v\$\{version\}-macos-universal"/);
+});
+
 test("packages the native Linux binary consistently in CI and releases", () => {
   for (const workflowPath of [
     ".github/workflows/ci.yml",
