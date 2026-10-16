@@ -4,7 +4,7 @@ Logtext is a local, Markdown-first workspace for notes and tasks. Markdown files
 are canonical. Workspace configuration is stored in a readable JSON file; no
 database is required for primary content.
 
-This manual describes the current application. For build instructions and
+This manual describes Logtext **0.9.0**. For build instructions and
 contribution rules, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Logtext in Five Minutes
@@ -25,7 +25,7 @@ through links, backlinks, search, and tasks.
 ## Contents
 
 - Getting started: [Installation](#installation), [First Start](#first-start),
-  and [Workspace Files](#workspace-files)
+  [Workspace Files](#workspace-files), and [Logseq Import](#logseq-import)
 - Core workflow: [Three-Pane Layout](#three-pane-layout), [Journals](#journals),
   [Wiki Links and Tags](#wiki-links-and-tags), [Backlinks](#backlinks), and
   [Editing](#editing)
@@ -44,7 +44,7 @@ through links, backlinks, search, and tasks.
 Release files are published under
 [GitHub Releases](https://github.com/elliptical-cow/logtext/releases/latest).
 The version in an asset name is written as `<version>` below; for example,
-version `0.8.5` appears as `v0.8.5`.
+version `0.9.0` appears as `v0.9.0`.
 
 ### Windows
 
@@ -129,6 +129,32 @@ workspace/
 Logtext also stores the last workspace path in `~/.logtext`. On startup it
 reopens that workspace if it is still available. The right pane restores its
 previous context page.
+
+## Logseq Import
+
+Version `0.9.0` includes a command-line importer for classic, file-based Logseq
+Markdown graphs. It creates a separate Logtext workspace and leaves the source
+graph unchanged. There is currently no in-app import dialog.
+
+Run a downloaded `logtext-import-logseq` binary with `--dry-run` first, or use
+this command from the source repository:
+
+```bash
+cargo run --manifest-path src-tauri/Cargo.toml --bin logtext-import-logseq -- \
+  --dry-run /path/to/logseq-graph /path/to/new-logtext-workspace
+```
+
+The destination must not exist. Remove `--dry-run` to create it, then review
+`.logseq-import-report.json` and the imported Markdown before relying on the
+workspace. The importer converts conventional page, journal, namespace, and
+asset paths, rewrites known links, and preserves detected task states.
+
+Block references, embeds, queries, macros, scheduled dates, deadlines, repeaters,
+and unsupported properties remain source text without equivalent Logtext
+behavior. DB graphs require a Markdown export first. See the
+[Logseq import guide](logseq-import.md)
+for platform binaries, report coverage, safety checks, and limitations. Import
+is one-way and does not synchronize the two workspaces.
 
 ## Three-Pane Layout
 
@@ -276,6 +302,11 @@ checkboxes can be toggled directly, and selected backlink text can be copied.
 The middle pane uses CodeMirror and supports normal Markdown editing plus block
 operations.
 
+Normal typing and deletion are saved after a one-second pause. Editor commands
+request an immediate save, and `Cmd/Ctrl+S` saves immediately. Saving compares
+the expected content hash with current disk content. A mismatch stops the save
+with a conflict instead of silently overwriting external changes.
+
 Common block actions:
 
 - `Enter`: create another list item
@@ -360,6 +391,10 @@ inserted as readable alt-text labels because `cid:` and application-local image
 addresses are not portable outside the mail client. Copying a standalone image
 still uses Logtext's normal media paste workflow. If no useful HTML is present,
 the editor falls back to plain text.
+
+The editor's own right-click `Paste` action reads an image or plain text through
+the native clipboard plugin. Use `Cmd/Ctrl+V` or native `Edit > Paste` for
+HTML-to-Markdown conversion.
 
 Exact live-preview syntax, escaping, and code-block behavior are collected in
 [Markdown Rendering Details](#markdown-rendering-details).
@@ -812,8 +847,8 @@ reopened, the timestamp is replaced rather than retained as a completion
 history. A task without a list marker is converted to a normal `-` list item on
 its first state change so the timestamp is a valid child block.
 
-Any list block can have direct child attributes. Attribute names begin with a
-letter and may contain letters, digits, dashes, and underscores:
+Any list block can have direct child attributes. Attribute names begin with an
+ASCII letter and may contain ASCII letters, digits, dashes, and underscores:
 
 ```md
 - Prepare project review
@@ -826,6 +861,12 @@ views keep the bullet visible and display the complete attribute line at a
 slightly smaller size. The `attribute-name::` portion additionally uses a
 subtle monospace style. Attribute values still support the normal inline
 Markdown rendering rules.
+
+Values may contain free text and multiple links, or be empty. They are not
+limited to a single token or a typed date. Inline prose such as `owner:: Jens`
+inside a sentence and unbulleted continuation lines are not the supported
+attribute form. A `due` or `due-date` value is descriptive metadata; it does not
+schedule a reminder or recurring task.
 
 Tasks inherit effective attributes from every parent block. A definition on
 the task or a nearer parent overrides the same case-insensitive attribute name
@@ -866,6 +907,8 @@ Logtext is provided without warranty and is still in early development. See the
   paths.
 - The thin Linux archive does not install desktop integration or system
   dependencies.
+- Logseq import is a one-way command-line workflow with the semantic
+  limitations described above; it does not directly open DB graphs.
 
 For implementation details and recorded design decisions, see
 [Developer Notes](dev-notes.md).

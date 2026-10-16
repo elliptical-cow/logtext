@@ -21,6 +21,9 @@ questions without deciding up front where every fragment belongs.
 Logtext is inspired by Org mode and Logseq. Ordinary Markdown files remain the
 source of truth.
 
+This README describes Logtext **0.9.0**. See the
+[changelog](CHANGELOG.md#090) for changes since `0.8.5`.
+
 ![Logtext workspace with journal editor and linked references](docs/assets/logtext-workspace.png)
 
 
@@ -56,6 +59,10 @@ Create database -> define schema -> create document -> fill fields
 - backlinks with parent and child block context
 - configurable task states, colors, and priorities
 - filtered and grouped task overview
+- inheritable block attributes for task context, filtering, and grouping
+- keyboard navigation with Quick Open, a command palette, and collapsible panes
+- slash commands for dates, time, tasks, checkboxes, and Markdown blocks
+- formatted text copy and HTML-to-Markdown paste
 - images/screenshots and media cleanup
 - workspace health diagnostics for broken links, page-name collisions, missing
   or unreferenced media, and unlinked pages, with explicit page creation for
@@ -131,9 +138,9 @@ Wiki links, task states, and configuration are described in the
 ## Import A Logseq Markdown Graph
 
 Logtext includes an initial command-line importer for classic, file-based
-Logseq Markdown graphs. Release downloads provide standalone binaries for Linux
-x86_64, Windows x86_64, and universal macOS. The importer always creates a new
-Logtext workspace and never modifies the source graph. Run a dry run from the
+Logseq Markdown graphs. The `0.9.0` release workflow builds standalone binaries
+for Linux x86_64, Windows x86_64, and universal macOS. The importer always
+creates a new Logtext workspace and never modifies the source graph. Run a dry run from the
 source tree before writing the destination:
 
 ```bash

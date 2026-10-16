@@ -1,20 +1,34 @@
 # Changelog
 
 This file records notable user-facing and development changes to Logtext. The
-current source version is `0.8.5`.
+current source version is `0.9.0`.
 
 ## Unreleased
+
+No changes recorded yet.
+
+## 0.9.0
+
+Changes since `v0.8.5`.
 
 ### Changed
 
 - Documented backend safety boundaries, derived-state invariants, frontend async
   ownership, and complex editor and rendering behavior for external contributors.
+- Updated the README and manual for `0.9.0`, including CLI import boundaries,
+  autosave timing, clipboard behavior, and block-attribute syntax.
 - Extended editor block-collapse shortcuts and the View menu from levels 1–4
   to levels 1–9.
 - Seeded `/mermaid` output with a valid two-node example.
 
 ### Added
 
+- Added editor slash commands `/date` and `/today` with a shared keyboard date
+  picker and compact, searchable command suggestions.
+- Added `Copy as Formatted Text` to copy a Markdown selection as portable HTML
+  with an unchanged Markdown fallback for mail and rich-text applications.
+- Added HTML-to-Markdown paste for formatted content, including Outlook lists,
+  nested list hierarchy, tables, links, and inline formatting.
 - Added a Workspace Health diagnostic view with search, severity and type
   filters for missing wiki-link targets, case-insensitive page collisions,
   missing and unreferenced media, and unlinked non-journal pages. The report
@@ -37,6 +51,8 @@ current source version is `0.8.5`.
 
 ### Fixed
 
+- Saved editor commands immediately while retaining a one-second autosave pause
+  for ordinary typing and deletion.
 - Updated `markdown-it`, DOMPurify, and devalue to patched versions for their
   respective denial-of-service and DOM-sanitization security advisories.
 - Allowed slash commands after whitespace later on an existing line instead of
