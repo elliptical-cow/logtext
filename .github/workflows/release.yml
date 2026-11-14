@@ -149,6 +149,17 @@ jobs:
         if: matrix.kind != 'macos'
         run: cargo build --manifest-path src-tauri/Cargo.toml --release --locked --bin logtext-import-logseq
 
+      - name: Build Arch Linux package
+        if: matrix.kind == 'linux'
+        run: |
+          mkdir -p release-assets
+          docker run --rm \
+            --volume "$PWD:/workspace:ro" \
+            --volume "$PWD/release-assets:/out" \
+            --workdir /workspace \
+            archlinux:base-devel \
+            bash packaging/arch/release.sh "${GITHUB_REF_NAME#v}"
+
       - name: Stage Windows release assets
         if: matrix.kind == 'windows'
         shell: pwsh

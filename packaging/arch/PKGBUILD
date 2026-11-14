@@ -1,0 +1,22 @@
+# Repackage locally staged release binaries; no source downloads or compilation.
+pkgname=logtext
+pkgver=${LOGTEXT_VERSION:?Set LOGTEXT_VERSION through build.sh}
+pkgrel=1
+pkgdesc='A local Markdown-first knowledge workspace for notes and tasks'
+arch=('x86_64')
+url='https://github.com/elliptical-cow/logtext'
+license=('AGPL-3.0-only')
+depends=('glibc' 'gcc-libs' 'glib2' 'gtk3' 'webkit2gtk-4.1' 'libsoup3'
+         'cairo' 'gdk-pixbuf2' 'dbus' 'xdg-utils')
+options=('!strip' '!debug')
+source=('Logtext' 'logtext-import-logseq' 'logtext.desktop' 'logtext.png' 'LICENSE')
+# Inputs are copied from this release's build output, not fetched from a server.
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -Dm755 "$srcdir/Logtext" "$pkgdir/usr/bin/Logtext"
+  install -Dm755 "$srcdir/logtext-import-logseq" "$pkgdir/usr/bin/logtext-import-logseq"
+  install -Dm644 "$srcdir/logtext.desktop" "$pkgdir/usr/share/applications/Logtext.desktop"
+  install -Dm644 "$srcdir/logtext.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/logtext.png"
+  install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/logtext/LICENSE"
+}

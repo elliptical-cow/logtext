@@ -920,6 +920,27 @@ CI and release automation are intentionally separate:
   includes its runtime guidance and the project license but deliberately omits
   WebKitGTK, GTK, desktop integration, and dependency installation. AppImage and
   `.deb` release assets remain available alongside it.
+- Only the release workflow additionally creates
+  `logtext-<version>-1-x86_64.pkg.tar.zst`. The existing Linux job runs
+  `packaging/arch/release.sh` inside `archlinux:base-devel`, installs the
+  PKGBUILD's runtime dependencies, and checks both Ubuntu-built release
+  binaries for missing shared libraries on Arch. `makepkg` runs as an
+  unprivileged container user and packages the existing binaries without
+  recompiling or stripping them again. CI does not build this package.
+- The Arch package installs `Logtext` and `logtext-import-logseq` under
+  `/usr/bin`, a desktop entry under `/usr/share/applications`, the icon under
+  the hicolor icon theme, and the license under `/usr/share/licenses/logtext`.
+  It does not install user configuration, touch workspaces, or change Omarchy
+  settings. Standard Arch desktop hooks and the launcher handle menu updates.
+- On an Arch host with `base-devel`, `desktop-file-utils` and Python installed,
+  run `python3 packaging/arch/test_package.py` for real package-content and
+  failure-path tests. Build locally with
+  `bash packaging/arch/build.sh 0.9.0 src-tauri/target/release /tmp/logtext-arch`.
+  The builder accepts `VERSION BINARY_DIRECTORY OUTPUT_DIRECTORY`, requires
+  both x86_64 ELF binaries, and refuses to overwrite an existing package.
+  It uses `--nodeps` because it repackages prebuilt binaries; runtime library
+  validation takes place in the release container with dependencies installed.
+  A successful build alone is not a runtime compatibility check.
 
 Manual acceptance checks:
 

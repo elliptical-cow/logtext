@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Logtext
+Comment=Markdown notes, journals, backlinks and tasks
+Exec=Logtext
+Icon=logtext
+Terminal=false
+Categories=Utility;TextEditor;
+Keywords=Markdown;Notes;Journal;Tasks;
+StartupWMClass=Logtext

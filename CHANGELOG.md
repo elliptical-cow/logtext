@@ -5,6 +5,12 @@ current source version is `0.9.0`.
 
 ## Unreleased
 
+### Added
+
+- Added a native x86_64 Arch Linux / Omarchy package to the release workflow,
+  including runtime dependencies, the Logseq importer, an icon and an
+  application launcher entry. Install or update it with `pacman -U` (issue #36).
+
 ### Fixed
 
 - Fixed startup and workspace selection when the user `.logtext` file contains
