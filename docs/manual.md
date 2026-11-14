@@ -72,6 +72,34 @@ sudo apt install ./Logtext-v<version>-linux-x86_64.deb
 
 APT installs declared system dependencies through the package manager.
 
+### Arch Linux and Omarchy
+
+Starting with the next release, download `logtext-<version>-1-x86_64.pkg.tar.zst`
+and install it with:
+
+```bash
+sudo pacman -U ./logtext-<version>-1-x86_64.pkg.tar.zst
+```
+
+Pacman installs the required system dependencies. The package includes Logtext,
+the `logtext-import-logseq` command, an icon and a desktop entry. Search for
+`Logtext` in the application launcher. Under Omarchy, open it with `Super+Space`.
+No custom keybinding is required.
+
+To update, download the newer package and run the same installation command.
+This package is not distributed through AUR or a pacman repository, so normal
+system updates do not upgrade Logtext itself. The `1` in the filename is the
+package revision and can change independently of the application version.
+
+To uninstall:
+
+```bash
+sudo pacman -R logtext
+```
+
+Workspaces and the user configuration in `~/.logtext` are not package-owned
+files and are retained when uninstalling.
+
 ### Linux AppImage
 
 The AppImage is the portable Linux fallback:
