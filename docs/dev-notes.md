@@ -299,6 +299,12 @@ User-level config:
 - Stored in the user's home directory as `.logtext`
 - Managed by `src-tauri/src/user_config.rs`
 - Currently stores the last opened workspace path
+- `lastWorkspace` is written as a path string. Reading also accepts
+  `{ "kind": "folder", "path": "..." }` descriptors left by experimental
+  builds. Unsupported descriptor kinds (including Cryptomator vaults) are not
+  reopened automatically; a regular workspace can still be selected and saved.
+  Reading an existing config does not rewrite it. Malformed JSON and malformed
+  folder descriptors remain errors and are not overwritten during a save.
 
 Workspace-level config:
 

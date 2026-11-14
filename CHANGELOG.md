@@ -5,7 +5,11 @@ current source version is `0.9.0`.
 
 ## Unreleased
 
-No changes recorded yet.
+### Fixed
+
+- Fixed startup and workspace selection when the user `.logtext` file contains
+  a folder descriptor from an experimental build instead of a path string
+  (issue #35). Unsupported workspace kinds are skipped during automatic reopen.
 
 ## 0.9.0
 
