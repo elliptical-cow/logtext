@@ -935,7 +935,7 @@ CI and release automation are intentionally separate:
 - On an Arch host with `base-devel`, `desktop-file-utils` and Python installed,
   run `python3 packaging/arch/test_package.py` for real package-content and
   failure-path tests. Build locally with
-  `bash packaging/arch/build.sh 0.9.0 src-tauri/target/release /tmp/logtext-arch`.
+  `bash packaging/arch/build.sh 0.9.1 src-tauri/target/release /tmp/logtext-arch`.
   The builder accepts `VERSION BINARY_DIRECTORY OUTPUT_DIRECTORY`, requires
   both x86_64 ELF binaries, and refuses to overwrite an existing package.
   It uses `--nodeps` because it repackages prebuilt binaries; runtime library

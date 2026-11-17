@@ -21,8 +21,8 @@ questions without deciding up front where every fragment belongs.
 Logtext is inspired by Org mode and Logseq. Ordinary Markdown files remain the
 source of truth.
 
-This README describes Logtext **0.9.0**. See the
-[changelog](CHANGELOG.md#090) for changes since `0.8.5`.
+This README describes Logtext **0.9.1**. See the
+[changelog](CHANGELOG.md#091) for changes since `0.9.0`.
 
 ![Logtext workspace with journal editor and linked references](docs/assets/logtext-workspace.png)
 
@@ -82,7 +82,7 @@ Download the current release from
 | Windows | `Logtext-v<version>-windows-x86_64-portable.exe` | portable executable |
 | macOS | `Logtext-v<version>-macos-universal-app.zip` | universal Intel and Apple Silicon app |
 | Debian/Ubuntu | `Logtext-v<version>-linux-x86_64.deb` | installs through the package manager |
-| Arch Linux / Omarchy | `logtext-<version>-1-x86_64.pkg.tar.zst` | native pacman package; available starting with the next release |
+| Arch Linux / Omarchy | `logtext-<version>-1-x86_64.pkg.tar.zst` | native pacman package |
 | Linux | `Logtext-v<version>-linux-x86_64.AppImage` | portable fallback |
 | Linux | `Logtext-v<version>-linux-x86_64-thin.tar.gz` | small archive; requires compatible GTK 3 and WebKitGTK 4.1 system libraries |
 
@@ -143,7 +143,7 @@ Wiki links, task states, and configuration are described in the
 ## Import A Logseq Markdown Graph
 
 Logtext includes an initial command-line importer for classic, file-based
-Logseq Markdown graphs. The `0.9.0` release workflow builds standalone binaries
+Logseq Markdown graphs. The `0.9.1` release workflow builds standalone binaries
 for Linux x86_64, Windows x86_64, and universal macOS. The importer always
 creates a new Logtext workspace and never modifies the source graph. Run a dry run from the
 source tree before writing the destination:

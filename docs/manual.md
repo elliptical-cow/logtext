@@ -4,7 +4,7 @@ Logtext is a local, Markdown-first workspace for notes and tasks. Markdown files
 are canonical. Workspace configuration is stored in a readable JSON file; no
 database is required for primary content.
 
-This manual describes Logtext **0.9.0**. For build instructions and
+This manual describes Logtext **0.9.1**. For build instructions and
 contribution rules, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Logtext in Five Minutes
@@ -44,7 +44,7 @@ through links, backlinks, search, and tasks.
 Release files are published under
 [GitHub Releases](https://github.com/elliptical-cow/logtext/releases/latest).
 The version in an asset name is written as `<version>` below; for example,
-version `0.9.0` appears as `v0.9.0`.
+version `0.9.1` appears as `v0.9.1`.
 
 ### Windows
 
@@ -74,7 +74,7 @@ APT installs declared system dependencies through the package manager.
 
 ### Arch Linux and Omarchy
 
-Starting with the next release, download `logtext-<version>-1-x86_64.pkg.tar.zst`
+Download `logtext-<version>-1-x86_64.pkg.tar.zst`
 and install it with:
 
 ```bash
@@ -160,7 +160,7 @@ previous context page.
 
 ## Logseq Import
 
-Version `0.9.0` includes a command-line importer for classic, file-based Logseq
+Version `0.9.1` includes a command-line importer for classic, file-based Logseq
 Markdown graphs. It creates a separate Logtext workspace and leaves the source
 graph unchanged. There is currently no in-app import dialog.
 
